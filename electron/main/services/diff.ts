@@ -69,7 +69,7 @@ function isSafeRepoPath(value: string): boolean {
   return !value.split(/[/\\]/).includes("..");
 }
 
-export class Diff extends Effect.Service<Diff>()("cashew/Diff", {
+export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
   effect: Effect.gen(function* () {
     const git = yield* Git;
     const fs = yield* FileSystem.FileSystem;

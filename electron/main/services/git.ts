@@ -8,7 +8,7 @@ import { RepoConfig } from "./repo-config";
  * through this one, so process spawning, decoding, and exit-code handling live
  * in a single place.
  */
-export class Git extends Effect.Service<Git>()("cashew/Git", {
+export class Git extends Effect.Service<Git>()("onlydiffs/Git", {
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor;
     const { repoPath } = yield* RepoConfig;

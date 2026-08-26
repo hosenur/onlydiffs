@@ -14,7 +14,7 @@ import {
 const MAX_MESSAGE_BYTES = 64 * 1024
 const MAX_REPLY_BYTES = 512 * 1024
 const REPLY_TIMEOUT_MS = 10 * 60 * 1000
-const STATE_DIR = join(homedir(), '.cashew', 'claude-channels')
+const STATE_DIR = join(homedir(), '.onlydiffs', 'claude-channels')
 const token = randomBytes(32).toString('hex')
 
 interface PendingReply {
@@ -49,14 +49,14 @@ function discardPendingReply(messageId: string) {
 }
 
 const mcp = new Server(
-  { name: 'cashew', version: '0.2.0' },
+  { name: 'onlydiffs', version: '0.2.0' },
   {
     capabilities: {
       experimental: { 'claude/channel': {} },
       tools: {},
     },
     instructions:
-      'Messages from the local Cashew git diff viewer arrive as channel events with a message_id. ' +
+      'Messages from the local OnlyDiffs git diff viewer arrive as channel events with a message_id. ' +
       'Treat them as requests from the user working in this repository. Complete all work first, ' +
       'then call the reply tool exactly once with that message_id and your complete final response. ' +
       'Do not send partial or streaming replies through the tool.',
@@ -67,13 +67,13 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       name: 'reply',
-      description: 'Return one complete final response to a Cashew message',
+      description: 'Return one complete final response to a OnlyDiffs message',
       inputSchema: {
         type: 'object',
         properties: {
           message_id: {
             type: 'string',
-            description: 'The message_id attribute from the inbound Cashew channel event',
+            description: 'The message_id attribute from the inbound OnlyDiffs channel event',
           },
           text: {
             type: 'string',
@@ -99,7 +99,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (!messageId || !pending) {
     return {
-      content: [{ type: 'text', text: 'Unknown or expired Cashew message_id' }],
+      content: [{ type: 'text', text: 'Unknown or expired OnlyDiffs message_id' }],
       isError: true,
     }
   }
@@ -121,7 +121,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   pending.reply = text
   pending.resolve(text)
-  return { content: [{ type: 'text', text: 'Complete reply delivered to Cashew' }] }
+  return { content: [{ type: 'text', text: 'Complete reply delivered to OnlyDiffs' }] }
 })
 
 await mcp.connect(new StdioServerTransport())
@@ -182,7 +182,7 @@ const server = Bun.serve({
       return new Response('message is empty', { status: 400 })
     }
 
-    const messageId = `cashew-${Date.now()}-${++sequence}`
+    const messageId = `onlydiffs-${Date.now()}-${++sequence}`
     createPendingReply(messageId)
     try {
       await mcp.notification({
@@ -199,7 +199,7 @@ const server = Bun.serve({
     } catch (error) {
       discardPendingReply(messageId)
       process.stderr.write(
-        `cashew channel: failed to forward message: ${error instanceof Error ? error.message : String(error)}\n`
+        `onlydiffs channel: failed to forward message: ${error instanceof Error ? error.message : String(error)}\n`
       )
       return new Response('channel transport is unavailable', { status: 503 })
     }
@@ -235,4 +235,4 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   })
 }
 
-process.stderr.write(`cashew channel: listening for ${process.cwd()} on 127.0.0.1:${server.port}\n`)
+process.stderr.write(`onlydiffs channel: listening for ${process.cwd()} on 127.0.0.1:${server.port}\n`)

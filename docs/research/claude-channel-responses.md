@@ -22,9 +22,9 @@ Anthropic's reference includes a complete two-way webhook example where inbound 
 - When Claude replies through a channel, the terminal shows the tool call and confirmation; the actual reply is delivered by the channel to the external client.
 - Channels remain a research preview, so the contract may change.
 
-## Effect on Cashew
+## Effect on OnlyDiffs
 
-Cashew uses its `message_id` metadata as the reply routing key and exposes an MCP `reply(message_id, text)` tool. Claude is instructed to call it once, after completing its work, with the complete final response. The authenticated Tauri bridge waits for that tool call and then returns the whole reply to the UI at once; it does not stream partial token output or scrape Claude Code's terminal.
+OnlyDiffs uses its `message_id` metadata as the reply routing key and exposes an MCP `reply(message_id, text)` tool. Claude is instructed to call it once, after completing its work, with the complete final response. The authenticated Electron bridge waits for that tool call and then returns the whole reply to the UI at once; it does not stream partial token output or scrape Claude Code's terminal.
 
 ## Primary sources
 

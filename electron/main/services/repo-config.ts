@@ -4,8 +4,8 @@ import { Config, Effect } from "effect";
 import { RepoConfigError } from "../errors";
 
 /**
- * The repository Cashew looks at. There is no picker yet, so this is the one
- * knob: `CASHEW_REPO_PATH` in the Electron process environment, falling back to
+ * The repository OnlyDiffs looks at. There is no picker yet, so this is the one
+ * knob: `ONLYDIFFS_REPO_PATH` in the Electron process environment, falling back to
  * the path the Tauri build had compiled in.
  */
 const DEFAULT_REPO_PATH = "/Users/rahaman/Developer/minwinn";
@@ -18,17 +18,17 @@ function expandHome(value: string): string {
 }
 
 export class RepoConfig extends Effect.Service<RepoConfig>()(
-  "cashew/RepoConfig",
+  "onlydiffs/RepoConfig",
   {
     effect: Effect.gen(function* () {
-      const configured = yield* Config.string("CASHEW_REPO_PATH").pipe(
+      const configured = yield* Config.string("ONLYDIFFS_REPO_PATH").pipe(
         Config.withDefault(DEFAULT_REPO_PATH),
         Config.map((value) => value.trim()),
       );
 
       if (configured.length === 0) {
         return yield* new RepoConfigError({
-          message: "CASHEW_REPO_PATH is set but empty.",
+          message: "ONLYDIFFS_REPO_PATH is set but empty.",
         });
       }
 

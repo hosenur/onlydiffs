@@ -1,8 +1,8 @@
-import type { CashewApi } from "../shared/contract";
+import type { OnlyDiffsApi } from "../shared/contract";
 
 declare global {
   interface Window {
-    readonly cashew: CashewApi;
+    readonly onlydiffs: OnlyDiffsApi;
   }
 }
 

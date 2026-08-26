@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
-  CashewApi,
+  OnlyDiffsApi,
   GetFileContentsRequest,
   GetHistoryRequest,
   SendClaudeMessageRequest,
@@ -12,7 +12,7 @@ import { IpcChannel } from "../shared/contract";
  * The whole surface the renderer gets. Nothing here forwards a channel name
  * from the caller, so the renderer can only reach the handlers listed below.
  */
-const api: CashewApi = {
+const api: OnlyDiffsApi = {
   getDiff: () => ipcRenderer.invoke(IpcChannel.getDiff),
   getFileContents: (request: GetFileContentsRequest) =>
     ipcRenderer.invoke(IpcChannel.getFileContents, request),
@@ -28,4 +28,4 @@ const api: CashewApi = {
     ipcRenderer.invoke(IpcChannel.writeClipboardText, text),
 };
 
-contextBridge.exposeInMainWorld("cashew", api);
+contextBridge.exposeInMainWorld("onlydiffs", api);

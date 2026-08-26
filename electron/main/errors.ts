@@ -35,7 +35,7 @@ export class ClipboardError extends Data.TaggedError("ClipboardError")<{
   readonly message: string;
 }> {}
 
-export type CashewError =
+export type OnlyDiffsError =
   | RepoConfigError
   | GitError
   | WorkTreeError

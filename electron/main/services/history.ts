@@ -13,7 +13,7 @@ const MAX_LIMIT = 5000;
 const PRETTY_FORMAT =
   "--pretty=format:%H%x1f%h%x1f%an%x1f%ae%x1f%ar%x1f%aI%x1f%P%x1f%D%x1f%s%x1e";
 
-export class History extends Effect.Service<History>()("cashew/History", {
+export class History extends Effect.Service<History>()("onlydiffs/History", {
   effect: Effect.gen(function* () {
     const git = yield* Git;
 

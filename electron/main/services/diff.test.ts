@@ -43,22 +43,22 @@ function write(name: string, contents: string): void {
 beforeEach(() => {
   // macOS hands out /var/folders/… which is a symlink to /private/var/folders/…;
   // git reports the resolved form, so resolve it here or the paths never match.
-  repoPath = path.resolve(mkdtempSync(path.join(tmpdir(), "cashew-test-")));
+  repoPath = path.resolve(mkdtempSync(path.join(tmpdir(), "onlydiffs-test-")));
   git("init", "-q");
-  git("config", "user.email", "cashew@example.test");
-  git("config", "user.name", "Cashew Test");
+  git("config", "user.email", "onlydiffs@example.test");
+  git("config", "user.name", "OnlyDiffs Test");
 
   // RepoConfig reads this when the layer is built, so it has to be in place
   // before the runtime exists.
-  previousRepoPath = process.env.CASHEW_REPO_PATH;
-  process.env.CASHEW_REPO_PATH = repoPath;
+  previousRepoPath = process.env.ONLYDIFFS_REPO_PATH;
+  process.env.ONLYDIFFS_REPO_PATH = repoPath;
   runtime = makeRuntime();
 });
 
 afterEach(async () => {
   await runtime.dispose();
-  if (previousRepoPath === undefined) delete process.env.CASHEW_REPO_PATH;
-  else process.env.CASHEW_REPO_PATH = previousRepoPath;
+  if (previousRepoPath === undefined) delete process.env.ONLYDIFFS_REPO_PATH;
+  else process.env.ONLYDIFFS_REPO_PATH = previousRepoPath;
   rmSync(repoPath, { recursive: true, force: true });
 });
 
@@ -189,8 +189,8 @@ test("history returns commits newest first", async () => {
   expect(commits).toHaveLength(2);
   expect(commits[0].subject).toBe("second commit");
   expect(commits[1].subject).toBe("first commit");
-  expect(commits[0].author).toBe("Cashew Test");
-  expect(commits[0].authorEmail).toBe("cashew@example.test");
+  expect(commits[0].author).toBe("OnlyDiffs Test");
+  expect(commits[0].authorEmail).toBe("onlydiffs@example.test");
   expect(commits[0].isMerge).toBe(false);
   expect(commits[0].shortHash.length).toBeGreaterThan(0);
 });

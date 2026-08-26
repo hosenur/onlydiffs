@@ -76,13 +76,13 @@ export interface SendClaudeMessageRequest {
 }
 
 export const IpcChannel = {
-  getDiff: "cashew:get-diff",
-  getFileContents: "cashew:get-file-contents",
-  getHistory: "cashew:get-history",
-  stageFile: "cashew:stage-file",
-  generateCommitMessage: "cashew:generate-commit-message",
-  sendClaudeMessage: "cashew:send-claude-message",
-  writeClipboardText: "cashew:write-clipboard-text",
+  getDiff: "onlydiffs:get-diff",
+  getFileContents: "onlydiffs:get-file-contents",
+  getHistory: "onlydiffs:get-history",
+  stageFile: "onlydiffs:stage-file",
+  generateCommitMessage: "onlydiffs:generate-commit-message",
+  sendClaudeMessage: "onlydiffs:send-claude-message",
+  writeClipboardText: "onlydiffs:write-clipboard-text",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -102,8 +102,8 @@ export type IpcResult<A> =
   | { readonly ok: true; readonly value: A }
   | { readonly ok: false; readonly error: IpcFailure };
 
-/** Installed on `window.cashew` by the preload script. */
-export interface CashewApi {
+/** Installed on `window.onlydiffs` by the preload script. */
+export interface OnlyDiffsApi {
   getDiff(): Promise<IpcResult<RepoDiff>>;
   getFileContents(
     request: GetFileContentsRequest,

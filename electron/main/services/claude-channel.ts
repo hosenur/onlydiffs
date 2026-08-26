@@ -11,7 +11,7 @@ const SEND_TIMEOUT = "10 seconds";
 const REPLY_TIMEOUT = "610 seconds";
 /** How long to wait before re-opening a reply poll the server has dropped. */
 const REPLY_POLL_INTERVAL = "500 millis";
-const REGISTRATIONS_DIR = ".cashew/claude-channels";
+const REGISTRATIONS_DIR = ".onlydiffs/claude-channels";
 const MESSAGE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 const Registration = Schema.Struct({
@@ -32,10 +32,10 @@ const decodeAccepted = Schema.decodeUnknown(Schema.parseJson(MessageAccepted));
 const decodeReply = Schema.decodeUnknown(Schema.parseJson(MessageReply));
 
 const NO_CHANNEL_MESSAGE =
-  "No Cashew Claude channel is running. Restart Claude Code with the Cashew channel enabled.";
+  "No OnlyDiffs Claude channel is running. Restart Claude Code with the OnlyDiffs channel enabled.";
 
 export class ClaudeChannel extends Effect.Service<ClaudeChannel>()(
-  "cashew/ClaudeChannel",
+  "onlydiffs/ClaudeChannel",
   {
     effect: Effect.gen(function* () {
       const { repoPath } = yield* RepoConfig;
@@ -91,7 +91,7 @@ export class ClaudeChannel extends Effect.Service<ClaudeChannel>()(
 
         if (live.length === 0) {
           return yield* fail(
-            "No Cashew Claude channel is running for this repository. Restart Claude Code in this repository with the Cashew channel enabled.",
+            "No OnlyDiffs Claude channel is running for this repository. Restart Claude Code in this repository with the OnlyDiffs channel enabled.",
           );
         }
         return live;
@@ -113,7 +113,7 @@ export class ClaudeChannel extends Effect.Service<ClaudeChannel>()(
         );
 
       /**
-       * Sends a user-authored message to the newest live Cashew channel and
+       * Sends a user-authored message to the newest live OnlyDiffs channel and
        * waits for Claude to call the channel's reply tool with one complete
        * response. A per-process bearer token protects both sides of the
        * loopback HTTP bridge.
@@ -231,7 +231,7 @@ export class ClaudeChannel extends Effect.Service<ClaudeChannel>()(
           }
 
           return yield* fail(
-            `Could not reach a Cashew Claude channel for this repository. Restart Claude Code with the Cashew channel enabled.${
+            `Could not reach a OnlyDiffs Claude channel for this repository. Restart Claude Code with the OnlyDiffs channel enabled.${
               lastError === null ? "" : ` Last error: ${lastError}`
             }`,
           );

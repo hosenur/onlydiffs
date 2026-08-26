@@ -21,7 +21,7 @@ function createWindow(): BrowserWindow {
     height: 760,
     minWidth: 720,
     minHeight: 480,
-    title: "cashew",
+    title: "onlydiffs",
     backgroundColor: WINDOW_BACKGROUND,
     show: false,
     webPreferences: {
@@ -58,7 +58,7 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
-  app.setAppUserModelId("dev.hosenur.cashew");
+  app.setAppUserModelId("dev.hosenur.onlydiffs");
   registerIpcHandlers();
   createWindow();
 

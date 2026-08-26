@@ -1,4 +1,8 @@
-# cashew
+<p align="center">
+  <img src="build/icon.png" alt="" width="128" height="128">
+</p>
+
+# onlydiffs
 
 An Electron desktop app for reviewing git diffs and generating a commit message.
 
@@ -97,11 +101,11 @@ Two integration notes:
 
 ## Scope
 
-The repository under review comes from `CASHEW_REPO_PATH` in the Electron
+The repository under review comes from `ONLYDIFFS_REPO_PATH` in the Electron
 process environment, read once by `electron/main/services/repo-config.ts`:
 
 ```sh
-CASHEW_REPO_PATH=/Users/you/some/repo bun run dev
+ONLYDIFFS_REPO_PATH=/Users/you/some/repo bun run dev
 ```
 
 Without it, the path the Tauri build had compiled in is used
@@ -158,18 +162,18 @@ A Vite `.env` file is not loaded into Rust automatically. Do not use a
 
 ## Messaging Claude Code
 
-Cashew includes a two-way Claude Code development channel. Register its MCP
-server once from the Cashew repository:
+OnlyDiffs includes a two-way Claude Code development channel. Register its MCP
+server once from the OnlyDiffs repository:
 
 ```sh
 bun run channel:setup
 ```
 
-Then exit and restart Claude Code inside the repository Cashew is viewing:
+Then exit and restart Claude Code inside the repository OnlyDiffs is viewing:
 
 ```sh
 cd /Users/rahaman/Developer/minwinn
-claude --dangerously-load-development-channels server:cashew
+claude --dangerously-load-development-channels server:onlydiffs
 ```
 
 Claude Code shows a development-channel confirmation on startup. Once
@@ -177,8 +181,8 @@ accepted, the message input in the right sidebar forwards messages into that
 running conversation. After Claude finishes its work, the channel's `reply`
 tool returns the complete response to the app at once; partial token output is
 not streamed. The channel binds a random loopback port and publishes a
-per-process bearer token in a user-only `~/.cashew/claude-channels/`
-registration file. Cashew only targets a channel whose working directory
+per-process bearer token in a user-only `~/.onlydiffs/claude-channels/`
+registration file. OnlyDiffs only targets a channel whose working directory
 matches the repository under review.
 
 The reply endpoint is a long poll. The channel server drops an idle connection
@@ -224,7 +228,7 @@ electron/
     ├── ipc.ts             →  one handler per channel
     ├── errors.ts          →  the tagged errors, and how they cross IPC
     └── services/
-        ├── repo-config.ts →  CASHEW_REPO_PATH
+        ├── repo-config.ts →  ONLYDIFFS_REPO_PATH
         ├── git.ts         →  runs git through a CommandExecutor
         ├── diff.ts        →  getDiff, getFileContents, stageFile
         ├── history.ts     →  getHistory

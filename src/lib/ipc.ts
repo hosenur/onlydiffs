@@ -1,6 +1,6 @@
 import { Cause, Data, Effect, Exit } from 'effect'
 import type {
-  CashewApi,
+  OnlyDiffsApi,
   ChangeStatus,
   Commit,
   FullFileContents,
@@ -21,12 +21,12 @@ export class IpcError extends Data.TaggedError('IpcError')<{
   readonly operation: string
 }> {}
 
-function bridge(): Effect.Effect<CashewApi, IpcError> {
-  const api = typeof window === 'undefined' ? undefined : window.cashew
+function bridge(): Effect.Effect<OnlyDiffsApi, IpcError> {
+  const api = typeof window === 'undefined' ? undefined : window.onlydiffs
   return api === undefined
     ? Effect.fail(
         new IpcError({
-          message: 'The Cashew bridge is unavailable — the preload script did not load.',
+          message: 'The OnlyDiffs bridge is unavailable — the preload script did not load.',
           cause: 'BridgeUnavailable',
           operation: 'bridge',
         })
@@ -42,7 +42,7 @@ function bridge(): Effect.Effect<CashewApi, IpcError> {
  */
 function call<A>(
   operation: string,
-  invoke: (api: CashewApi) => Promise<IpcResult<A>>
+  invoke: (api: OnlyDiffsApi) => Promise<IpcResult<A>>
 ): Effect.Effect<A, IpcError> {
   return bridge().pipe(
     Effect.flatMap((api) =>

@@ -39,7 +39,7 @@ const decodeErrorEnvelope = Schema.decodeUnknown(
 );
 
 export class CommitMessage extends Effect.Service<CommitMessage>()(
-  "cashew/CommitMessage",
+  "onlydiffs/CommitMessage",
   {
     effect: Effect.gen(function* () {
       const diffService = yield* Diff;
@@ -57,7 +57,7 @@ export class CommitMessage extends Effect.Service<CommitMessage>()(
           // Redacted so an accidental log of the config never prints the key.
           const apiKey = yield* Config.redacted("GROQ_API_KEY").pipe(
             Effect.mapError(() =>
-              fail("GROQ_API_KEY is not set in the Cashew process environment."),
+              fail("GROQ_API_KEY is not set in the OnlyDiffs process environment."),
             ),
           );
           const token = Redacted.value(apiKey).trim();
