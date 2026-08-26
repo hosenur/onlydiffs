@@ -1,10 +1,25 @@
 {
   "compilerOptions": {
     "composite": true,
-    "skipLibCheck": true,
+    "target": "ES2022",
+    "lib": ["ES2023"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true
+    "types": ["node", "bun", "electron-vite/node"],
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["./electron/shared/*"]
+    },
+    "strict": true,
+    "exactOptionalPropertyTypes": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["electron", "electron.vite.config.ts"]
 }

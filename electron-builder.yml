@@ -1,0 +1,43 @@
+appId: dev.hosenur.cashew
+productName: cashew
+copyright: Copyright © 2026 hosenur
+
+directories:
+  buildResources: build
+  output: release
+
+# Only the built output and the main-process runtime dependencies ship; the
+# renderer's packages are already inlined by Vite and stay out of the asar.
+files:
+  - out/**
+  - package.json
+  - "!**/*.map"
+
+asarUnpack:
+  - resources/**
+
+extraMetadata:
+  main: out/main/index.mjs
+
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # Reads GROQ_API_KEY and shells out to git, so it must not be sandboxed.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+
+win:
+  icon: build/icon.ico
+  target: nsis
+
+linux:
+  icon: build/icon.png
+  category: Development
+  target:
+    - AppImage
+    - deb
+
+npmRebuild: false

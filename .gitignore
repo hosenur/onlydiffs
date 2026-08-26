@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Electron build output
+out
+release
+.tanstack
+
+# TS project build info
+*.tsbuildinfo
