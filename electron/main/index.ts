@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import * as path from "node:path";
-import { BrowserWindow, app, shell } from "electron";
+import { BrowserWindow, app, nativeImage, shell } from "electron";
 import { registerIpcHandlers } from "./ipc";
 import { runtime } from "./runtime";
 
@@ -57,8 +57,25 @@ function createWindow(): BrowserWindow {
   return window;
 }
 
+/**
+ * macOS takes the Dock icon from the running bundle, and in development that
+ * bundle is the stock `Electron.app` — so the Dock shows Electron's logo no
+ * matter what `electron-builder.yml` says. Pointing the Dock at our own icon
+ * makes development match the packaged app. A packaged build already has the
+ * right icon in its bundle, and `build/` is not shipped inside the asar, so
+ * this only runs unpackaged.
+ */
+function applyDevelopmentDockIcon(): void {
+  if (process.platform !== "darwin" || app.isPackaged) return;
+  const icon = nativeImage.createFromPath(
+    path.join(currentDir, "../../build/icon.png"),
+  );
+  if (!icon.isEmpty()) app.dock?.setIcon(icon);
+}
+
 app.whenReady().then(() => {
   app.setAppUserModelId("dev.hosenur.onlydiffs");
+  applyDevelopmentDockIcon();
   registerIpcHandlers();
   createWindow();
 
