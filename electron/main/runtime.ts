@@ -4,6 +4,7 @@ import { ClaudeChannel } from "./services/claude-channel";
 import { CommitMessage } from "./services/commit-message";
 import { Diff } from "./services/diff";
 import { History } from "./services/history";
+import { Workspace } from "./services/workspace";
 
 /**
  * Everything the IPC handlers can ask for. `NodeContext` supplies the
@@ -15,6 +16,7 @@ const AppLayer = Layer.mergeAll(
   History.Default,
   CommitMessage.Default,
   ClaudeChannel.Default,
+  Workspace.Default,
 ).pipe(Layer.provide(Layer.mergeAll(NodeContext.layer, NodeHttpClient.layer)));
 
 export type AppServices = Layer.Layer.Success<typeof AppLayer>;

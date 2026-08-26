@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import type { Commit } from "../../shared/contract";
-import { GitError } from "../errors";
+import type { GitError, NoProjectOpenError } from "../errors";
 import { Git } from "./git";
 
 const DEFAULT_LIMIT = 100;
@@ -20,7 +20,7 @@ export class History extends Effect.Service<History>()("onlydiffs/History", {
     /** Commit history reachable from HEAD, newest first. */
     const getHistory = (
       limit?: number,
-    ): Effect.Effect<Commit[], GitError> =>
+    ): Effect.Effect<Commit[], GitError | NoProjectOpenError> =>
       Effect.gen(function* () {
         // The limit arrives from the renderer and is interpolated into an
         // argument, so it is normalised to a plain integer before it gets near

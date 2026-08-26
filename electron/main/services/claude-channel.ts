@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { FileSystem, HttpClient, HttpClientRequest } from "@effect/platform";
 import { Effect, Option, Schedule, Schema } from "effect";
 import { ClaudeChannelError } from "../errors";
-import { RepoConfig } from "./repo-config";
+import { Workspace } from "./workspace";
 
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const SEND_TIMEOUT = "10 seconds";
@@ -38,7 +38,7 @@ export class ClaudeChannel extends Effect.Service<ClaudeChannel>()(
   "onlydiffs/ClaudeChannel",
   {
     effect: Effect.gen(function* () {
-      const { repoPath } = yield* RepoConfig;
+      const workspace = yield* Workspace;
       const fs = yield* FileSystem.FileSystem;
       const client = yield* HttpClient.HttpClient;
 
@@ -49,6 +49,9 @@ export class ClaudeChannel extends Effect.Service<ClaudeChannel>()(
         Registration[],
         ClaudeChannelError
       > = Effect.gen(function* () {
+        const repoPath = yield* workspace.currentPath.pipe(
+          Effect.mapError((error) => fail(error.message)),
+        );
         const directory = path.join(homedir(), REGISTRATIONS_DIR);
 
         const entries = yield* fs.readDirectory(directory).pipe(
@@ -239,6 +242,6 @@ export class ClaudeChannel extends Effect.Service<ClaudeChannel>()(
 
       return { send } as const;
     }),
-    dependencies: [RepoConfig.Default],
+    dependencies: [Workspace.Default],
   },
 ) {}

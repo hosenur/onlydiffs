@@ -9,6 +9,7 @@ import { ClaudeChannel } from "./services/claude-channel";
 import { CommitMessage } from "./services/commit-message";
 import { Diff } from "./services/diff";
 import { History } from "./services/history";
+import { Workspace } from "./services/workspace";
 
 const nullableString = Schema.optionalWith(Schema.NullOr(Schema.String), {
   default: () => null,
@@ -41,6 +42,9 @@ const GetHistoryRequest = Schema.Struct({
 const SendClaudeMessageRequest = Schema.Struct({ message: Schema.String });
 
 const ClipboardTextRequest = Schema.String;
+
+const OpenProjectRequest = Schema.Struct({ path: Schema.String });
+const ForgetProjectRequest = Schema.Struct({ path: Schema.String });
 
 /**
  * Runs one Effect and flattens the outcome into a value. Every failure —
@@ -121,6 +125,22 @@ export function registerIpcHandlers(): void {
 
   handle(IpcChannel.sendClaudeMessage, SendClaudeMessageRequest, (request) =>
     Effect.flatMap(ClaudeChannel, (channel) => channel.send(request.message)),
+  );
+
+  handleNoInput(IpcChannel.listProjects, () =>
+    Effect.flatMap(Workspace, (workspace) => workspace.list),
+  );
+
+  handleNoInput(IpcChannel.currentProject, () =>
+    Effect.flatMap(Workspace, (workspace) => workspace.currentProject),
+  );
+
+  handle(IpcChannel.openProject, OpenProjectRequest, (request) =>
+    Effect.flatMap(Workspace, (workspace) => workspace.open(request.path)),
+  );
+
+  handle(IpcChannel.forgetProject, ForgetProjectRequest, (request) =>
+    Effect.flatMap(Workspace, (workspace) => workspace.forget(request.path)),
   );
 
   // Clipboard writes go through the main process rather than

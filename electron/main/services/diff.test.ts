@@ -29,8 +29,10 @@ const makeRuntime = () =>
   );
 
 let repoPath: string;
+let stateDir: string;
 let runtime: ReturnType<typeof makeRuntime>;
 let previousRepoPath: string | undefined;
+let previousStateDir: string | undefined;
 
 function git(...args: string[]): string {
   return execFileSync("git", ["-C", repoPath, ...args], { encoding: "utf8" });
@@ -52,6 +54,10 @@ beforeEach(() => {
   // before the runtime exists.
   previousRepoPath = process.env.ONLYDIFFS_REPO_PATH;
   process.env.ONLYDIFFS_REPO_PATH = repoPath;
+  // Never let a test touch the real recents file in the user's home directory.
+  previousStateDir = process.env.ONLYDIFFS_STATE_DIR;
+  stateDir = path.resolve(mkdtempSync(path.join(tmpdir(), "onlydiffs-state-")));
+  process.env.ONLYDIFFS_STATE_DIR = stateDir;
   runtime = makeRuntime();
 });
 
@@ -59,7 +65,10 @@ afterEach(async () => {
   await runtime.dispose();
   if (previousRepoPath === undefined) delete process.env.ONLYDIFFS_REPO_PATH;
   else process.env.ONLYDIFFS_REPO_PATH = previousRepoPath;
+  if (previousStateDir === undefined) delete process.env.ONLYDIFFS_STATE_DIR;
+  else process.env.ONLYDIFFS_STATE_DIR = previousStateDir;
   rmSync(repoPath, { recursive: true, force: true });
+  rmSync(stateDir, { recursive: true, force: true });
 });
 
 test("complete file contents are loaded separately from the startup diff", async () => {

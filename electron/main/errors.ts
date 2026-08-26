@@ -7,10 +7,6 @@ import type { IpcFailure } from "../shared/contract";
  * branch, and the renderer keeps the `_tag` it needs to react differently.
  */
 
-export class RepoConfigError extends Data.TaggedError("RepoConfigError")<{
-  readonly message: string;
-}> {}
-
 export class GitError extends Data.TaggedError("GitError")<{
   readonly message: string;
 }> {}
@@ -35,17 +31,19 @@ export class ClipboardError extends Data.TaggedError("ClipboardError")<{
   readonly message: string;
 }> {}
 
-export type OnlyDiffsError =
-  | RepoConfigError
-  | GitError
-  | WorkTreeError
-  | InvalidPathError
-  | CommitMessageError
-  | ClaudeChannelError
-  | ClipboardError;
+/** No repository is open yet — the renderer should show the landing page. */
+export class NoProjectOpenError extends Data.TaggedError("NoProjectOpenError")<{
+  readonly message: string;
+}> {}
+
+/** The path the user typed is not somewhere we can review. */
+export class InvalidProjectError extends Data.TaggedError("InvalidProjectError")<{
+  readonly message: string;
+}> {}
+
 
 /** Anything a defect handler might be handed, reduced to readable text. */
-export function describeUnknown(error: unknown): string {
+function describeUnknown(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   try {

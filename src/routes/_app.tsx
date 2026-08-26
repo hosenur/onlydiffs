@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { Effect } from 'effect'
 import { AppHistorySidebar } from '@/components/app-history-sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -6,7 +6,7 @@ import { AppSidebarNav } from '@/components/app-sidebar-nav'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { ClaudeMessageDraftProvider } from '@/lib/claude-message-draft'
 import { DiffLayoutProvider } from '@/lib/diff-layout'
-import { getDiff, getHistory, runIpc } from '@/lib/ipc'
+import { currentProject, getDiff, getHistory, runIpc } from '@/lib/ipc'
 
 /**
  * Pathless layout route: the `_` prefix means this contributes no URL segment,
@@ -14,10 +14,16 @@ import { getDiff, getHistory, runIpc } from '@/lib/ipc'
  * sidebars and their loader data survive navigation between them.
  */
 export const Route = createFileRoute('/_app')({
-  loader: () =>
-    runIpc(
+  loader: async () => {
+    // Nothing below this layout can render without a repository, so bounce to
+    // the landing page instead of letting every loader fail.
+    if ((await runIpc(currentProject)) === null) {
+      throw redirect({ to: '/welcome' })
+    }
+    return runIpc(
       Effect.all({ diff: getDiff, history: getHistory(100) }, { concurrency: 2 })
-    ),
+    )
+  },
   component: AppLayout,
 })
 

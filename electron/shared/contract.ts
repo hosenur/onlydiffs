@@ -55,6 +55,23 @@ export interface Commit {
   refs: string;
 }
 
+/** A repository the app can open. */
+export interface Project {
+  /** Absolute path to the repository root. */
+  path: string;
+  /** Last path segment, for display. */
+  name: string;
+}
+
+export interface OpenProjectRequest {
+  /** Whatever the user typed: absolute, relative, or `~`-prefixed. */
+  path: string;
+}
+
+export interface ForgetProjectRequest {
+  path: string;
+}
+
 export interface GetFileContentsRequest {
   path: string;
   oldPath: string | null;
@@ -83,9 +100,11 @@ export const IpcChannel = {
   generateCommitMessage: "onlydiffs:generate-commit-message",
   sendClaudeMessage: "onlydiffs:send-claude-message",
   writeClipboardText: "onlydiffs:write-clipboard-text",
+  listProjects: "onlydiffs:list-projects",
+  openProject: "onlydiffs:open-project",
+  currentProject: "onlydiffs:current-project",
+  forgetProject: "onlydiffs:forget-project",
 } as const;
-
-export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
 
 /**
  * A failed Effect, flattened for structured cloning. Rejecting the underlying
@@ -115,4 +134,11 @@ export interface OnlyDiffsApi {
     request: SendClaudeMessageRequest,
   ): Promise<IpcResult<string>>;
   writeClipboardText(text: string): Promise<IpcResult<void>>;
+  /** Recently opened repositories, newest first, missing ones filtered out. */
+  listProjects(): Promise<IpcResult<Project[]>>;
+  /** Validates the path, makes it current, and records it in the history. */
+  openProject(request: OpenProjectRequest): Promise<IpcResult<Project>>;
+  /** The repository currently open, or null if the app is on the landing page. */
+  currentProject(): Promise<IpcResult<Project | null>>;
+  forgetProject(request: ForgetProjectRequest): Promise<IpcResult<void>>;
 }

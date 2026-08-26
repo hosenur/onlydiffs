@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppFileSplatRouteImport } from './routes/_app.file.$'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -30,28 +36,32 @@ const AppFileSplatRoute = AppFileSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/welcome': typeof WelcomeRoute
   '/file/$': typeof AppFileSplatRoute
 }
 export interface FileRoutesByTo {
+  '/welcome': typeof WelcomeRoute
   '/': typeof AppIndexRoute
   '/file/$': typeof AppFileSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/welcome': typeof WelcomeRoute
   '/_app/': typeof AppIndexRoute
   '/_app/file/$': typeof AppFileSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/file/$'
+  fullPaths: '/' | '/welcome' | '/file/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/file/$'
-  id: '__root__' | '/_app' | '/_app/' | '/_app/file/$'
+  to: '/welcome' | '/' | '/file/$'
+  id: '__root__' | '/_app' | '/welcome' | '/_app/' | '/_app/file/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  WelcomeRoute: typeof WelcomeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -61,6 +71,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -94,6 +111,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  WelcomeRoute: WelcomeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

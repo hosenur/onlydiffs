@@ -1,8 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   OnlyDiffsApi,
+  ForgetProjectRequest,
   GetFileContentsRequest,
   GetHistoryRequest,
+  OpenProjectRequest,
   SendClaudeMessageRequest,
   StageFileRequest,
 } from "../shared/contract";
@@ -26,6 +28,12 @@ const api: OnlyDiffsApi = {
     ipcRenderer.invoke(IpcChannel.sendClaudeMessage, request),
   writeClipboardText: (text: string) =>
     ipcRenderer.invoke(IpcChannel.writeClipboardText, text),
+  listProjects: () => ipcRenderer.invoke(IpcChannel.listProjects),
+  openProject: (request: OpenProjectRequest) =>
+    ipcRenderer.invoke(IpcChannel.openProject, request),
+  currentProject: () => ipcRenderer.invoke(IpcChannel.currentProject),
+  forgetProject: (request: ForgetProjectRequest) =>
+    ipcRenderer.invoke(IpcChannel.forgetProject, request),
 };
 
 contextBridge.exposeInMainWorld("onlydiffs", api);

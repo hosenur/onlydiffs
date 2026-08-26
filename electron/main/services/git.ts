@@ -1,7 +1,8 @@
 import { Command, CommandExecutor } from "@effect/platform";
 import { Effect, Stream } from "effect";
+import type { NoProjectOpenError } from "../errors";
 import { GitError } from "../errors";
-import { RepoConfig } from "./repo-config";
+import { Workspace } from "./workspace";
 
 /**
  * Runs `git` against the configured repository. Every other service goes
@@ -11,7 +12,7 @@ import { RepoConfig } from "./repo-config";
 export class Git extends Effect.Service<Git>()("onlydiffs/Git", {
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor;
-    const { repoPath } = yield* RepoConfig;
+    const workspace = yield* Workspace;
 
     const runIn = (
       cwd: string,
@@ -55,13 +56,23 @@ export class Git extends Effect.Service<Git>()("onlydiffs/Git", {
         ),
       );
 
-    const run = (args: ReadonlyArray<string>) => runIn(repoPath, args);
+    /**
+     * The repository is resolved per call rather than captured when the layer
+     * is built, so opening a different project from the landing page takes
+     * effect immediately.
+     */
+    const currentPath = workspace.currentPath;
+
+    const run = (
+      args: ReadonlyArray<string>,
+    ): Effect.Effect<string, GitError | NoProjectOpenError> =>
+      currentPath.pipe(Effect.flatMap((cwd) => runIn(cwd, args)));
 
     /** Reads one blob. An empty revision means the index (`git show :path`). */
     const showFile = (revision: string, filePath: string) =>
       run(["show", revision.length === 0 ? `:${filePath}` : `${revision}:${filePath}`]);
 
-    return { repoPath, run, runIn, showFile } as const;
+    return { currentPath, run, showFile } as const;
   }),
-  dependencies: [RepoConfig.Default],
+  dependencies: [Workspace.Default],
 }) {}

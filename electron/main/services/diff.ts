@@ -6,8 +6,16 @@ import type {
   FullFileContents,
   RepoDiff,
 } from "../../shared/contract";
-import { GitError, InvalidPathError, WorkTreeError } from "../errors";
+import {
+  GitError,
+  InvalidPathError,
+  NoProjectOpenError,
+  WorkTreeError,
+} from "../errors";
 import { Git } from "./git";
+
+/** Anything that can go wrong just getting at the repository. */
+type RepoError = GitError | NoProjectOpenError;
 
 /** How many `git diff` children may be in flight while collecting the repo. */
 const PATCH_CONCURRENCY = 8;
@@ -82,7 +90,9 @@ export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
           });
 
     const worktreeFile = (filePath: string) =>
-      fs.readFile(`${git.repoPath}/${filePath}`).pipe(
+      git.currentPath.pipe(
+        Effect.flatMap((repoPath) => fs.readFile(`${repoPath}/${filePath}`)),
+      ).pipe(
         // Lossy by design: the Rust build used `String::from_utf8_lossy`, so a
         // file with a stray byte renders rather than blanking the card.
         Effect.map((bytes) => new TextDecoder().decode(bytes)),
@@ -99,7 +109,7 @@ export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
       oldPath: string | null,
       status: ChangeStatus,
       staged: boolean,
-    ): Effect.Effect<string, GitError> => {
+    ): Effect.Effect<string, RepoError> => {
       if (status === "untracked") {
         return git.run(["diff", "--no-index", "--", "/dev/null", filePath]);
       }
@@ -123,7 +133,7 @@ export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
       staged: boolean,
     ): Effect.Effect<
       FullFileContents,
-      GitError | InvalidPathError | WorkTreeError
+      RepoError | InvalidPathError | WorkTreeError
     > =>
       Effect.gen(function* () {
         yield* validatePath(filePath);
@@ -167,7 +177,7 @@ export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
     const stageFile = (
       filePath: string,
       oldPath: string | null,
-    ): Effect.Effect<void, GitError | InvalidPathError> =>
+    ): Effect.Effect<void, RepoError | InvalidPathError> =>
       Effect.gen(function* () {
         yield* validatePath(filePath);
         if (oldPath !== null) yield* validatePath(oldPath);
@@ -182,7 +192,7 @@ export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
      * and unstaged edits to the same path are returned as separate rows,
      * because they are genuinely two different patches.
      */
-    const getDiff: Effect.Effect<RepoDiff, GitError> = Effect.gen(function* () {
+    const getDiff: Effect.Effect<RepoDiff, RepoError> = Effect.gen(function* () {
       const [branch, head, status] = yield* Effect.all(
         [
           git.run(["rev-parse", "--abbrev-ref", "HEAD"]),
@@ -251,7 +261,7 @@ export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
             ),
             // One unreadable path shouldn't blank the whole view — surface it
             // on its own row instead.
-            Effect.catchAll((error: GitError) =>
+            Effect.catchAll((error: RepoError) =>
               Effect.succeed(
                 Option.some(toFileChange(side, "", error.message)),
               ),
@@ -269,7 +279,7 @@ export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
       );
 
       return {
-        repoPath: git.repoPath,
+        repoPath: yield* git.currentPath,
         branch: branch.trim(),
         head: head.trim(),
         files,
@@ -280,7 +290,7 @@ export class Diff extends Effect.Service<Diff>()("onlydiffs/Diff", {
      * The complete staged, unstaged, and untracked diff as one annotated
      * document — what the commit-message model is shown.
      */
-    const commitMessageDiff: Effect.Effect<string, GitError> = Effect.gen(
+    const commitMessageDiff: Effect.Effect<string, RepoError> = Effect.gen(
       function* () {
         const repoDiff = yield* getDiff;
         if (repoDiff.files.length === 0) {

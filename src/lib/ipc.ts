@@ -5,6 +5,7 @@ import type {
   Commit,
   FullFileContents,
   IpcResult,
+  Project,
   RepoDiff,
 } from '@shared/contract'
 
@@ -98,6 +99,22 @@ export const sendClaudeMessage = (message: string): Effect.Effect<string, IpcErr
 
 export const writeClipboardText = (text: string): Effect.Effect<void, IpcError> =>
   call('writeClipboardText', (api) => api.writeClipboardText(text))
+
+export const listProjects: Effect.Effect<Project[], IpcError> = call(
+  'listProjects',
+  (api) => api.listProjects()
+)
+
+export const currentProject: Effect.Effect<Project | null, IpcError> = call(
+  'currentProject',
+  (api) => api.currentProject()
+)
+
+export const openProject = (path: string): Effect.Effect<Project, IpcError> =>
+  call('openProject', (api) => api.openProject({ path }))
+
+export const forgetProject = (path: string): Effect.Effect<void, IpcError> =>
+  call('forgetProject', (api) => api.forgetProject({ path }))
 
 /**
  * Runs an Effect for callers that live in promise-land — route loaders, event

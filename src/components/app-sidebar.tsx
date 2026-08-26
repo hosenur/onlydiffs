@@ -1,4 +1,4 @@
-import { useParams } from '@tanstack/react-router'
+import { Link, useParams } from '@tanstack/react-router'
 import { Squares2X2Icon } from '@heroicons/react/24/outline'
 import platypus from '@/assets/platypus.png'
 import {
@@ -49,9 +49,14 @@ export function AppSidebar({ diff, ...props }: AppSidebarProps) {
           />
           {/* Hidden alongside SidebarLabel, which drops itself when docked. */}
           <div className="flex min-w-0 flex-col group-data-[collapsible=dock]:hidden">
-            <SidebarLabel className="truncate font-medium">
+            {/* Doubles as the way back to the project picker. */}
+            <Link
+              to="/welcome"
+              title="Switch project"
+              className="truncate font-medium hover:underline"
+            >
               {diff.repoPath.split('/').pop()}
-            </SidebarLabel>
+            </Link>
             <span className="flex min-w-0 items-center gap-x-1 text-muted-fg">
               <CodeBranchOutline18 aria-hidden className="size-3 shrink-0" />
               <span className="truncate font-mono text-xs" title={diff.branch}>
