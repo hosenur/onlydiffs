@@ -44,6 +44,7 @@
     "electron": "^44.0.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "geist": "^1.7.2",
     "material-icon-theme": "^5.38.1",
     "react": "^19.1.0",
     "react-aria-components": "^1.20.0",

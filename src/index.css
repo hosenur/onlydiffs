@@ -13,20 +13,31 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Paper Mono — https://github.com/paper-design/paper-mono (SIL OFL 1.1,
- * see src/fonts/OFL.txt). Single variable file, wght axis 100–800.
+ * Geist and Geist Mono — github.com/vercel/geist-font (SIL OFL 1.1, see
+ * src/fonts/GEIST-LICENSE.txt). Self-hosted rather than named-and-hoped-for:
+ * a stack that merely lists a font renders it only on machines that happen to
+ * have it installed, so the app would look different for everyone else.
+ * One variable file each, wght axis 100–900.
  */
 @font-face {
-  font-family: "Paper Mono";
-  src: url("./fonts/PaperMono-Variable.woff2") format("woff2");
-  font-weight: 100 800;
+  font-family: "Geist";
+  src: url("./fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 
 @theme inline {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-mono: "Geist Mono", 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace';
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-sans--font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   --font-mono--font-feature-settings: "ss02", "zero";
   --color-border: var(--border);
@@ -146,7 +157,7 @@ diffs-container {
    * `var(--diffs-font-family, var(--diffs-font-fallback))`. Custom properties
    * inherit through the shadow boundary, so setting it on the host is enough.
    */
-  --diffs-font-family: "Paper Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --diffs-font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /*
    * Feed the same Oscura tokens into the renderer's own knobs. These are its
