@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowRightIcon, FolderOpenIcon, XMarkIcon } from '@heroicons/react/16/solid'
 import platypus from '@/assets/platypus.png'
@@ -19,6 +20,9 @@ export const Route = createFileRoute('/welcome')({
   loader: () => runIpc(listProjects),
   component: Welcome,
 })
+
+/** Rows past this all animate together, so the list always settles by ~360ms. */
+const STAGGER_CAP = 4
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
@@ -122,8 +126,14 @@ function Welcome() {
             </p>
           ) : (
             <ul className="flex flex-col">
-              {projects.map((project) => (
-                <li key={project.path} className="group/row flex items-center gap-1">
+              {projects.map((project, index) => (
+                <li
+                  key={project.path}
+                  // Capped so a long history does not turn into a slow reveal:
+                  // past the fifth row everything lands together.
+                  style={{ '--i': Math.min(index, STAGGER_CAP) } as CSSProperties}
+                  className="recent-project group/row flex items-center gap-1"
+                >
                   <button
                     type="button"
                     onClick={() => void open(project.path)}
