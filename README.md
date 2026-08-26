@@ -4,10 +4,8 @@
 
 # onlydiffs
 
-**Diff Driven Development With Parallel Claude Code Sessions**
-
-Review what changed, then tell Claude what to do about it — without leaving the
-diff.
+**The editor is over. The chat box was never it.**<br>
+**See what your agent changed. Talk it through.**
 
 ## Why
 

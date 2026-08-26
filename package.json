@@ -2,7 +2,7 @@
   "name": "onlydiffs",
   "private": true,
   "version": "0.1.0",
-  "description": "Diff Driven Development With Parallel Claude Code Sessions",
+  "description": "See what your agent changed. Talk it through.",
   "author": "hosenur",
   "type": "module",
   "main": "./out/main/index.mjs",

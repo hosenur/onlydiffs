@@ -75,7 +75,7 @@ function Welcome() {
           <div className="flex flex-col">
             <h1 className="font-medium text-lg tracking-tight">onlydiffs</h1>
             <p className="text-muted-fg text-sm">
-              Diff driven development with parallel Claude Code sessions
+              See what your agent changed. Talk it through.
             </p>
           </div>
         </header>
