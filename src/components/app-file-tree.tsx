@@ -1,7 +1,7 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ChevronRightIcon, FolderIcon, MagnifyingGlassIcon } from '@heroicons/react/16/solid'
+import { ChevronRightIcon, MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 import type { TreeRow } from '@/lib/file-tree'
 import {
   buildFileTree,
@@ -9,7 +9,7 @@ import {
   flattenTree,
   indexChanges,
 } from '@/lib/file-tree'
-import { fileIconUrl } from '@/lib/file-icon'
+import { fileIconUrl, folderIconUrl } from '@/lib/file-icon'
 import { fileHref } from '@/lib/status'
 import type { FileChange } from '@/types'
 
@@ -70,7 +70,13 @@ const Row = memo(function Row({
             row.isExpanded ? 'rotate-90' : ''
           }`}
         />
-        <FolderIcon aria-hidden className="size-3.5 shrink-0 text-muted-fg" />
+        <img
+          src={folderIconUrl(node.name, row.isExpanded)}
+          alt=""
+          width={14}
+          height={14}
+          className="size-3.5 shrink-0"
+        />
         <span className="truncate text-xs">{node.name}</span>
       </button>
     )

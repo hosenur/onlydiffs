@@ -1,10 +1,13 @@
 import map from './file-icon-map.json'
 
-const { fallback, fileNames, fileExtensions } = map as {
-  fallback: string
-  fileNames: Record<string, string>
-  fileExtensions: Record<string, string>
-}
+const { fallback, folderFallback, fileNames, fileExtensions, folderNames } =
+  map as {
+    fallback: string
+    folderFallback: string
+    fileNames: Record<string, string>
+    fileExtensions: Record<string, string>
+    folderNames: Record<string, string>
+  }
 
 /**
  * Resolves a path to a Material icon id, mirroring the theme's own precedence:
@@ -35,4 +38,36 @@ export function fileIconId(path: string): string {
  */
 export function fileIconUrl(path: string): string {
   return `${import.meta.env.BASE_URL}file-icons/${fileIconId(path)}.svg`
+}
+
+/**
+ * Resolves a directory to a Material folder icon.
+ *
+ * `chain` is what the row displays: one segment normally, or several when the
+ * tree folded a run of single-child directories into `.github/workflows`. The
+ * deepest segment wins, but the walk continues up the folded chain when the
+ * theme has no icon for it — the theme knows `.github` and not `workflows`, and
+ * folding should not cost you the better icon. Only segments the row actually
+ * represents are considered, so an unrecognised directory stays a plain folder
+ * rather than borrowing its parent's icon.
+ *
+ * The open variant is always the closed icon with `-open` appended — an
+ * invariant `bun run sync:icons` verifies against the theme, which is why the
+ * expanded map is not shipped.
+ */
+export function folderIconId(chain: string, isOpen = false): string {
+  const segments = chain.split('/').filter((segment) => segment.length > 0)
+  let base = folderFallback
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    const match = folderNames[segments[index].toLowerCase()]
+    if (match) {
+      base = match
+      break
+    }
+  }
+  return isOpen ? `${base}-open` : base
+}
+
+export function folderIconUrl(chain: string, isOpen = false): string {
+  return `${import.meta.env.BASE_URL}file-icons/${folderIconId(chain, isOpen)}.svg`
 }
