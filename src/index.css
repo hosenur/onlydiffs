@@ -304,40 +304,6 @@ diffs-container {
   }
 }
 
-/*
- * Selection find toolbar. Sits above the caret; enter is a small popover
- * (opacity + scale, 150ms). Next/prev only updates position — no motion.
- */
-.diff-find-toolbar {
-  position: fixed;
-  z-index: 50;
-  transform: translate(-50%, calc(-100% - 8px));
-  transform-origin: 50% 100%;
-  opacity: 1;
-  transition:
-    opacity 150ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-@starting-style {
-  .diff-find-toolbar {
-    opacity: 0;
-    transform: translate(-50%, calc(-100% - 8px)) scale(0.95);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .diff-find-toolbar {
-    transition: opacity 150ms ease;
-  }
-
-  @starting-style {
-    .diff-find-toolbar {
-      opacity: 0;
-      transform: translate(-50%, calc(-100% - 8px));
-    }
-  }
-}
 
 /*
  * Recent projects on the landing page. Seen once per session, which is the

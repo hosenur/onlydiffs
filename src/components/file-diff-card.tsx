@@ -1,14 +1,11 @@
-import { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { FileDiff } from '@pierre/diffs/react'
 import { parseDiffFromFile } from '@pierre/diffs'
-import type { FileDiffOptions, OnDiffLineClickProps } from '@pierre/diffs'
-import { CheckIcon } from '@heroicons/react/16/solid'
-import { DiffFindToolbar } from '@/components/diff-find-toolbar'
+import type { FileDiffOptions } from '@pierre/diffs'
 import { Badge } from '@/components/ui/badge'
-import { useAddClaudeReference } from '@/lib/claude-message-draft'
 import { useDiffLayout } from '@/lib/diff-layout'
-import { getFileContents, runIpc, writeClipboardText } from '@/lib/ipc'
+import { getFileContents, runIpc } from '@/lib/ipc'
 import { STATUS_LABEL, statusIntent } from '@/lib/status'
 import type { FileChange, FullFileContents } from '@/types'
 
@@ -99,19 +96,13 @@ function CompleteFileDiff({
 
 export function FileDiffCard({ file, bare = false }: FileDiffCardProps) {
   const { options } = useDiffLayout()
-  const addClaudeReference = useAddClaudeReference()
-  const [copied, setCopied] = useState<string | null>(null)
   const [shouldRender, setShouldRender] = useState(false)
   const [loaded, setLoaded] = useState<{
     file: FileChange
     contents: FullFileContents
   } | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const preview = useRef<HTMLDivElement | null>(null)
-  const root = useRef<HTMLElement>(null)
-
-  useEffect(() => () => clearTimeout(timer.current), [])
 
   useEffect(() => {
     if (shouldRender || file.error || file.binary) return
@@ -180,42 +171,20 @@ export function FileDiffCard({ file, bare = false }: FileDiffCardProps) {
     }
   }, [file, file.binary, file.error, shouldRender])
 
-  /*
-   * Added lines are the ones that exist in the file's current state, so they
-   * are the only ones whose number is a real location you can jump to. Their
-   * `lineNumber` is already the new-file number.
-   */
-  const onLineClick = useCallback(
-    ({ lineType, lineNumber }: OnDiffLineClickProps) => {
-      if (lineType !== 'change-addition') return
-      const reference = `${file.path}:${lineNumber}`
-      addClaudeReference(reference)
-      void runIpc(writeClipboardText(reference)).then(
-        () => {
-          setCopied(reference)
-          clearTimeout(timer.current)
-          timer.current = setTimeout(() => setCopied(null), 1600)
-        },
-        () => setCopied(null)
-      )
-    },
-    [addClaudeReference, file.path]
-  )
-
   // Must stay referentially stable: the renderer diffs its options by value and
-  // re-renders the whole file when they change.
+  // re-renders the whole file when they change. The diff is display-only — no
+  // line handlers, no selection affordances.
   const clickableOptions = useMemo<FileDiffOptions<undefined>>(
     // The renderer draws its own filename bar; with our header gone that would
     // be the only thing naming the file, and the breadcrumbs already do it.
-    () => ({ ...options, onLineClick, disableFileHeader: bare }),
-    [options, onLineClick, bare]
+    () => ({ ...options, disableFileHeader: bare }),
+    [options, bare]
   )
 
   const contents = loaded?.file === file ? loaded.contents : null
 
   return (
     <section
-      ref={root}
       className={bare ? undefined : 'overflow-hidden rounded-lg border bg-overlay'}
     >
       {!bare && (
@@ -233,19 +202,12 @@ export function FileDiffCard({ file, bare = false }: FileDiffCardProps) {
             {file.path}
           </span>
 
-          {copied ? (
-            <Badge intent="success" className="ml-auto shrink-0 font-mono">
-              <CheckIcon />
-              {copied}
-            </Badge>
-          ) : (
-            <Badge
-              intent={file.staged ? 'primary' : 'outline'}
-              className="ml-auto shrink-0"
-            >
-              {file.staged ? 'staged' : 'unstaged'}
-            </Badge>
-          )}
+          <Badge
+            intent={file.staged ? 'primary' : 'outline'}
+            className="ml-auto shrink-0"
+          >
+            {file.staged ? 'staged' : 'unstaged'}
+          </Badge>
         </div>
       )}
 
@@ -273,7 +235,6 @@ export function FileDiffCard({ file, bare = false }: FileDiffCardProps) {
           <CompleteFileDiff file={file} contents={contents} options={clickableOptions} />
         </DiffBoundary>
       )}
-      {bare && <DiffFindToolbar rootRef={root} path={file.path} />}
     </section>
   )
 }
