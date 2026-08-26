@@ -70,8 +70,6 @@ body::after{content:"";position:absolute;inset:0;
 .icon{width:196px;height:196px;flex:none;border-radius:44px;box-shadow:0 24px 60px rgba(0,0,0,.62)}
 h1{font-size:78px;font-weight:600;color:#f2f2f0;letter-spacing:-.05em;line-height:1}
 p{margin-top:20px;font-size:25px;font-weight:400;color:#9a9aa2;letter-spacing:-.012em;line-height:1.5;max-width:48ch;text-wrap:balance}
-.rule{margin-top:26px;display:flex;gap:10px;font-size:19px;color:#63636b}
-.add{color:#5fb87a}.del{color:#d2665c}
 </style></head><body>
 <div class="row">
   <img class="icon" src="data:image/png;base64,${icon}">
@@ -81,7 +79,6 @@ p{margin-top:20px;font-size:25px;font-weight:400;color:#9a9aa2;letter-spacing:-.
       .split('|')
       .map((line) => line.trim().replace(/&/g, '&amp;').replace(/</g, '&lt;'))
       .join('<br>')}</p>
-    <div class="rule"><span class="add">+ staged</span><span>/</span><span class="del">- unstaged</span><span>/</span><span>untracked</span></div>
   </div>
 </div>
 </body></html>`
