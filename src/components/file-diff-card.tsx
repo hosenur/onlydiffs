@@ -12,6 +12,9 @@ import { getFileContents, runIpc, writeClipboardText } from '@/lib/ipc'
 import { STATUS_LABEL, statusIntent } from '@/lib/status'
 import type { FileChange, FullFileContents } from '@/types'
 
+/** How far outside the viewport a card starts loading. */
+const MARGIN = 600
+
 const contentRequests = new WeakMap<FileChange, Promise<FullFileContents>>()
 
 function loadFileContents(file: FileChange) {
@@ -113,10 +116,24 @@ export function FileDiffCard({ file, bare = false }: FileDiffCardProps) {
   useEffect(() => {
     if (shouldRender || file.error || file.binary) return
 
+    // The single-file route renders exactly one card and it is always in view.
+    // Waiting on an observer there buys nothing and can strand the card: if the
+    // pane has not been laid out when the observer starts, the first entry is
+    // not intersecting, and nothing afterwards forces a re-check.
+    if (bare) {
+      setShouldRender(true)
+      return
+    }
+
     const target = preview.current
     if (!target || typeof IntersectionObserver === 'undefined') {
       setShouldRender(true)
       return
+    }
+
+    const near = () => {
+      const box = target.getBoundingClientRect()
+      return box.top < window.innerHeight + MARGIN && box.bottom > -MARGIN
     }
 
     const observer = new IntersectionObserver(
@@ -125,11 +142,25 @@ export function FileDiffCard({ file, bare = false }: FileDiffCardProps) {
         setShouldRender(true)
         observer.disconnect()
       },
-      { rootMargin: '600px 0px' }
+      { rootMargin: `${MARGIN}px 0px` }
     )
     observer.observe(target)
-    return () => observer.disconnect()
-  }, [file.binary, file.error, shouldRender])
+
+    // Same stranding hazard on the list route, where switching files fast means
+    // observers are created mid-layout. Re-check by hand once, rather than
+    // trusting the observer to notice a change that already happened.
+    const recheck = setTimeout(() => {
+      if (near()) {
+        setShouldRender(true)
+        observer.disconnect()
+      }
+    }, 400)
+
+    return () => {
+      observer.disconnect()
+      clearTimeout(recheck)
+    }
+  }, [bare, file.binary, file.error, shouldRender])
 
   useEffect(() => {
     if (!shouldRender || file.error || file.binary) return
