@@ -105,7 +105,19 @@
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
-    /* No rubber-banding or scroll chaining — this is a desktop window. */
+  }
+  /*
+   * No rubber-banding — this is a desktop window, not a page. Scoped to the
+   * document on purpose: as a `*` rule it also landed on every `overflow:hidden`
+   * element, and an element with clipped overflow is still a scroll container.
+   * A wheel over one would then find a container that cannot scroll and is
+   * forbidden from handing the scroll to its parent, so the event was dropped.
+   * Every sidebar row is `overflow-hidden`, which made the file list almost
+   * unscrollable — Chromium enforces this where WebKit did not, so it only
+   * appeared after the move off Tauri.
+   */
+  html,
+  body {
     overscroll-behavior: none;
   }
   html {
