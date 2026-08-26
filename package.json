@@ -19,7 +19,8 @@
     "dist:win": "bun run build && electron-builder --win",
     "dist:linux": "bun run build && electron-builder --linux",
     "channel:setup": "claude mcp remove --scope user onlydiffs >/dev/null 2>&1 || true; claude mcp add --scope user onlydiffs -- bun \"$PWD/scripts/claude-channel.ts\"",
-    "sync:icons": "bun scripts/sync-file-icons.mjs"
+    "sync:icons": "bun scripts/sync-file-icons.mjs",
+    "social": "bun scripts/social-preview.mjs"
   },
   "dependencies": {
     "@effect/platform": "^0.97.1",
