@@ -1,63 +1,31 @@
 {
   "name": "onlydiffs",
   "private": true,
-  "version": "0.1.0",
   "description": "See what your agent changed. Talk it through.",
   "author": "hosenur",
-  "type": "module",
-  "main": "./out/main/index.mjs",
+  "packageManager": "bun@1.3.11",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "electron-vite dev",
-    "start": "electron-vite preview",
-    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
-    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
-    "typecheck": "bun run typecheck:node && bun run typecheck:web",
+    "dev": "turbo run dev",
+    "dev:desktop": "turbo run dev --filter=@onlydiffs/desktop",
+    "dev:web": "turbo run dev --filter=@onlydiffs/web",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "lint": "oxlint",
-    "test": "bun test electron src",
-    "build": "bun run typecheck && bun run test && electron-vite build",
-    "dist": "bun run build && electron-builder",
-    "dist:mac": "bun run build && electron-builder --mac",
-    "dist:win": "bun run build && electron-builder --win",
-    "dist:linux": "bun run build && electron-builder --linux",
-    "channel:setup": "claude mcp remove --scope user onlydiffs >/dev/null 2>&1 || true; claude mcp add --scope user onlydiffs -- bun \"$PWD/scripts/claude-channel.ts\"",
-    "sync:icons": "bun scripts/sync-file-icons.mjs",
-    "social": "bun scripts/social-preview.mjs"
-  },
-  "dependencies": {
-    "@effect/platform": "^0.97.1",
-    "@effect/platform-node": "^0.108.1",
-    "effect": "^3.22.1"
+    "dist": "turbo run dist --filter=@onlydiffs/desktop"
   },
   "devDependencies": {
-    "@heroicons/react": "^2.2.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
     "@oxlint/plugins": "1.80.0",
-    "@pierre/diffs": "^1.3.6",
-    "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/react-hotkeys": "^0.10.0",
-    "@tanstack/react-router": "^1.170.32",
-    "@tanstack/react-virtual": "^3.14.10",
-    "@tanstack/router-plugin": "^1.168.35",
-    "@types/bun": "^1.4.0",
-    "@types/node": "^26.3.0",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.6.0",
-    "electron": "^44.0.0",
-    "electron-builder": "^26.15.3",
-    "electron-vite": "^5.0.0",
-    "geist": "^1.7.2",
-    "material-icon-theme": "^5.38.1",
     "oxlint": "1.80.0",
-    "react": "^19.1.0",
-    "react-aria-components": "^1.20.0",
-    "react-dom": "^19.1.0",
-    "tailwind-merge": "^3.6.0",
-    "tailwind-variants": "^3.3.1",
-    "tailwindcss": "^4.3.3",
-    "tailwindcss-react-aria-components": "^2.2.0",
-    "tw-animate-css": "^1.4.0",
-    "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "turbo": "^2.10.12"
+  },
+  "overrides": {
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-aria-components": "1.20.0"
   }
 }

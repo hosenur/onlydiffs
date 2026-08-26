@@ -1,0 +1,89 @@
+---
+title: Content architecture for product teams
+description: A practical model for organizing product knowledge across docs, blog posts, examples, and reference material.
+date: "2026-07-08"
+author: { name: "Irsyad A. Panjaitan", username: "irsyadadl" }
+image:
+  src: "./cover.png"
+  alt: "Content planning notes arranged on a desk"
+---
+
+Product documentation is a connected knowledge system, not a folder of independent articles. Architecture determines how ideas are divided, named, linked, maintained, and discovered.
+
+## Map audience needs
+
+Begin with reader situations rather than company structure. Evaluators, developers, administrators, and support engineers may use the same product but need different paths.
+![Skansegata 9, 6002 Ålesund, Norway, Ålesund](https://images.unsplash.com/photo-1559511331-6a3a4e72f588?q=80&w=2147)
+
+**Identify key moments**
+
+Map evaluation, setup, first success, expansion, troubleshooting, migration, and renewal. These moments expose gaps that a simple feature inventory misses.
+
+**Record user language**
+
+Collect phrases from search logs, support conversations, sales calls, and usability sessions. Documentation must connect internal terminology to words readers actually use.
+
+
+## Define content types
+
+Different content serves different jobs and ages at different speeds. Defining types helps writers choose the right structure before drafting.
+
+**Separate durable knowledge**
+
+Concepts and reference describe the current product. Release notes capture a moment. Tutorials provide a learning sequence. Troubleshooting starts with a symptom and ends with verification.
+
+**Set type rules**
+
+Each type needs a small contract. Troubleshooting needs symptoms, causes, diagnostics, and recovery. Reference needs inputs, outputs, defaults, limits, and failure behavior.
+
+## Design topic boundaries
+
+A topic should answer one primary question while containing enough context to be useful. Broad pages become hard to scan; tiny pages create exhausting navigation.
+
+**Find natural boundaries**
+
+Split content when sections target different audiences, change at different rates, or answer independent searches. Keep material together when readers need it as one sequence.
+
+**Choose canonical owners**
+
+Every durable fact needs one canonical page. Other pages can summarize it, but exact limits and configuration details should not be copied across the system.
+
+## Shape navigation
+
+Navigation is a curated view of the architecture. It should reveal important relationships without exposing every internal classification decision.
+
+**Use folders as meaning**
+
+Folders should represent durable product areas or workflows. Avoid structures based on temporary teams, quarterly initiatives, or repository ownership.
+
+**Support multiple paths**
+
+The tree is only one route. Contextual links, related pages, breadcrumbs, search metadata, and guided sequences help readers who enter through search.
+
+## Improve retrieval
+
+Titles, descriptions, headings, and link text determine whether readers can retrieve the right answer quickly.
+
+**Write direct titles**
+
+Put the distinguishing task or concept first. “Configure webhook retries” is stronger than “Configuration” in navigation, browser history, search, and shared links.
+
+**Build useful descriptions**
+
+A description should clarify audience, outcome, or boundary rather than repeat the title. It helps readers distinguish neighboring results before opening them.
+
+## Establish governance
+
+Architecture needs operational support. Otherwise urgent additions bypass the model and gradually rebuild disorder.
+
+**Review new pages**
+
+Check the page type, canonical owner, location, and reader language. These questions take minutes during review and prevent months of later cleanup.
+
+**Manage content changes**
+
+Preserve redirects when moving pages and update important inbound links. Delete a topic only after confirming its reader need is gone or served elsewhere.
+
+## Evolve deliberately
+
+Change the architecture when evidence shows persistent friction, not whenever the organization changes. Search failures, navigation behavior, feedback, and support trends provide better signals.

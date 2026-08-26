@@ -16,13 +16,17 @@ export default defineConfig({
     ".windsurf/**",
     // The vendored plugin lints this repository; it is not part of it.
     "tools/oxlint/anti-slop/**",
-    // Build output and vendored assets.
-    "out/**",
-    "dist/**",
-    "release/**",
-    "public/**",
+    // Build output and vendored assets, in any workspace.
+    "**/out/**",
+    "**/dist/**",
+    "**/release/**",
+    "**/.next/**",
+    "**/public/**",
+    "**/node_modules/**",
     // Written by @tanstack/router-plugin on every build.
-    "src/routeTree.gen.ts",
+    "**/routeTree.gen.ts",
+    // The web app is linted by its own Biome config.
+    "apps/web/**",
   ],
   jsPlugins: [
     { name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },

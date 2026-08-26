@@ -1,0 +1,108 @@
+---
+title: Callouts
+description: Highlight notes, warnings, success states, and critical guidance without interrupting the flow of a docs page.
+---
+
+## Types
+
+Use callouts for information readers should notice before they continue. Pick the type based on the weight of the message, not the visual style you prefer.
+
+### Info
+
+Use `info` for supporting context, constraints, or behavior that explains how a feature works.
+
+<Callout type="info">
+  API tokens are scoped to a single workspace. Create a separate token for each environment that needs automated access.
+</Callout>
+
+```tsx
+<Callout type="info">
+  API tokens are scoped to a single workspace. Create a separate token for each environment that needs automated access.
+</Callout>
+```
+
+### Success
+
+Use `success` to confirm a completed setup step or call out a recommended state.
+
+<Callout type="success">
+  Your domain is verified. New deployments can now use this domain without additional DNS changes.
+</Callout>
+
+```tsx
+<Callout type="success">
+  Your domain is verified. New deployments can now use this domain without additional DNS changes.
+</Callout>
+```
+
+### Warning
+
+Use `warning` when the reader can continue, but should understand a risk or dependency first.
+
+<Callout type="warning">
+  Rotating the webhook secret invalidates all existing delivery signatures. Update every consumer before saving the new value.
+</Callout>
+
+```tsx
+<Callout type="warning">
+  Rotating the webhook secret invalidates all existing delivery signatures. Update every consumer before saving the new value.
+</Callout>
+```
+
+### Danger
+
+Use `danger` for destructive actions, irreversible changes, or security-sensitive instructions.
+
+<Callout type="danger">
+  Deleting a project permanently removes its deployments, environment variables, and activity history. This action cannot be undone.
+</Callout>
+
+```tsx
+<Callout type="danger">
+  Deleting a project permanently removes its deployments, environment variables, and activity history. This action cannot be undone.
+</Callout>
+```
+
+### Default
+
+Use `default` for neutral notes that are useful but do not need a severity level.
+
+<Callout type="default">
+  Configuration changes are applied during the next deployment and do not affect the currently running version.
+</Callout>
+
+```tsx
+<Callout type="default">
+  Configuration changes are applied during the next deployment and do not affect the currently running version.
+</Callout>
+```
+
+## With Title
+
+Add a title when the callout needs a clear heading or when readers may scan back to it later.
+
+<Callout title="Environment variables">
+  The previous variable names are no longer supported. Replace them before upgrading to the latest version.
+</Callout>
+
+```tsx
+<Callout title="Update your environment variables" type="warning">
+  The previous variable names are no longer supported. Replace them before upgrading to the latest version.
+</Callout>
+```
+
+## With Badge
+
+Use a badge inside a callout when the message needs a short status label.
+
+<Callout>
+  <Badge intent="danger">Critical</Badge>
+  Rotate the exposed key everywhere.
+</Callout>
+
+```tsx
+<Callout type="danger">
+  <Badge intent="danger">Critical</Badge>
+  Rotate the exposed API key immediately and update every service that currently depends on it.
+</Callout>
+```

@@ -1,0 +1,54 @@
+---
+title: Package command
+description: Display install and executable commands that adapt to the reader's preferred package manager.
+---
+
+## Usage
+
+Pass a package name to `PackageCommand`. It generates commands for npm, pnpm, Yarn, and Bun, then remembers the reader's selection across every command on the site.
+
+<PackageCommand command="@intentui/disclosure-group" />
+
+```tsx
+<PackageCommand command="@intentui/disclosure-group" />
+```
+
+The component also accepts a complete package-manager command and removes its original prefix before generating the alternatives.
+
+<PackageCommand command="pnpm add @intentui/disclosure-group" />
+
+## Executable commands
+
+Commands beginning with `npx`, `pnpm dlx`, `yarn dlx`, or `bunx` are detected as executable commands.
+
+<PackageCommand command="npx shadcn@latest add @intentui/disclosure-group" />
+
+```tsx
+<PackageCommand command="npx shadcn@latest add @intentui/disclosure-group" />
+```
+
+## Mode
+
+Set `mode` when automatic detection is ambiguous or when the command's intent should be explicit.
+
+| Value | Behavior |
+| --- | --- |
+| `auto` | Detect an install or executable command. |
+| `install` | Generate an installation command for each package manager. |
+| `exec` | Generate an executable command for each package manager. |
+
+```tsx
+<PackageCommand command="motion" mode="install" />
+<PackageCommand command="shadcn@latest init" mode="exec" />
+```
+
+## Shared preference
+
+Selecting a package manager updates every `PackageCommand` on the page and future pages. The preference is stored locally in the reader's browser; no account or server storage is required.
+
+## Props
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `command` | `string` | Required | Package name or complete command to transform. |
+| `mode` | `"auto" \| "install" \| "exec"` | `"auto"` | Controls how commands are generated. |

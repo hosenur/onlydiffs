@@ -1,0 +1,100 @@
+---
+title: Code blocks
+description: Add syntax-highlighted code with titles, line annotations, diffs, focus states, and copy controls.
+---
+
+## Usage
+
+Use a fenced code block with its language identifier. Code blocks are syntax highlighted with Shiki and include a copy button by default.
+
+```tsx
+export function greeting(name: string) {
+  return `Hello, ${name}!`
+}
+```
+
+## Title
+
+Add `title` after the language identifier to label a file or command. The title appears in the code block header.
+
+```tsx title="src/lib/greeting.ts"
+export function greeting(name: string) {
+  return `Hello, ${name}!`
+}
+```
+
+## Copy control
+
+Code blocks are copyable by default. Add `noCopy` when a block is only for reference.
+
+```text noCopy
+This value is shown for context and has no copy button.
+```
+
+## Line numbers
+
+Add `lineNumbers` to expose line-number metadata, or provide a starting number with `lineNumbers=12`.
+
+```tsx title="src/lib/greeting.ts" lineNumbers=12
+export function greeting(name: string) {
+  return `Hello, ${name}!`
+}
+```
+
+## Highlight lines
+
+Put a `[!code highlight]` comment on the line immediately before the code you want to emphasize. The annotation is removed from the rendered block.
+
+```tsx
+export function greeting(name: string) {
+  // [!code highlight]
+  const message = `Hello, ${name}!`
+  return message
+}
+```
+
+## Highlight words
+
+Put `[!code word:…]` on the line before the matching code. Add `:N` to limit the highlight to the next `N` lines.
+
+```tsx
+// [!code word:primary:2]
+const primaryButton = createButton("primary")
+const primaryLink = createLink("primary")
+```
+
+## Focus lines
+
+Put `[!code focus]` immediately before a line to de-emphasize the surrounding code and keep attention on that next line.
+
+```tsx
+const config = createConfig()
+// [!code focus]
+config.set("theme", "dark")
+saveConfig(config)
+```
+
+
+## Diff
+
+Use `[!code --]` for removed lines and `[!code ++]` for added lines. Put an annotation immediately before the affected line; add `:N` to apply it to that line and the next `N - 1` lines.
+
+```tsx
+export function formatName(name: string) {
+  // [!code --]
+  return name.toLowerCase()
+  // [!code ++]
+  return name.trim().toLowerCase()
+}
+```
+
+## Supported metadata
+
+| Metadata | Example | Effect |
+| --- | --- | --- |
+| `title` | `tsx title="src/app.ts"` | Shows a label in the header. |
+| `noCopy` | `bash noCopy` | Hides the copy button. |
+| `lineNumbers` | `tsx lineNumbers` | Adds line-number metadata. |
+| `lineNumbers=N` | `tsx lineNumbers=12` | Adds line-number metadata beginning at `N`. |
+
+For related files or alternative implementations, use [Code groups](/docs/components/code-groups) instead of a single code block.

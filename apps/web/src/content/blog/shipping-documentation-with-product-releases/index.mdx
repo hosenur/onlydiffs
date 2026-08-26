@@ -1,0 +1,103 @@
+---
+title: Shipping documentation with every product release
+description: A lightweight workflow for keeping product changes, documentation, examples, and release communication in sync.
+date: "2026-07-01"
+author: { name: "Irsyad A. Panjaitan", username: "irsyadadl" }
+image:
+  src: "./cover.jpg"
+  alt: "A release workflow connecting product and documentation changes"
+---
+
+Documentation becomes unreliable when it is treated as cleanup after a release. By then, context has faded, implementation decisions are scattered, and the next feature already demands attention.
+
+## Start during planning
+
+Documentation work begins when the team defines the change. Early planning identifies affected audiences, existing pages, new concepts, and migration risks.
+
+**Map reader impact**
+
+List who will notice the change and what they must understand or do. Separate new users, existing users, administrators, integrators, and support teams.
+
+**Find affected pages**
+
+Search for the old terminology, screenshots, examples, API fields, limits, and troubleshooting advice. A feature rarely lives on only one page.
+
+## Capture decisions early
+
+Product and engineering discussions contain the rationale that documentation later needs. Preserve the decisions without copying every internal debate.
+
+**Record behavior changes**
+
+Write down what changed, what stayed compatible, which defaults moved, and which edge cases matter. These notes become inputs for reference and release communication.
+
+**Identify migration needs**
+
+Determine whether users need to update configuration, code, permissions, or workflows. Migration guidance must be tested before the release becomes irreversible.
+
+## Draft with implementation
+
+Create the documentation change beside the product change. The draft can evolve as behavior settles, but it should not begin after implementation ends.
+
+**Use working builds**
+
+Verify instructions against the current branch or preview environment. Memory and design files often differ from final behavior in small but consequential ways.
+
+**Keep examples current**
+
+Update complete examples, not only isolated snippets. Readers need imports, surrounding configuration, expected output, and realistic error handling.
+
+## Review the journey
+
+Review documentation as a reader journey rather than a collection of changed lines.
+
+**Test first success**
+
+Follow the path from entry point to a visible outcome. Confirm prerequisites, permissions, navigation labels, and defaults along the way.
+
+**Test upgrade paths**
+
+Start from the previous supported state and perform the migration. Document recovery steps and clarify which changes are optional or irreversible.
+
+## Prepare release notes
+
+Release notes explain why the change matters at a moment in time. They should point toward durable docs instead of duplicating every instruction.
+
+**Lead with outcomes**
+
+Describe what users can now accomplish, what becomes easier, or what behavior changes. Internal implementation details belong only when they affect use.
+
+**Link durable guidance**
+
+Connect the announcement to setup, reference, migration, and troubleshooting pages. Readers can then move from awareness to action.
+
+## Coordinate publication
+
+Timing matters. Publishing too early creates instructions for unavailable behavior; publishing too late leaves released behavior unexplained.
+
+**Define release states**
+
+Use clear states for draft, review, ready, scheduled, and published. Everyone should know whether docs are blocking release or waiting for deployment.
+
+**Handle staged rollouts**
+
+For flags or gradual availability, state eligibility and expected timing without promising an exact schedule the rollout cannot guarantee.
+
+## Verify after launch
+
+Production verification catches environment differences, broken links, missing assets, and permissions that previews did not expose.
+
+**Run smoke checks**
+
+Open canonical pages, test primary instructions, inspect social previews, and confirm search indexing. Keep this checklist small enough to run every time.
+
+**Watch early feedback**
+
+Monitor support questions, failed searches, and product analytics during the first days. Fast correction prevents temporary confusion from becoming lasting guidance.
+
+## Improve each cycle
+
+After release, note which documentation tasks were discovered late and why. Adjust templates, ownership, previews, or tests so the next release catches them earlier.
+
+## Ship one story
+
+Product behavior, durable docs, examples, migration guidance, and release notes should tell one coherent story. Connecting them to the same delivery workflow keeps that story accurate from first announcement through everyday use.

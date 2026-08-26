@@ -1,0 +1,94 @@
+---
+title: File tree
+description: Present a project structure as an accessible, collapsible hierarchy of folders and files.
+---
+
+## Usage
+
+Use `FileTree` to explain where files belong or help readers understand a project before they begin editing it. Each item requires a stable `id` and a visible `name`.
+
+<FileTree defaultExpandedKeys={["src", "content"]}>
+  <FileTreeItem id="src" name="src">
+    <FileTreeItem id="app" name="app">
+      <FileTreeItem id="layout" name="layout.tsx" />
+      <FileTreeItem id="page" name="page.tsx" />
+    </FileTreeItem>
+    <FileTreeItem id="content" name="content">
+      <FileTreeItem id="docs" name="docs">
+        <FileTreeItem id="getting-started" name="getting-started.mdx" />
+      </FileTreeItem>
+    </FileTreeItem>
+    <FileTreeItem id="config" name="config.ts" />
+  </FileTreeItem>
+  <FileTreeItem id="package" name="package.json" />
+</FileTree>
+
+Items with children are rendered as folders and can be expanded or collapsed. Items without children are rendered as files.
+
+## Expanded folders
+
+Pass folder IDs to `defaultExpandedKeys` when their contents should be visible on first render. Expand only the branches needed to explain the surrounding instructions.
+
+```tsx
+<FileTree defaultExpandedKeys={["app", "docs"]}>
+  ...
+</FileTree>
+```
+
+Use `expandedKeys` with `onExpandedChange` when the expansion state needs to be controlled by a React component. For normal MDX content, `defaultExpandedKeys` is simpler and keeps the example interactive.
+
+## Highlight a file
+
+Enable single selection when a guide refers to one specific file. The selected row gives readers a clear visual target without changing the file tree into a navigation menu.
+
+<FileTree selectionMode="single" defaultSelectedKeys={["env"]} defaultExpandedKeys={["root"]}>
+  <FileTreeItem id="root" name="project">
+    <FileTreeItem id="env" name=".env.local" />
+    <FileTreeItem id="config-file" name="next.config.ts" />
+    <FileTreeItem id="package-file" name="package.json" />
+  </FileTreeItem>
+</FileTree>
+
+```tsx
+<FileTree
+  selectionMode="single"
+  defaultSelectedKeys={["env"]}
+  defaultExpandedKeys={["root"]}
+>
+  <FileTreeItem id="root" name="project">
+    <FileTreeItem id="env" name=".env.local" />
+    <FileTreeItem id="config-file" name="next.config.ts" />
+    <FileTreeItem id="package-file" name="package.json" />
+  </FileTreeItem>
+</FileTree>
+```
+
+## Custom label
+
+Override `aria-label` when more than one tree appears on the same page or when the structure represents something more specific than generic project files.
+
+```tsx
+<FileTree aria-label="Authentication package structure">
+  ...
+</FileTree>
+```
+
+## Keyboard interaction
+
+The file tree uses the React Aria tree pattern and supports keyboard navigation automatically.
+
+| Key | Action |
+| --- | --- |
+| <kbd>Arrow down</kbd> | Move focus to the next visible item. |
+| <kbd>Arrow up</kbd> | Move focus to the previous visible item. |
+| <kbd>Arrow right</kbd> | Expand a closed folder or move into its first child. |
+| <kbd>Arrow left</kbd> | Collapse an open folder or move to its parent. |
+| <kbd>Enter</kbd> or <kbd>Space</kbd> | Select an item when selection is enabled. |
+
+## Writing effective trees
+
+- Keep every `id` unique within the tree, even when two files share the same name.
+- Show only the branches relevant to the current explanation.
+- Preserve the real casing and extension of each file.
+- Place the tree near the instructions that reference it.
+- Use a fenced `txt` code block instead when the structure does not need to be interactive.

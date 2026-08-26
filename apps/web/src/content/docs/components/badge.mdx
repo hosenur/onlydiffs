@@ -1,0 +1,164 @@
+---
+title: Badge
+description: Display a compact label for statuses, categories, versions, and other short pieces of metadata.
+---
+
+## Usage
+
+Use a badge to make short metadata easy to scan. The default badge uses the `primary` intent and a pill-shaped appearance.
+
+<div className="not-typeset my-6 flex flex-wrap items-center gap-2">
+  <Badge>New</Badge>
+  <Badge intent="secondary">v2.4</Badge>
+  <Badge intent="success">Active</Badge>
+</div>
+
+```tsx
+<Badge>New</Badge>
+<Badge intent="secondary">v2.4</Badge>
+<Badge intent="success">Active</Badge>
+```
+
+## Intents
+
+Choose an intent based on the meaning of the label. Keep the same meaning for each color throughout the product so readers can recognize statuses without relearning them.
+
+### Primary
+
+Use `primary` for featured labels, new features, or metadata that should receive the most attention.
+
+<Badge intent="primary">New</Badge>
+
+```tsx
+<Badge intent="primary">New</Badge>
+```
+
+### Secondary
+
+Use `secondary` for neutral metadata such as versions, categories, or supporting labels.
+
+<Badge intent="secondary">v2.4</Badge>
+
+```tsx
+<Badge intent="secondary">v2.4</Badge>
+```
+
+### Success
+
+Use `success` for healthy, completed, available, or verified states.
+
+<Badge intent="success">Operational</Badge>
+
+```tsx
+<Badge intent="success">Operational</Badge>
+```
+
+### Info
+
+Use `info` for informational states that do not represent success or require action.
+
+<Badge intent="info">Preview</Badge>
+
+```tsx
+<Badge intent="info">Preview</Badge>
+```
+
+### Warning
+
+Use `warning` when something needs attention but does not prevent the reader from continuing.
+
+<Badge intent="warning">Deprecated</Badge>
+
+```tsx
+<Badge intent="warning">Deprecated</Badge>
+```
+
+### Danger
+
+Use `danger` for failed, blocked, destructive, or security-sensitive states.
+
+<Badge intent="danger">Failed</Badge>
+
+```tsx
+<Badge intent="danger">Failed</Badge>
+```
+
+### Outline
+
+Use `outline` for low-emphasis metadata when a filled background would compete with nearby content.
+
+<Badge intent="outline">Draft</Badge>
+
+```tsx
+<Badge intent="outline">Draft</Badge>
+```
+
+## Shape
+
+Badges are pill-shaped by default. Set `isCircle={false}` for a compact rounded rectangle.
+
+<div className="not-typeset my-6 flex flex-wrap items-center gap-2">
+  <Badge>Rounded</Badge>
+  <Badge isCircle={false}>Compact</Badge>
+  <Badge intent="secondary" isCircle={false}>v2.4</Badge>
+</div>
+
+```tsx
+<Badge>Rounded</Badge>
+<Badge isCircle={false}>Compact</Badge>
+<Badge intent="secondary" isCircle={false}>v2.4</Badge>
+```
+
+## In context
+
+Badges work best next to the item they describe. They can identify a release channel, clarify a feature state, or add severity to a callout.
+
+<div className="not-typeset my-6 rounded-lg border p-4">
+  <div className="flex flex-wrap items-center gap-2">
+    <span className="font-medium">Edge runtime</span>
+    <Badge intent="info">Beta</Badge>
+  </div>
+  <div className="mt-2 text-muted-fg text-sm/6">
+    Run request handlers closer to users with a globally distributed runtime.
+  </div>
+</div>
+
+```tsx
+<div className="flex items-center gap-2">
+  <span className="font-medium">Edge runtime</span>
+  <Badge intent="info">Beta</Badge>
+</div>
+```
+
+<Callout>
+    <Badge intent="warning">Deprecated</Badge>
+    Migrate to the replacement before upgrading.
+</Callout>
+
+```tsx
+<Callout type="warning">
+  <div className="flex items-start gap-2">
+    <Badge intent="warning">Deprecated</Badge>
+    <span>This option will be removed in the next major release.</span>
+  </div>
+</Callout>
+```
+
+## Props
+
+| Prop        | Type                                                                      | Default   | Description                                                             |
+|-------------|---------------------------------------------------------------------------|-----------|-------------------------------------------------------------------------|
+| `intent`    | `primary \| secondary \| success \| info \| warning \| danger \| outline` | `primary` | Controls the semantic color treatment.                                  |
+| `isCircle`  | `boolean`                                                                 | `true`    | Uses a pill shape when true and a compact rounded rectangle when false. |
+| `className` | `string`                                                                  |           | Adds custom utility classes to the badge.                               |
+
+
+The component also accepts standard HTML attributes supported by a `span` element.
+
+## Best practices
+
+- Keep labels short, ideally one or two words.
+- Use sentence case instead of all caps.
+- Reserve `success`, `warning`, and `danger` for states with matching meaning.
+- Do not rely on color alone; use a clear label such as **Failed** or **Deprecated**.
+- Use a button or link when the element needs to perform an action. A badge is descriptive, not interactive.

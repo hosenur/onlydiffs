@@ -1,0 +1,60 @@
+---
+title: Folders
+description: Use folders to create clear sections and nested documentation.
+---
+
+Folders create sections in the docs. A folder can contain an overview page, child pages, and metadata for sidebar order.
+
+## Section folder
+
+A section folder groups related pages and gives the sidebar a stable structure.
+
+```txt
+writing-pages/
+  index.mdx
+  frontmatter.mdx
+  mdx-basics.mdx
+  images.mdx
+  meta.json
+```
+
+### Overview page
+
+The `index.mdx` page explains what the section covers. It should not duplicate every child page, but it should help readers choose where to go next.
+
+### Child pages
+
+Child pages should be small enough to maintain but complete enough to solve a task. Split pages when the table of contents becomes too broad.
+
+## Folder rules
+
+Apply these rules when creating new sections or renaming existing pages.
+
+- Use lowercase slugs.
+- Prefer hyphens between words.
+- Add an `index.mdx` page for section overviews.
+- Keep related pages together instead of scattering them across sections.
+
+### Naming rule
+
+Use names that describe the public URL. A good slug should still make sense if someone shares the link in chat.
+
+## Folder depth
+
+Keep folder depth shallow until the content truly needs another layer. Deep nesting makes URLs longer and makes sidebar behavior harder to predict.
+
+### One level first
+
+Start with one folder per section and one file per page. This is enough for most documentation starters and product docs.
+
+### Nested sections later
+
+Add nested folders when a section has multiple groups of child pages that need their own overview pages.
+
+## Migration tips
+
+Rename folders carefully because folder names usually become public URLs. Plan redirects or update links when changing a published slug.
+
+### Move in small batches
+
+Move one section at a time and review links after each batch. This makes broken paths easier to catch.

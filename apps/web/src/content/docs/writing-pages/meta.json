@@ -1,0 +1,10 @@
+{
+  "title": "Writing pages",
+  "pages": [
+    "frontmatter",
+    "mdx-basics",
+    "images",
+    "code-blocks",
+    "links"
+  ]
+}

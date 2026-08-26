@@ -30,3 +30,7 @@ release
 
 # TS project build info
 *.tsbuildinfo
+
+# Turborepo / Next
+.turbo
+.next

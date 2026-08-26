@@ -1,0 +1,68 @@
+@theme inline {
+  --color-shiki: var(--shiki);
+  --color-shiki-bg: var(--shiki-light-bg);
+}
+:root {
+  --shiki-light-bg: var(--color-white);
+  --shiki: var(--shiki-light-bg);
+}
+.dark {
+  --shiki-dark-bg: var(--color-muted);
+  --shiki: var(--shiki-dark-bg);
+}
+
+@layer components {
+  .shiki {color: var(--shiki-light)}
+  .shiki span {color: var(--shiki-light) }
+  .dark .shiki {color: var(--shiki-dark) }
+  .dark .shiki span {color: var(--shiki-dark) }
+  .shiki code {
+    display: block;
+    font-size: 0;
+  }
+
+  .shiki :is(.line, [data-line]) {
+    display: block;
+    @apply text-sm/7;
+  }
+
+  .shiki :is(.line, [data-line]).highlighted {
+    @apply -mx-6 pl-6 rounded-none py-1 bg-primary-subtle;
+  }
+
+  .shiki .highlighted-word {
+    background-color: color-mix(in oklab, var(--primary) 12%, transparent);
+    border-radius: 4px;
+    padding: 1px 4px;
+  }
+
+  :is(.shiki.has-focused, .has-focused .shiki) :is(.line, [data-line]):not(.focused) {
+    opacity: 0.45;
+  }
+
+  .shiki :is(.line, [data-line]).diff.add {
+    @apply -mx-6 pl-6 rounded-none py-1 bg-primary-subtle;
+  }
+
+  .shiki :is(.line, [data-line]).diff.remove {
+    @apply -mx-6 pl-6 rounded-none py-1  bg-danger-subtle;
+  }
+
+  :is(.shiki[data-line-numbers], [data-line-numbers] .shiki) code {
+    counter-reset: code-line calc(var(--code-block-line-number) - 1);
+  }
+
+  :is(.shiki[data-line-numbers], [data-line-numbers] .shiki) :is(.line, [data-line]) {
+    position: relative;
+    padding-left: 3rem;
+    counter-increment: code-line;
+    line-height: 2;
+  }
+
+  :is(.shiki[data-line-numbers], [data-line-numbers] .shiki) :is(.line, [data-line])::before {
+    @apply text-xs/7 text-muted-fg absolute -left-6 w-9;
+    content: counter(code-line);
+    text-align: right;
+    user-select: none;
+  }
+}

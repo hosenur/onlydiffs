@@ -1,0 +1,66 @@
+---
+title: Installation
+description: Set up the template and understand what files you usually edit.
+---
+
+After installing dependencies, most day-to-day work happens inside the content folders and a small set of design files.
+
+## Common commands
+
+Use `PackageCommand` when a command should adapt to npm, pnpm, Yarn, and Bun.
+
+<PackageCommand command="npx shadcn@latest add @intentui/disclosure-group" />
+
+### Development server
+
+Run the local server from your own terminal when you want to preview changes. Keep content edits separate from server restarts so changes are easier to review.
+
+```bash
+bun run lint
+```
+
+## Files you will edit most
+
+These files are the primary editing surface for normal template customization.
+
+| Area | Path |
+| --- | --- |
+| Docs pages | `src/content/docs` |
+| Blog posts | `src/content/blog` |
+| Shared MDX components | `src/components/mdx-components.tsx` |
+| Site navigation | `src/components/navigation.tsx` |
+| Theme tokens | `src/app/globals.css` |
+
+### Content first
+
+Most template buyers should start by replacing content before changing layout. This keeps the first customization pass focused and low risk.
+
+## Setup checklist
+
+Use this checklist after installation to replace starter content with your own project details.
+
+- Update the site name and metadata.
+- Replace example docs with your own structure.
+- Replace blog posts and cover images.
+- Review colors, spacing, typography, and navigation.
+- Run static checks before publishing.
+
+### First content pass
+
+Replace the introduction, setup pages, and one blog post before changing every file. This gives you a realistic sample for reviewing the interface.
+
+### First design pass
+
+After content feels representative, adjust typography, colors, and navigation labels. Design decisions are easier when real page titles and descriptions are already in place.
+
+## Verification steps
+
+Use verification as a checklist, not a last-minute task. Small content mistakes are easier to fix before they spread across many pages.
+
+### Static checks
+
+Run linting and type checks after changing shared components, MDX component maps, or route files. Content-only edits usually need a lighter review.
+
+### Browser review
+
+Review at least one docs page, one code-heavy page, and one blog article in the browser before publishing.

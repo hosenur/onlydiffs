@@ -1,0 +1,107 @@
+---
+title: Using mdx without losing the simplicity of markdown
+description: How to introduce components into documentation without making every page feel like application code.
+date: "2026-07-05"
+author: { name: "Irsyad A. Panjaitan", username: "irsyadadl" }
+image:
+  src: "./cover.jpg"
+  alt: "Markdown and component notes side by side"
+---
+
+MDX is valuable because it lets documentation use components. That same power can turn simple writing into application code. The right system preserves Markdown as the default and treats components as a focused vocabulary for meaning.
+
+## Protect the baseline
+
+A writer should be able to produce a useful article with headings, paragraphs, lists, links, images, tables, and code fences. Components should enhance that baseline rather than replace it.
+
+**Keep Markdown first**
+
+Prefer native syntax whenever it expresses the content clearly. Standard Markdown remains portable across editors, renderers, repositories, and future migrations.
+
+**Preserve plain reading**
+
+The raw file should remain understandable in a text editor. If basic meaning disappears without rendering, the component API is doing too much.
+
+## Define component roles
+
+Add a component when it communicates structure or behavior that Markdown cannot express well.
+
+**Represent real meaning**
+
+Callouts can mark risk, tabs can compare alternatives, file trees can show hierarchy, and API blocks can model parameters. These components encode recognizable information patterns.
+
+**Avoid visual shortcuts**
+
+Do not add components only to change spacing, color, or alignment inside one article. Presentation-only components encourage inconsistent local art direction.
+
+## Design simple APIs
+
+Documentation components are authoring tools. Their props should match the writer's mental model rather than expose every implementation option.
+
+**Choose sensible defaults**
+
+The common case should require little configuration. Defaults reduce noise in the source and allow the design system to improve without editing every article.
+
+**Limit prop choices**
+
+Prefer a few meaningful variants over arbitrary colors and dimensions. Constraints create recognizable patterns and make accessibility easier to enforce.
+
+## Control component access
+
+A central MDX component map makes the supported vocabulary explicit. It also prevents content from importing random application internals.
+
+**Review new additions**
+
+Before adding a component, identify repeated authoring pain, define its semantic role, and test it in several pages. One unusual layout is not enough evidence.
+
+**Deprecate with care**
+
+When replacing a component, support the old form during migration or provide a mechanical rewrite. Content repositories often contain more instances than expected.
+
+## Keep content portable
+
+MDX couples content to a runtime more than Markdown does. Reduce that coupling so content remains usable in feeds, search, LLM endpoints, and future platforms.
+
+**Extract plain text**
+
+Build a pipeline that can remove JSX while preserving meaningful text. Search indexing and summaries should not depend on rendered browser output.
+
+**Provide safe fallbacks**
+
+Interactive components should expose headings, labels, and useful default content in server-rendered HTML. Critical meaning should not wait for hydration.
+
+## Maintain accessibility
+
+Components must carry the accessibility burden once Markdown semantics are no longer sufficient.
+
+**Preserve heading order**
+
+Avoid components that insert surprising heading levels. The document outline should remain coherent for screen readers, keyboard navigation, and TOC generation.
+
+**Support keyboard use**
+
+Tabs, disclosures, menus, and copy controls need predictable focus, keyboard interaction, labels, and reduced-motion behavior. Use proven accessible primitives.
+
+## Optimize delivery
+
+MDX content should remain mostly server-rendered. A few interactive examples should not convert the entire article into a client bundle.
+
+**Isolate client islands**
+
+Mark only components that require state or browser APIs as client components. Keep prose, code, and static diagrams on the server.
+
+**Compile before delivery**
+
+Perform syntax highlighting, heading extraction, and metadata parsing during the build. Readers should not download authoring tools or compilers.
+
+## Guide contributors
+
+Document when each component should be used and show a short source example. Good guidance prevents writers from reverse-engineering old pages.
+
+**Test author workflows**
+
+Ask new contributors to draft a real page. Their questions reveal confusing props, missing components, and places where the system fights normal Markdown habits.
+
+## Preserve simplicity
+
+MDX succeeds when writers think about reader needs rather than rendering mechanics. Markdown carries ordinary prose; a small component vocabulary handles meaningful structures. That balance delivers a richer experience without sacrificing maintainability.

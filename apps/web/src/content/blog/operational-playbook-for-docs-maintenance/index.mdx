@@ -1,0 +1,107 @@
+---
+title: An operational playbook for maintaining docs
+description: A lightweight process for keeping documentation accurate while the product continues to ship.
+date: "2026-07-04"
+author: { name: "Irsyad A. Panjaitan", username: "irsyadadl" }
+image:
+  src: "./cover.jpg"
+  alt: "A team checklist for maintaining documentation"
+---
+
+Documentation quality is not preserved by a yearly cleanup. It is preserved by a repeatable operating model that connects product changes, ownership, feedback, and verification.
+
+## Define ownership
+
+Shared contribution works only when responsibility is visible. Each important area needs an owner who can judge accuracy and resolve conflicting guidance.
+
+**Assign domain owners**
+
+Choose owners by product knowledge, not writing title. Product, engineering, support, and documentation specialists can all own areas when expectations are clear.
+
+**Set review expectations**
+
+Define which changes require owner approval and how quickly reviews should happen. A process that regularly blocks releases will be bypassed.
+
+## Connect product changes
+
+Documentation maintenance should begin when behavior changes, not after users report confusion.
+
+**Add release checks**
+
+Pull requests or release templates should ask whether docs, examples, screenshots, reference, and release notes need updates. The answer can be “no,” but it should be deliberate.
+
+**Update in context**
+
+The people implementing a change have the freshest mental model. Capture decisions, constraints, and migration details before that context disappears.
+
+## Build review cycles
+
+Release-based updates cover active areas, but quiet pages still need attention. Use risk-based review rather than checking every page on the same schedule.
+
+**Prioritize critical pages**
+
+Review onboarding, billing, security, migrations, and high-traffic troubleshooting more often. Errors there have greater cost than imperfections in low-traffic editorial content.
+
+**Sample stable content**
+
+For mature reference areas, review a rotating sample and expand only when problems appear. This keeps maintenance affordable without abandoning oversight.
+
+## Use evidence
+
+Maintenance priorities should come from reader behavior and product change, not from page age alone.
+
+**Monitor search failures**
+
+No-result queries, repeated reformulations, and fast returns identify missing topics or misleading language. Connect those signals to specific pages or backlog items.
+
+**Analyze support themes**
+
+Support conversations reveal gaps between documented behavior and real use. Repeated questions deserve durable fixes, not repeated private answers.
+
+## Verify examples
+
+Examples often decay faster than prose because dependencies, defaults, and APIs change.
+
+**Test executable code**
+
+Where practical, compile or run examples in CI. Even type-checking catches imports, renamed options, and invalid assumptions before readers do.
+
+**Review visual examples**
+
+Check screenshots and videos after significant interface changes. Replace them when they teach the wrong action, not merely because colors changed.
+
+## Manage stale content
+
+Stale content should be corrected, merged, redirected, archived, or removed. Leaving it unmarked transfers uncertainty to the reader.
+
+**Choose clear outcomes**
+
+Correct pages that still serve a need. Merge duplicates into a canonical owner. Redirect replaced URLs. Archive historical material only when its time context remains valuable.
+
+**Preserve redirects**
+
+External links and search results outlive internal structures. Maintain redirects and update high-value inbound links whenever URLs move.
+
+## Keep work visible
+
+Maintenance competes with feature work unless teams can see its cost and progress.
+
+**Track maintenance backlog**
+
+Record evidence, affected users, risk, and the desired correction. Avoid vague tasks such as “improve docs” that cannot be prioritized or completed.
+
+**Report meaningful outcomes**
+
+Measure resolved search gaps, reduced support themes, verified examples, and faster update time. Raw page counts reward activity rather than trust.
+
+## Improve the process
+
+Review the maintenance system itself. If updates arrive late, determine whether ownership, tooling, review latency, or release gates are responsible.
+
+**Automate repeated checks**
+
+Use link validation, metadata validation, code tests, and route checks for objective failures. Preserve human review for clarity, accuracy, and judgment.
+
+## Sustain reader trust
+
+Reliable documentation comes from small actions repeated during normal product work. Visible ownership, release checks, evidence-based priorities, and automated verification turn maintenance into an operating habit rather than a rescue project.

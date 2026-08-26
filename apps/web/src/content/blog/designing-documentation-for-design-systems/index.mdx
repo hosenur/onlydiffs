@@ -1,0 +1,115 @@
+---
+title: Designing documentation for a living design system
+description: A practical approach to documenting components, decisions, and usage guidance as a design system continues to evolve.
+date: "2026-07-03"
+author: { name: "Irsyad A. Panjaitan", username: "irsyadadl" }
+image:
+  src: "./cover.jpg"
+  alt: "A structured design system documentation workspace"
+---
+
+A design system is never finished. Components change, guidance becomes clearer, and teams discover constraints through real product work. Documentation must evolve at the same pace without becoming disconnected examples.
+
+## Define component purpose
+
+Begin with the problem a component solves and the situations where it belongs. Props alone cannot explain intent.
+
+**State primary use**
+
+Describe the component's role in the interface and the user need it supports. A reader should understand why it exists before learning its API.
+
+**Name bad fits**
+
+Explain when another component or pattern is more appropriate. Clear boundaries reduce misuse more effectively than adding more variants.
+
+## Document anatomy
+
+Name meaningful parts so designers, engineers, writers, and reviewers share vocabulary.
+
+**Explain required parts**
+
+Identify labels, descriptions, icons, controls, and content that must be present for the component to remain understandable and accessible.
+
+**Mark optional parts**
+
+Show which elements can be removed and what changes when they are absent. Optional should not mean arbitrary.
+
+## Teach interaction behavior
+
+Static previews cannot communicate focus, keyboard behavior, loading, validation, or transitions.
+
+**Describe user flows**
+
+Explain what happens when users open, select, submit, dismiss, retry, or navigate away. Include state transitions that affect data or focus.
+
+**Cover keyboard behavior**
+
+Document the expected keys, focus order, and escape behavior for interactive patterns. These expectations should match the underlying accessible primitive.
+
+## Show meaningful states
+
+A component page should represent the operational range teams will encounter, not only the clean default.
+
+**Include system states**
+
+Show loading, empty, disabled, invalid, pending, success, and failure where relevant. Explain when each state appears and what action remains available.
+
+**Test extreme content**
+
+Use long labels, translated text, large values, missing images, and narrow containers. Examples should reveal layout constraints before production does.
+
+## Build realistic examples
+
+Examples should look like product work while remaining focused enough to teach one decision.
+
+**Add surrounding context**
+
+A dialog needs a trigger and outcome. A field needs a form. A menu needs meaningful commands. Context explains how the component participates in a workflow.
+
+**Avoid decorative demos**
+
+Random labels and placeholder content hide real problems. Use believable names, errors, permissions, and data relationships.
+
+## Explain content guidance
+
+Words are part of component behavior. Labels and errors affect comprehension, accessibility, and completion.
+
+**Define label patterns**
+
+Specify whether labels use nouns, verbs, sentence case, or visible context. Consistent language makes interfaces easier to scan.
+
+**Write useful errors**
+
+Errors should identify the problem and the recovery action. Avoid messages that only announce invalidity or expose internal implementation details.
+
+## Connect design tokens
+
+Document the semantic tokens and layout rules a component depends on without turning the page into a generated variable dump.
+
+**Explain token intent**
+
+Describe why a token exists and where changes propagate. Teams need to understand consequences, not only names and values.
+
+**Separate public APIs**
+
+Distinguish stable customization surfaces from internal implementation details. This prevents consumers from depending on values that may change.
+
+## Record key decisions
+
+Design systems encode tradeoffs. Capture important rationale so future contributors do not repeat settled debates or remove constraints accidentally.
+
+**Link related guidance**
+
+Connect components to patterns, accessibility standards, content rules, and product examples. A component page should be an entry point into the larger system.
+
+## Maintain living docs
+
+Update documentation in the same change as component behavior. Test examples, review screenshots, and clearly communicate deprecations and migrations.
+
+**Track adoption feedback**
+
+Questions from product teams reveal missing boundaries, weak examples, and confusing APIs. Feed those signals back into both documentation and component design.
+
+## Document shared judgment
+
+Strong design-system documentation does more than list props. It preserves the shared judgment needed to choose, configure, combine, and evolve components responsibly.

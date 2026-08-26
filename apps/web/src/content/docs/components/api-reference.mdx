@@ -1,0 +1,110 @@
+---
+title: API reference
+description: Document endpoints, parameters, request examples, and responses with a consistent technical reference layout.
+status: new
+---
+
+## Endpoint
+
+Use `ApiEndpoint` to introduce an operation. The method receives a semantic color and the path includes a copy control.
+
+<ApiEndpoint method="POST" path="/v1/customers">
+  Creates a customer in the current workspace. This endpoint requires a server-side API token.
+</ApiEndpoint>
+
+```tsx
+<ApiEndpoint method="POST" path="/v1/customers">
+  Creates a customer in the current workspace. This endpoint requires a server-side API token.
+</ApiEndpoint>
+```
+
+Supported methods are `GET`, `POST`, `PUT`, `PATCH`, and `DELETE`.
+
+## Parameters
+
+Group related fields with `ApiParameters`. Each `ApiParameter` describes its name, type, location, requirement, default value, and purpose.
+
+<ApiParameters>
+  <ApiParameter name="name" type="string" location="body" required>
+    Customer name shown in the dashboard and invoices.
+  </ApiParameter>
+  <ApiParameter name="email" type="string" location="body" required>
+    Valid email address used for billing notifications.
+  </ApiParameter>
+  <ApiParameter name="locale" type="string" location="body" defaultValue="en-US">
+    Locale used to format customer-facing dates and currency.
+  </ApiParameter>
+</ApiParameters>
+
+```tsx
+<ApiParameters>
+  <ApiParameter name="name" type="string" location="body" required>
+    Customer name shown in the dashboard and invoices.
+  </ApiParameter>
+  <ApiParameter name="locale" type="string" location="body" defaultValue="en-US">
+    Locale used to format customer-facing dates and currency.
+  </ApiParameter>
+</ApiParameters>
+```
+
+## Request example
+
+Use the existing `CodeGroup` for language-specific requests. API Reference intentionally composes with the code system instead of introducing another request tab implementation.
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.example.com/v1/customers \
+  --request POST \
+  --header "Authorization: Bearer $API_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{"name":"Ada Lovelace","email":"ada@example.com"}'
+```
+
+```ts JavaScript
+const customer = await client.customers.create({
+  name: "Ada Lovelace",
+  email: "ada@example.com",
+})
+```
+
+```python Python
+customer = client.customers.create(
+    name="Ada Lovelace",
+    email="ada@example.com",
+)
+```
+
+</CodeGroup>
+
+## Responses
+
+Use `ApiResponse` to identify the status and place a regular syntax-highlighted block inside it.
+
+<ApiResponse status={201} description="Customer created">
+```json
+{
+  "id": "cus_01JQ4Z8M9N",
+  "name": "Ada Lovelace",
+  "email": "ada@example.com",
+  "created_at": "2026-07-11T09:30:00Z"
+}
+```
+</ApiResponse>
+
+<ApiResponse status={422} description="Validation failed">
+
+```json
+{
+  "error": {
+    "code": "invalid_email",
+    "message": "Enter a valid email address."
+  }
+}
+```
+
+</ApiResponse>
+
+## Complete reference
+
+A useful endpoint reference follows the same reading order every time: operation, authentication or constraints, parameters, request examples, then possible responses. Consistency matters more than placing every available detail above the fold.

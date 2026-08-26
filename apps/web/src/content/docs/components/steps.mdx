@@ -1,0 +1,140 @@
+---
+title: Steps
+description: Turn a sequence of instructions into a clear, numbered workflow that readers can follow from start to finish.
+---
+
+## Usage
+
+Wrap a sequence in `Steps`, then use a `Step` heading for each action. Steps are numbered automatically, so you can add, remove, or reorder them without updating the numbers by hand.
+
+<Steps>
+  <Step>Create a configuration file</Step>
+
+  Add a `docs.config.ts` file at the root of your project.
+
+  <Step>Set the project details</Step>
+
+  Add the name and URL that should appear in your documentation.
+
+  <Step>Start the development server</Step>
+
+  Run the project locally and open the docs page in your browser.
+</Steps>
+
+```tsx
+<Steps>
+  <Step>Create a configuration file</Step>
+
+  Add a `docs.config.ts` file at the root of your project.
+
+  <Step>Set the project details</Step>
+
+  Add the name and URL that should appear in your documentation.
+
+  <Step>Start the development server</Step>
+
+  Run the project locally and open the docs page in your browser.
+</Steps>
+```
+
+## Add code to a step
+
+A step can contain paragraphs, code blocks, lists, links, and other MDX components. Place the supporting content after its `Step` heading and before the next one.
+
+<Steps>
+  <Step>Create the environment file</Step>
+
+  Copy the example environment file before starting the application.
+
+  ```bash
+  cp .env.example .env.local
+  ```
+
+  <Step>Add the site URL</Step>
+
+  Set the public URL used to generate canonical links and social previews.
+
+  ```bash title=".env.local"
+  NEXT_PUBLIC_SITE_URL=https://docs.example.com
+  ```
+
+  <Step>Run the application</Step>
+
+  Start the development server and visit `http://localhost:3000`.
+
+  ```bash
+  bun dev
+  ```
+</Steps>
+
+````tsx
+<Steps>
+  <Step>Create the environment file</Step>
+
+  Copy the example environment file before starting the application.
+
+  ```bash
+  cp .env.example .env.local
+  ```
+
+  <Step>Add the site URL</Step>
+
+  Set the public URL used to generate canonical links and social previews.
+
+  ```bash title=".env.local"
+  NEXT_PUBLIC_SITE_URL=https://docs.example.com
+  ```
+
+  <Step>Run the application</Step>
+
+  Start the development server and visit `http://localhost:3000`.
+
+  ```bash
+  bun dev
+  ```
+</Steps>
+````
+
+## Combine with other components
+
+Use a callout inside a step when the reader must understand a constraint before continuing.
+
+<Steps>
+  <Step>Generate an access token</Step>
+
+  Create a token from the workspace settings and store it in your password manager.
+
+  <Callout type="warning" title="Copy the token now">
+    The complete token is shown only once. Generate a new token if you leave the page without saving it.
+  </Callout>
+
+  <Step>Add the token to your environment</Step>
+
+  Store secrets in an environment file and keep that file out of version control.
+
+  ```bash title=".env.local"
+  DOCS_API_TOKEN=your_token
+  ```
+
+  <Step>Verify the connection</Step>
+
+  Run the verification command. A successful request returns the active workspace name.
+
+  ```bash
+  bun run docs:verify
+  ```
+</Steps>
+
+## Writing effective steps
+
+Start every step with an action. Labels such as **Create the project**, **Add your credentials**, and **Verify the setup** tell readers what they will accomplish before they read the details.
+
+- Keep one primary action in each step.
+- Put prerequisites before the sequence, not inside the first step.
+- Explain the expected result when success is not obvious.
+- Keep optional information in a callout or disclosure so it does not interrupt the main path.
+- Use headings instead when sections can be completed independently or in any order.
+
+<Callout type="info">
+  Steps communicate a required order. If readers only need to choose one of several alternatives, use <a href="/docs/components/tabs">tabs</a> instead.
+</Callout>

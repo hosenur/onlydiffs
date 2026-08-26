@@ -1,0 +1,56 @@
+---
+title: Create your first page
+description: Add a new MDX page and place it in the sidebar.
+---
+
+Create a new `.mdx` file in the section where the page belongs. The page title comes from frontmatter and is rendered by the docs layout, so the MDX body should begin with paragraph text or a second-level heading.
+
+## Add the file
+
+Start by creating the page where it belongs in the docs folder.
+
+```txt
+src/content/docs/getting-started/first-page.mdx
+```
+
+### Choose a stable slug
+
+Use lowercase words separated by hyphens. Avoid temporary names like `new-page` or `test-page`, because URLs often become permanent once published.
+
+## Add frontmatter
+
+Add metadata first so the layout can render a title and description consistently.
+
+<CodeGroup>
+
+```tsx first-page.mdx
+---
+title: Create your first page
+description: Add a new MDX page and place it in the sidebar.
+---
+
+Write the page introduction here, then use section headings for the rest.
+
+## Add the file
+
+Describe the first task in the workflow.
+```
+
+```json meta.json
+{
+  "title": "Start here",
+  "pages": ["index", "installation", "project-structure", "first-page"]
+}
+```
+
+</CodeGroup>
+
+### Keep the body free of H1
+
+The page layout already renders the page title. Use `##` and `###` in MDX content so the table of contents has a clean hierarchy.
+
+## Add it to the sidebar
+
+Include the file name in the section's `meta.json`:
+
+The page appears in the sidebar using the order from `pages`.

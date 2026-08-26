@@ -1,0 +1,100 @@
+---
+title: Project structure
+description: Understand where content, routes, and interface components live.
+---
+
+Gridlines separates content from presentation. Writers mostly work in MDX files, while designers and developers customize the shared components and theme.
+
+## Top-level folders
+
+This tree shows where routes, reusable components, and content live in the project.
+
+<FileTree
+  aria-label="Gridlines project structure"
+  defaultExpandedKeys={[
+    "src",
+    "src-app",
+    "app-docs",
+    "docs-route",
+    "app-blog",
+    "blog-route",
+    "src-components",
+    "components-docs",
+    "src-content",
+  ]}
+>
+  <FileTreeItem id="src" name="src">
+    <FileTreeItem id="src-app" name="app">
+      <FileTreeItem id="app-docs" name="docs">
+        <FileTreeItem id="docs-route" name="[[...slug]]">
+          <FileTreeItem id="docs-page" name="page.tsx" />
+        </FileTreeItem>
+      </FileTreeItem>
+      <FileTreeItem id="app-blog" name="blog">
+        <FileTreeItem id="blog-route" name="[slug]">
+          <FileTreeItem id="blog-page" name="page.tsx" />
+        </FileTreeItem>
+      </FileTreeItem>
+    </FileTreeItem>
+    <FileTreeItem id="src-components" name="components">
+      <FileTreeItem id="components-docs" name="docs">
+        <FileTreeItem id="docs-sidebar" name="sidebar.tsx" />
+        <FileTreeItem id="docs-toc" name="toc.tsx" />
+      </FileTreeItem>
+      <FileTreeItem id="components-navigation" name="navigation.tsx" />
+    </FileTreeItem>
+    <FileTreeItem id="src-content" name="content">
+      <FileTreeItem id="content-docs" name="docs" />
+      <FileTreeItem id="content-blog" name="blog" />
+    </FileTreeItem>
+    <FileTreeItem id="mdx-components" name="mdx-components.tsx" />
+  </FileTreeItem>
+</FileTree>
+
+### Content
+
+Docs pages live in `src/content/docs`. Blog posts live in `src/content/blog`. These folders are the main surface area for writers.
+
+### Components
+
+The docs sidebar, table of contents, navigation, and MDX component map are normal React components. Customize them like the rest of your app.
+
+## Blog asset structure
+
+Each blog post should have its own folder so the article and cover image stay together.
+
+<FileTree
+  aria-label="Blog post asset structure"
+  defaultExpandedKeys={["blog-content", "release-notes-post"]}
+>
+  <FileTreeItem id="blog-content" name="src/content/blog">
+    <FileTreeItem id="release-notes-post" name="writing-release-notes-users-read">
+      <FileTreeItem id="release-notes-content" name="index.mdx" />
+      <FileTreeItem id="release-notes-cover" name="cover.jpg" />
+    </FileTreeItem>
+  </FileTreeItem>
+</FileTree>
+
+### Why colocate assets
+
+Colocation makes posts easier to move, delete, and review. A folder should contain the article and the assets required to render it.
+
+## Route structure
+
+Routes define how content becomes pages. Keep route files small and let shared components handle repeated layout details.
+
+### Docs route
+
+The docs route should load the current page, render its MDX body, and pass navigation data to sidebar and table of contents components.
+
+### Blog route
+
+The blog route should focus on article metadata, cover images, and a readable article layout. It should not duplicate the docs sidebar behavior.
+
+## Component structure
+
+Shared components are the right place for reusable UI decisions. Put repeated prose styling, image handling, code tabs, and install commands behind stable component APIs.
+
+### Local ownership
+
+Keep docs-specific components near the docs experience and general UI primitives in the shared UI folder. This makes future changes easier to locate.

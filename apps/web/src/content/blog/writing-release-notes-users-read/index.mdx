@@ -1,0 +1,119 @@
+---
+title: Writing release notes users actually read
+description: How to turn product changes into release notes that help users understand impact, not just activity.
+date: "2026-07-06"
+author: { name: "Irsyad A. Panjaitan", username: "irsyadadl" }
+image:
+  src: "./cover.jpg"
+  alt: "A release planning document with highlighted updates"
+---
+
+Release notes fail when they describe completed work instead of user impact. Readers need to know what changed, why it matters, whether it affects them, and what they should do next.
+
+## Choose the audience
+
+One release may matter differently to administrators, developers, operators, and everyday users. Decide who needs the update before choosing detail.
+
+**Segment when needed**
+
+Group changes by audience when a mixed list would force everyone to filter irrelevant information. Do not create separate versions when the same explanation serves all readers.
+
+**Respect reader context**
+
+Most readers did not follow the project. Introduce the affected workflow before explaining how it changed.
+
+## Lead with impact
+
+Open with the new outcome, changed behavior, or resolved limitation. The first sentence should help readers decide whether to continue.
+
+**Use concrete outcomes**
+
+“Exports now preserve applied filters” communicates more than “Improved export handling.” Name the visible result rather than the internal effort.
+
+**Avoid internal framing**
+
+Ticket numbers, sprint names, refactors, and team boundaries rarely help users. Include implementation details only when they change integration or risk.
+
+## Explain the change
+
+After the outcome, describe the previous behavior and the new behavior in enough detail to remove ambiguity.
+
+**Show before after**
+
+Use a short comparison when readers must unlearn an old workflow. Focus on changed steps, inputs, defaults, or outputs.
+
+**Clarify availability**
+
+State plan requirements, regions, versions, permissions, feature flags, or rollout stages. Readers should not search unsuccessfully for an unavailable feature.
+
+## Provide next actions
+
+Every consequential note should tell affected users what to do, even when the answer is that no action is required.
+
+**Mark required actions**
+
+Place deadlines, migrations, permission changes, and breaking behavior where they cannot be missed. Use direct verbs and specify who must act.
+
+**Link durable docs**
+
+Release notes introduce the change; documentation teaches ongoing use. Link setup, migration, reference, and troubleshooting rather than duplicating them.
+
+## Group related changes
+
+A meaningful narrative is easier to scan than a chronological dump of commits.
+
+**Organize by need**
+
+Useful groups include new capabilities, workflow improvements, fixes, security, developer changes, and required actions. Choose labels that match the release.
+
+**Combine small fixes**
+
+Group minor corrections when individual notes add little value. Keep a fix separate when it resolves a common problem or changes expected behavior.
+
+## Handle breaking changes
+
+Breaking changes require precision, time, and a tested migration path.
+
+**State the risk**
+
+Explain who is affected, what fails without action, when enforcement begins, and whether rollback is possible.
+
+**Provide migration steps**
+
+Link a complete guide and summarize the critical sequence. Test it from the previous supported state before publication.
+
+## Write clear language
+
+Release notes should be concise without becoming vague. Prefer specific nouns and verbs, short paragraphs, and descriptive headings.
+
+**Remove empty claims**
+
+Words such as seamless, powerful, improved, and enhanced need evidence. Replace them with the measurable behavior that changed.
+
+**Define necessary terms**
+
+Use product terminology consistently, but explain new names at first mention. Avoid forcing readers to decode internal vocabulary.
+
+## Design for scanning
+
+Readers often visit with one question. Dates, headings, summaries, labels, and links should make the relevant change easy to locate.
+
+**Keep stable URLs**
+
+Give each release or major note a durable URL that support teams and documentation can reference later.
+
+**Support archive search**
+
+Use consistent product names and include previous terminology when names change. Historical search depends on the language users remember.
+
+## Measure usefulness
+
+Watch clicks into durable docs, support themes after release, search queries, and feedback. These signals reveal whether the note prepared readers for the change.
+
+**Improve future notes**
+
+When confusion appears, correct the note and update the writing checklist. Release communication should become more reliable with every cycle.
+
+## Build lasting trust
+
+Good release notes respect reader time. They lead with impact, explain changed behavior, identify required action, and connect to durable guidance. Over time, that consistency turns the archive into a trusted product history.

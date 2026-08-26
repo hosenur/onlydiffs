@@ -1,0 +1,388 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Tailwind scans the app it is imported from, which stops at the workspace
+ * boundary. Without this the utilities used only inside @onlydiffs/ui are
+ * never generated — icons lose `size-4` and render at their natural size.
+ */
+@source "../../../packages/ui/src";
+/*
+ ---break---
+ */
+@plugin "tailwindcss-react-aria-components";
+/*
+ ---break---
+ */
+/*
+ ---break---
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Geist and Geist Mono — github.com/vercel/geist-font (SIL OFL 1.1, see
+ * src/fonts/GEIST-LICENSE.txt). Self-hosted rather than named-and-hoped-for:
+ * a stack that merely lists a font renders it only on machines that happen to
+ * have it installed, so the app would look different for everyone else.
+ * One variable file each, wght axis 100–900.
+ */
+@font-face {
+  font-family: "Geist";
+  src: url("./fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme inline {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans--font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  --font-mono--font-feature-settings: "ss02", "zero";
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-subtle-fg: var(--primary-subtle-fg);
+  --color-secondary: var(--secondary);
+  --color-secondary-fg: var(--secondary-fg);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-success: var(--success);
+  --color-success-fg: var(--success-fg);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-subtle-fg: var(--success-subtle-fg);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-subtle-fg: var(--danger-subtle-fg);
+  --color-warning: var(--warning);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-subtle-fg: var(--warning-subtle-fg);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-subtle-fg: var(--info-subtle-fg);
+  --color-muted: var(--muted);
+  --color-muted-fg: var(--muted-fg);
+  --color-overlay: var(--overlay);
+  --color-overlay-fg: var(--overlay-fg);
+  --color-navbar: var(--navbar);
+  --color-navbar-fg: var(--navbar-fg);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-fg: var(--sidebar-fg);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-fg: var(--sidebar-primary-fg);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-fg: var(--sidebar-accent-fg);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius: var(----radius);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: var(--border, currentColor);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  /*
+   * No rubber-banding — this is a desktop window, not a page. Scoped to the
+   * document on purpose: as a `*` rule it also landed on every `overflow:hidden`
+   * element, and an element with clipped overflow is still a scroll container.
+   * A wheel over one would then find a container that cannot scroll and is
+   * forbidden from handing the scroll to its parent, so the event was dropped.
+   * Every sidebar row is `overflow-hidden`, which made the file list almost
+   * unscrollable — Chromium enforces this where WebKit did not, so it only
+   * appeared after the move off Tauri.
+   */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+}
+
+/* The diff renderer lives in a shadow root; only its host is ours to size. */
+diffs-container {
+  display: block;
+  --diffs-font-size: 12px;
+  /*
+   * The renderer reads this inside its shadow root as
+   * `var(--diffs-font-family, var(--diffs-font-fallback))`. Custom properties
+   * inherit through the shadow boundary, so setting it on the host is enough.
+   */
+  --diffs-font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /*
+   * Feed the same Oscura tokens into the renderer's own knobs. These are its
+   * *base* colors, not the `-override` variables, so it still derives hunk and
+   * gutter backgrounds with its own mixing ratios.
+   */
+  --diffs-light: var(--fg);
+  --diffs-dark: var(--fg);
+  --diffs-light-bg: var(--bg);
+  --diffs-dark-bg: var(--bg);
+  --diffs-addition-color: var(--success);
+  --diffs-deletion-color: var(--danger);
+  --diffs-modified-color: var(--primary);
+}
+/*
+ ---break---
+ */
+/*
+ * Oscura Dusk — github.com/narative/oscura (themes/oscura-dusk.json).
+ * Both blocks carry the identical variable list; Dusk and Midnight differ
+ * only in the background, so that is the only value that changes below.
+ */
+:root {
+  --bg: #131419;
+  --fg: #e6e6e6;
+  --primary: #e6e7a3;
+  --primary-fg: #000000;
+  --primary-subtle: #eaec8a21;
+  --primary-subtle-fg: #e6e7a3;
+  --secondary: #2c2c31;
+  --secondary-fg: #c1c1c1;
+  --overlay: #161616;
+  --overlay-fg: #e6e6e6;
+  --accent: #232323;
+  --accent-fg: #ffffff;
+  --muted: #ffffff11;
+  --muted-fg: #868f97;
+  --success: #4ebe96;
+  --success-fg: #e6e6e6;
+  --success-subtle: #4ebe9625;
+  --success-subtle-fg: #4ebe96;
+  --info-subtle: #ffffff11;
+  --info-subtle-fg: #479ffa;
+  --warning: #d2d714;
+  --warning-fg: #000000;
+  --warning-subtle: #eaec8a54;
+  --warning-subtle-fg: #d2d714;
+  --danger: #ff5c5c;
+  --danger-fg: #ffffff;
+  --danger-subtle: #ff5c5c50;
+  --danger-subtle-fg: #ff5c5c;
+  --border: #282828;
+  --input: #ffffff16;
+  --ring: #e6e7a3;
+  --navbar: #131419;
+  --navbar-fg: #e6e6e6;
+  --sidebar: #131419;
+  --sidebar-fg: #c1c1c1;
+  --sidebar-primary: #eaec8a21;
+  --sidebar-primary-fg: #e6e7a3;
+  --sidebar-accent: #ffffff08;
+  --sidebar-accent-fg: #ffffff;
+  --sidebar-border: #282828;
+  --sidebar-ring: #e6e7a3;
+  --chart-1: #e6e7a3;
+  --chart-2: #4ebe96;
+  --chart-3: #479ffa;
+  --chart-4: #ff5c5c;
+  --chart-5: #6e678e;
+  --radius: 0.5rem;
+  color-scheme: dark;
+}
+/*
+ ---break---
+ */
+/* Oscura Midnight — themes/oscura-midnight.json */
+.dark {
+  --bg: #0b0b0f;
+  --fg: #e6e6e6;
+  --primary: #e6e7a3;
+  --primary-fg: #000000;
+  --primary-subtle: #eaec8a21;
+  --primary-subtle-fg: #e6e7a3;
+  --secondary: #2c2c31;
+  --secondary-fg: #c1c1c1;
+  --overlay: #161616;
+  --overlay-fg: #e6e6e6;
+  --accent: #232323;
+  --accent-fg: #ffffff;
+  --muted: #ffffff11;
+  --muted-fg: #868f97;
+  --success: #4ebe96;
+  --success-fg: #e6e6e6;
+  --success-subtle: #4ebe9625;
+  --success-subtle-fg: #4ebe96;
+  --info-subtle: #ffffff11;
+  --info-subtle-fg: #479ffa;
+  --warning: #d2d714;
+  --warning-fg: #000000;
+  --warning-subtle: #eaec8a54;
+  --warning-subtle-fg: #d2d714;
+  --danger: #ff5c5c;
+  --danger-fg: #ffffff;
+  --danger-subtle: #ff5c5c50;
+  --danger-subtle-fg: #ff5c5c;
+  --border: #282828;
+  --input: #ffffff16;
+  --ring: #e6e7a3;
+  --navbar: #0b0b0f;
+  --navbar-fg: #e6e6e6;
+  --sidebar: #0b0b0f;
+  --sidebar-fg: #c1c1c1;
+  --sidebar-primary: #eaec8a21;
+  --sidebar-primary-fg: #e6e7a3;
+  --sidebar-accent: #ffffff08;
+  --sidebar-accent-fg: #ffffff;
+  --sidebar-border: #282828;
+  --sidebar-ring: #e6e7a3;
+  --chart-1: #e6e7a3;
+  --chart-2: #4ebe96;
+  --chart-3: #479ffa;
+  --chart-4: #ff5c5c;
+  --chart-5: #6e678e;
+  --radius: 0.5rem;
+  color-scheme: dark;
+}
+/*
+ ---break---
+ */
+@utility touch-target {
+    position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    display: block;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    min-height: 44px;
+    min-width: 44px;
+    z-index: 9999;
+  }
+}
+
+
+/*
+ * Recent projects on the landing page. Seen once per session, which is the
+ * only tier where a stagger earns its keep — on anything more frequent it
+ * reads as lag. `--i` comes from the row index and is capped by the component,
+ * so the whole list has settled within 360ms however long it is.
+ *
+ * Only opacity and transform move, so rows stay clickable throughout.
+ */
+.recent-project {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition-delay: calc(var(--i, 0) * 40ms);
+}
+
+@starting-style {
+  .recent-project {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recent-project {
+    transition: opacity 200ms ease;
+    transition-delay: calc(var(--i, 0) * 40ms);
+  }
+
+  @starting-style {
+    .recent-project {
+      opacity: 0;
+      transform: translateY(0);
+    }
+  }
+}
+
+/*
+ * The line composer, which slides up from the bottom edge when a diff line is
+ * clicked. Occasional rather than constant, so it earns a real entrance; the
+ * curve and duration match the recent-projects list above.
+ *
+ * `@starting-style` rather than a keyframe: the bar mounts and unmounts with
+ * the reference, and a transition retargets cleanly if a second line is
+ * clicked before the first has settled.
+ */
+.composer {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 240ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 240ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .composer {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer {
+    transition: opacity 240ms ease;
+  }
+
+  @starting-style {
+    .composer {
+      opacity: 0;
+      transform: translateY(0);
+    }
+  }
+}
