@@ -8,6 +8,7 @@ import { runtime } from "./runtime";
 import { ClaudeChannel } from "./services/claude-channel";
 import { CommitMessage } from "./services/commit-message";
 import { Diff } from "./services/diff";
+import { FileTree } from "./services/file-tree";
 import { History } from "./services/history";
 import { Workspace } from "./services/workspace";
 
@@ -125,6 +126,10 @@ export function registerIpcHandlers(): void {
 
   handle(IpcChannel.sendClaudeMessage, SendClaudeMessageRequest, (request) =>
     Effect.flatMap(ClaudeChannel, (channel) => channel.send(request.message)),
+  );
+
+  handleNoInput(IpcChannel.listFiles, () =>
+    Effect.flatMap(FileTree, (tree) => tree.listFiles),
   );
 
   handleNoInput(IpcChannel.listProjects, () =>

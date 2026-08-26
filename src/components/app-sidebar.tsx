@@ -1,6 +1,7 @@
 import { Link, useParams } from '@tanstack/react-router'
 import { Squares2X2Icon } from '@heroicons/react/24/outline'
 import platypus from '@/assets/platypus.png'
+import { AppFileTree } from '@/components/app-file-tree'
 import {
   Sidebar,
   SidebarContent,
@@ -10,18 +11,17 @@ import {
   SidebarLabel,
   SidebarRail,
   SidebarSection,
-  SidebarSectionGroup,
 } from '@/components/ui/sidebar'
 import { CodeBranchOutline18 } from '@/icons'
-import { fileIconUrl } from '@/lib/file-icon'
-import { fileHref, splitPath } from '@/lib/status'
 import type { RepoDiff } from '@/types'
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   diff: RepoDiff
+  /** Every file in the repository, not just the changed ones. */
+  paths: string[]
 }
 
-export function AppSidebar({ diff, ...props }: AppSidebarProps) {
+export function AppSidebar({ diff, paths, ...props }: AppSidebarProps) {
   // `strict: false` — this renders on both `/` and `/file/$`, and only the
   // latter has a splat param.
   const params = useParams({ strict: false }) as { _splat?: string }
@@ -67,49 +67,16 @@ export function AppSidebar({ diff, ...props }: AppSidebarProps) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarSectionGroup>
-          <SidebarSection className="px-4 py-2">
-            <SidebarItem tooltip="All changes" href="/" isCurrent={current === undefined}>
-              <Squares2X2Icon />
-              <SidebarLabel>All changes</SidebarLabel>
-            </SidebarItem>
-          </SidebarSection>
+      <SidebarContent className="px-0">
+        <SidebarSection className="px-4 py-2">
+          <SidebarItem tooltip="All changes" href="/" isCurrent={current === undefined}>
+            <Squares2X2Icon />
+            <SidebarLabel>All changes</SidebarLabel>
+          </SidebarItem>
+        </SidebarSection>
 
-          {(['staged', 'unstaged'] as const).map((half) => {
-            const rows = diff.files.filter((file) => (half === 'staged') === file.staged)
-            if (rows.length === 0) return null
-            return (
-              <SidebarSection key={half} label={`${half} (${rows.length})`} className="px-4 py-2">
-                {rows.map((file) => {
-                  const { name } = splitPath(file.path)
-                  return (
-                    <SidebarItem
-                      key={file.id}
-                      tooltip={file.path}
-                      href={fileHref(file.path)}
-                      isCurrent={current === file.path}
-                    >
-                      {/*
-                        SidebarItem only auto-spaces an `svg` or an avatar
-                        before the label, so an `<img>` needs Intent's own
-                        `me-2` applied by hand.
-                      */}
-                      <img
-                        src={fileIconUrl(file.path)}
-                        alt=""
-                        width={16}
-                        height={16}
-                        className="me-2 size-4 shrink-0"
-                      />
-                      <SidebarLabel className="truncate">{name}</SidebarLabel>
-                    </SidebarItem>
-                  )
-                })}
-              </SidebarSection>
-            )
-          })}
-        </SidebarSectionGroup>
+        {/* The tree owns its own scrolling so the virtualiser has a container. */}
+        <AppFileTree paths={paths} files={diff.files} current={current} />
       </SidebarContent>
 
       <SidebarFooter>

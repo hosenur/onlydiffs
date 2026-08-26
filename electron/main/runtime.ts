@@ -3,6 +3,7 @@ import { Layer, ManagedRuntime } from "effect";
 import { ClaudeChannel } from "./services/claude-channel";
 import { CommitMessage } from "./services/commit-message";
 import { Diff } from "./services/diff";
+import { FileTree } from "./services/file-tree";
 import { History } from "./services/history";
 import { Workspace } from "./services/workspace";
 
@@ -17,6 +18,7 @@ const AppLayer = Layer.mergeAll(
   CommitMessage.Default,
   ClaudeChannel.Default,
   Workspace.Default,
+  FileTree.Default,
 ).pipe(Layer.provide(Layer.mergeAll(NodeContext.layer, NodeHttpClient.layer)));
 
 export type AppServices = Layer.Layer.Success<typeof AppLayer>;

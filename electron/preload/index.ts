@@ -34,6 +34,7 @@ const api: OnlyDiffsApi = {
   currentProject: () => ipcRenderer.invoke(IpcChannel.currentProject),
   forgetProject: (request: ForgetProjectRequest) =>
     ipcRenderer.invoke(IpcChannel.forgetProject, request),
+  listFiles: () => ipcRenderer.invoke(IpcChannel.listFiles),
 };
 
 contextBridge.exposeInMainWorld("onlydiffs", api);

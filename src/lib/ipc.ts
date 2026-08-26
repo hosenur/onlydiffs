@@ -116,6 +116,11 @@ export const openProject = (path: string): Effect.Effect<Project, IpcError> =>
 export const forgetProject = (path: string): Effect.Effect<void, IpcError> =>
   call('forgetProject', (api) => api.forgetProject({ path }))
 
+export const listFiles: Effect.Effect<string[], IpcError> = call(
+  'listFiles',
+  (api) => api.listFiles()
+)
+
 /**
  * Runs an Effect for callers that live in promise-land — route loaders, event
  * handlers. Rejects with the `IpcError` itself rather than the `FiberFailure`

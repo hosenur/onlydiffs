@@ -104,6 +104,7 @@ export const IpcChannel = {
   openProject: "onlydiffs:open-project",
   currentProject: "onlydiffs:current-project",
   forgetProject: "onlydiffs:forget-project",
+  listFiles: "onlydiffs:list-files",
 } as const;
 
 /**
@@ -141,4 +142,6 @@ export interface OnlyDiffsApi {
   /** The repository currently open, or null if the app is on the landing page. */
   currentProject(): Promise<IpcResult<Project | null>>;
   forgetProject(request: ForgetProjectRequest): Promise<IpcResult<void>>;
+  /** Every file in the repository, as flat repo-relative paths. */
+  listFiles(): Promise<IpcResult<string[]>>;
 }

@@ -21,14 +21,6 @@ export function statusIntent(status: ChangeStatus) {
   return INTENTS[status]
 }
 
-export function splitPath(path: string) {
-  const slash = path.lastIndexOf('/')
-  return {
-    dir: slash === -1 ? '' : path.slice(0, slash + 1),
-    name: slash === -1 ? path : path.slice(slash + 1),
-  }
-}
-
 /** Href for a single file's diff, matching the `/file/$` splat route. */
 export function fileHref(path: string) {
   return `/file/${path}`

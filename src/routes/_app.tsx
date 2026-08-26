@@ -6,7 +6,7 @@ import { AppSidebarNav } from '@/components/app-sidebar-nav'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { ClaudeMessageDraftProvider } from '@/lib/claude-message-draft'
 import { DiffLayoutProvider } from '@/lib/diff-layout'
-import { currentProject, getDiff, getHistory, runIpc } from '@/lib/ipc'
+import { currentProject, getDiff, getHistory, listFiles, runIpc } from '@/lib/ipc'
 
 /**
  * Pathless layout route: the `_` prefix means this contributes no URL segment,
@@ -21,21 +21,24 @@ export const Route = createFileRoute('/_app')({
       throw redirect({ to: '/welcome' })
     }
     return runIpc(
-      Effect.all({ diff: getDiff, history: getHistory(100) }, { concurrency: 2 })
+      Effect.all(
+        { diff: getDiff, history: getHistory(100), paths: listFiles },
+        { concurrency: 3 }
+      )
     )
   },
   component: AppLayout,
 })
 
 function AppLayout() {
-  const { diff, history } = Route.useLoaderData()
+  const { diff, history, paths } = Route.useLoaderData()
 
   return (
     <DiffLayoutProvider>
       <ClaudeMessageDraftProvider>
         {/* Fixed-height shell so each column scrolls on its own. */}
         <SidebarProvider className="h-svh">
-          <AppSidebar diff={diff} collapsible="dock" />
+          <AppSidebar diff={diff} paths={paths} collapsible="dock" />
 
           <SidebarInset className="min-w-0 overflow-hidden">
             <AppSidebarNav files={diff.files} />
