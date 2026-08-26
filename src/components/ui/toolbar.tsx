@@ -1,5 +1,3 @@
-'use client'
-
 import { createContext, use } from 'react'
 import { composeRenderProps } from 'react-aria-components/composeRenderProps'
 import { Group, type GroupProps } from 'react-aria-components/Group'

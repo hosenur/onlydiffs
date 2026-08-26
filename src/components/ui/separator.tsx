@@ -1,5 +1,3 @@
-'use client'
-
 import { Separator as Divider, type SeparatorProps } from 'react-aria-components/Separator'
 import { twMerge } from 'tailwind-merge'
 

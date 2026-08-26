@@ -1,5 +1,3 @@
-'use client'
-
 import { createContext, use } from 'react'
 import { composeRenderProps } from 'react-aria-components/composeRenderProps'
 import { ToggleButton, type ToggleButtonProps } from 'react-aria-components/ToggleButton'

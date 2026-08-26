@@ -1,5 +1,3 @@
-'use client'
-
 import { XMarkIcon } from '@heroicons/react/24/solid'
 import { Button as PrimitiveButton } from 'react-aria-components/Button'
 import { Dialog as PrimitiveDialog } from 'react-aria-components/Dialog'

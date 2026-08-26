@@ -1,5 +1,3 @@
-'use client'
-
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState } from 'react'

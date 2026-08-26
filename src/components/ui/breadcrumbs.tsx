@@ -1,5 +1,3 @@
-'use client'
-
 import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import { createContext, use } from 'react'
 import type { BreadcrumbProps, BreadcrumbsProps } from 'react-aria-components/Breadcrumbs'

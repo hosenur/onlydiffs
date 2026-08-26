@@ -1,5 +1,3 @@
-'use client'
-
 import { Button } from 'react-aria-components/Button'
 import { composeRenderProps } from 'react-aria-components/composeRenderProps'
 import type { TooltipProps as TooltipPrimitiveProps } from 'react-aria-components/Tooltip'
