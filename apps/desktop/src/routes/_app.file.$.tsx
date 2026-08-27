@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
 import { FileDiffCard } from '@/components/file-diff-card'
-import { runIpc, stageFile } from '@/lib/ipc'
+import { stageFile } from '@/lib/ipc'
 
 const layoutRoute = getRouteApi('/_app')
 
@@ -31,7 +31,7 @@ function SingleFile() {
       if (!unstaged || isStaging) return
       setStageError(null)
       setIsStaging(true)
-      void runIpc(stageFile({ path: unstaged.path, oldPath: unstaged.oldPath }))
+      void stageFile({ path: unstaged.path, oldPath: unstaged.oldPath })
         .then(() => router.invalidate())
         .catch((error: unknown) => {
           setStageError(error instanceof Error ? error.message : String(error))

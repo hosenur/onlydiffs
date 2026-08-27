@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { InvokeArgs } from '@tauri-apps/api/core'
-import { Cause, Data, Effect, Exit } from 'effect'
 import type {
   AppTheme,
   ChangeStatus,
@@ -17,50 +16,55 @@ import { Command } from '@shared/contract'
 
 /**
  * A failure that came back from the backend, or the bridge itself being
- * missing. `Data.TaggedError` extends `Error`, so callers that only do
- * `error instanceof Error ? error.message : …` keep working unchanged, while
- * anything that cares can match on `cause`.
+ * missing. Callers that only do `error instanceof Error ? error.message : …`
+ * read it as any other Error, while anything that cares can match on `tag`.
  */
-export class IpcError extends Data.TaggedError('IpcError')<{
-  readonly message: string
-  /** The backend's error tag, e.g. `GitError`, or `BridgeUnavailable`. */
-  readonly cause: string
-  readonly operation: string
-}> {}
+export class IpcError extends Error {
+  /** The backend's error tag, e.g. `GitError`, or `ChannelError` locally. */
+  readonly tag: string
+  readonly operation: CommandName
 
-/**
- * Turns one command into an Effect. The backend answers with a result value
- * rather than a rejection, so the tag survives the process boundary; a genuine
- * rejection can still happen if the command is missing or the payload fails to
- * deserialise, and is folded into the same error.
- */
-function call<A>(operation: CommandName, args?: InvokeArgs): Effect.Effect<A, IpcError> {
-  return Effect.tryPromise({
-    try: () => invoke<IpcResult<A>>(operation, args),
-    catch: (error) =>
-      new IpcError({
-        message: error instanceof Error ? error.message : String(error),
-        cause: 'ChannelError',
-        operation,
-      }),
-  }).pipe(
-    Effect.flatMap((result) =>
-      result.ok
-        ? Effect.succeed(result.value)
-        : Effect.fail(
-            new IpcError({
-              message: result.error.message,
-              cause: result.error._tag,
-              operation,
-            })
-          )
-    )
-  )
+  constructor(options: { message: string; tag: string; operation: CommandName }) {
+    super(options.message)
+    this.name = 'IpcError'
+    this.tag = options.tag
+    this.operation = options.operation
+  }
 }
 
-export const getDiff: Effect.Effect<RepoDiff, IpcError> = call(Command.getDiff)
+/**
+ * Runs one command. The backend answers with a result value rather than a
+ * rejection, so the tag survives the process boundary; a genuine rejection can
+ * still happen if the command is missing or the payload fails to deserialise,
+ * and is folded into the same error.
+ *
+ * Every export below is a function rather than a value, so nothing fires at
+ * import time — the call is made where it is awaited.
+ */
+async function call<A>(operation: CommandName, args?: InvokeArgs): Promise<A> {
+  let result: IpcResult<A>
+  try {
+    result = await invoke<IpcResult<A>>(operation, args)
+  } catch (error) {
+    throw new IpcError({
+      message: error instanceof Error ? error.message : String(error),
+      tag: 'ChannelError',
+      operation,
+    })
+  }
+  if (!result.ok) {
+    throw new IpcError({
+      message: result.error.message,
+      tag: result.error._tag,
+      operation,
+    })
+  }
+  return result.value
+}
 
-export const getHistory = (limit?: number): Effect.Effect<Commit[], IpcError> =>
+export const getDiff = (): Promise<RepoDiff> => call(Command.getDiff)
+
+export const getHistory = (limit?: number): Promise<Commit[]> =>
   call(Command.getHistory, { request: { limit } })
 
 export const getFileContents = (request: {
@@ -68,43 +72,42 @@ export const getFileContents = (request: {
   oldPath: string | null
   status: ChangeStatus
   staged: boolean
-}): Effect.Effect<FullFileContents, IpcError> => call(Command.getFileContents, { request })
+}): Promise<FullFileContents> => call(Command.getFileContents, { request })
 
 export const stageFile = (request: {
   path: string
   oldPath: string | null
-}): Effect.Effect<void, IpcError> => call(Command.stageFile, { request })
+}): Promise<void> => call(Command.stageFile, { request })
 
-export const generateCommitMessage: Effect.Effect<string, IpcError> = call(
-  Command.generateCommitMessage
-)
+export const generateCommitMessage = (): Promise<string> =>
+  call(Command.generateCommitMessage)
 
 /** One-way. Resolves with the channel's message id, not a reply. */
-export const sendClaudeMessage = (message: string): Effect.Effect<string, IpcError> =>
+export const sendClaudeMessage = (message: string): Promise<string> =>
   call(Command.sendClaudeMessage, { request: { message } })
 
-export const writeClipboardText = (text: string): Effect.Effect<void, IpcError> =>
+export const writeClipboardText = (text: string): Promise<void> =>
   call(Command.writeClipboardText, { text })
 
-export const listProjects: Effect.Effect<Project[], IpcError> = call(Command.listProjects)
+export const listProjects = (): Promise<Project[]> => call(Command.listProjects)
 
-export const currentProject: Effect.Effect<Project | null, IpcError> = call(Command.currentProject)
+export const currentProject = (): Promise<Project | null> => call(Command.currentProject)
 
-export const openProject = (path: string): Effect.Effect<Project, IpcError> =>
+export const openProject = (path: string): Promise<Project> =>
   call(Command.openProject, { request: { path } })
 
-export const forgetProject = (path: string): Effect.Effect<void, IpcError> =>
+export const forgetProject = (path: string): Promise<void> =>
   call(Command.forgetProject, { request: { path } })
 
-export const listFiles: Effect.Effect<string[], IpcError> = call(Command.listFiles)
+export const listFiles = (): Promise<string[]> => call(Command.listFiles)
 
-export const commitAll = (message: string): Effect.Effect<string, IpcError> =>
+export const commitAll = (message: string): Promise<string> =>
   call(Command.commitAll, { request: { message } })
 
-export const claudeStatus: Effect.Effect<ClaudeChannelStatus, IpcError> = call(Command.claudeStatus)
+export const claudeStatus = (): Promise<ClaudeChannelStatus> => call(Command.claudeStatus)
 
 /** Repaints the native window frame to match the in-app theme. */
-export const setTheme = (theme: AppTheme): Effect.Effect<void, IpcError> =>
+export const setTheme = (theme: AppTheme): Promise<void> =>
   call(Command.setTheme, { request: { theme } })
 
 /**
@@ -112,21 +115,10 @@ export const setTheme = (theme: AppTheme): Effect.Effect<void, IpcError> =>
  * install, so there is one shape to read either way. Always answers that way in
  * a dev build, where the running tree is ahead of the last release.
  */
-export const checkForUpdate: Effect.Effect<UpdateStatus, IpcError> = call(Command.checkForUpdate)
+export const checkForUpdate = (): Promise<UpdateStatus> => call(Command.checkForUpdate)
 
 /**
  * Installs what the last check found and relaunches into it — so this resolves
  * only if something went wrong on the way.
  */
-export const installUpdate: Effect.Effect<void, IpcError> = call(Command.installUpdate)
-
-/**
- * Runs an Effect for callers that live in promise-land — route loaders, event
- * handlers. Rejects with the `IpcError` itself rather than the `FiberFailure`
- * wrapper `Effect.runPromise` would throw, so `error.message` stays readable.
- */
-export async function runIpc<A>(effect: Effect.Effect<A, IpcError>): Promise<A> {
-  const exit = await Effect.runPromiseExit(effect)
-  if (Exit.isSuccess(exit)) return exit.value
-  throw Cause.squash(exit.cause)
-}
+export const installUpdate = (): Promise<void> => call(Command.installUpdate)

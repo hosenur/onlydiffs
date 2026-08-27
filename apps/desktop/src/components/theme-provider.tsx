@@ -1,6 +1,6 @@
 import { createContext, use, useEffect, useState } from "react"
 import type { AppTheme } from "@shared/contract"
-import { runIpc, setTheme as setNativeTheme } from "@/lib/ipc"
+import { setTheme as setNativeTheme } from "@/lib/ipc"
 
 /** Aliased off the IPC contract so the two cannot drift apart. */
 type Theme = AppTheme
@@ -61,7 +61,7 @@ function ThemeProvider({
      * frame that keeps its old colour, which is not worth failing a render or
      * surfacing to someone who just picked a theme.
      */
-    void runIpc(setNativeTheme(theme)).catch(() => {})
+    void setNativeTheme(theme).catch(() => {})
 
     // Desktop app: the window outlives OS appearance changes, so keep following.
     if (theme !== "system") return

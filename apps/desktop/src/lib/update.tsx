@@ -1,5 +1,5 @@
 import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react'
-import { checkForUpdate, installUpdate, runIpc } from '@/lib/ipc'
+import { checkForUpdate, installUpdate } from '@/lib/ipc'
 
 /**
  * The release waiting to be installed, shared between the footer that mentions
@@ -47,7 +47,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const status = await runIpc(checkForUpdate)
+          const status = await checkForUpdate()
           if (active && status.available) {
             setOffer({ version: status.version, notes: status.notes })
           }
@@ -69,7 +69,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     setIsInstalling(true)
     setError(null)
     try {
-      await runIpc(installUpdate)
+      await installUpdate()
       // Not reached: a successful install relaunches the app from the new
       // bundle. Anything past the await is a failure that resolved oddly.
     } catch (cause) {

@@ -1,5 +1,4 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { Effect } from 'effect'
 import { AppCommandMenu } from '@/components/app-command-menu'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AppSidebarNav } from '@/components/app-sidebar-nav'
@@ -8,7 +7,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { DiffLayoutProvider } from '@/lib/diff-layout'
 import { LineReferenceProvider } from '@/lib/line-reference'
 import { UpdateProvider } from '@/lib/update'
-import { currentProject, getDiff, listFiles, runIpc } from '@/lib/ipc'
+import { currentProject, getDiff, listFiles } from '@/lib/ipc'
 
 /**
  * Pathless layout route: the `_` prefix means this contributes no URL segment,
@@ -20,12 +19,13 @@ export const Route = createFileRoute('/_app')({
     // Nothing below this layout can render without a repository, so bounce to
     // the picker at `/` instead of letting every loader fail. A restored hash
     // URL is the case that still reaches here after a reload.
-    if ((await runIpc(currentProject)) === null) {
+    if ((await currentProject()) === null) {
       throw redirect({ to: '/' })
     }
-    return runIpc(
-      Effect.all({ diff: getDiff, paths: listFiles }, { concurrency: 2 })
-    )
+    // Both reads hit the same repository and neither needs the other, so they
+    // go out together rather than one after the round-trip.
+    const [diff, paths] = await Promise.all([getDiff(), listFiles()])
+    return { diff, paths }
   },
   component: AppLayout,
 })

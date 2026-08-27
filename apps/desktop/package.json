@@ -26,8 +26,7 @@
     "social": "bun scripts/social-preview.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2",
-    "effect": "^3.22.1"
+    "@tauri-apps/api": "^2"
   },
   "devDependencies": {
     "@heroicons/react": "^2.2.0",

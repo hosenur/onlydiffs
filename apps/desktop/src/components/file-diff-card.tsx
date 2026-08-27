@@ -6,7 +6,7 @@ import type { FileDiffOptions, OnDiffLineClickProps } from '@pierre/diffs'
 import { Badge } from '@onlydiffs/ui/badge'
 import { useDiffLayout } from '@/lib/diff-layout'
 import { useLineReference } from '@/lib/line-reference'
-import { getFileContents, runIpc } from '@/lib/ipc'
+import { getFileContents } from '@/lib/ipc'
 import { STATUS_LABEL, statusIntent } from '@/lib/status'
 import type { FileChange, FullFileContents } from '@/types'
 
@@ -19,14 +19,12 @@ function loadFileContents(file: FileChange) {
   const existing = contentRequests.get(file)
   if (existing) return existing
 
-  const request = runIpc(
-    getFileContents({
-      path: file.path,
-      oldPath: file.oldPath,
-      status: file.status,
-      staged: file.staged,
-    })
-  )
+  const request = getFileContents({
+    path: file.path,
+    oldPath: file.oldPath,
+    status: file.status,
+    staged: file.staged,
+  })
   contentRequests.set(file, request)
   void request.catch(() => contentRequests.delete(file))
   return request

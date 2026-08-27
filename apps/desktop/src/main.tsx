@@ -4,7 +4,7 @@ import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { RouterProvider, createHashHistory, createRouter } from "@tanstack/react-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ThemeProvider } from "@/components/theme-provider";
-import { currentProject, runIpc } from "@/lib/ipc";
+import { currentProject } from "@/lib/ipc";
 import { routeTree } from "./routeTree.gen";
 import "./index.css";
 
@@ -17,7 +17,7 @@ import "./index.css";
  * A failure means the bridge is missing (a plain `vite` server), where the
  * picker is the honest thing to show.
  */
-const opened = await runIpc(currentProject).catch(() => null);
+const opened = await currentProject().catch(() => null);
 if (opened !== null && window.location.hash === "") {
   window.location.hash = "/diff";
 }

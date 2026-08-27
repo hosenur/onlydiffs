@@ -5,7 +5,7 @@ import { Input, InputGroup } from '@onlydiffs/ui/input'
 import { TextField } from '@onlydiffs/ui/text-field'
 import { Plug2Outline18, PlugOffOutline18 } from '@/icons'
 import { useLineReference } from '@/lib/line-reference'
-import { claudeStatus, runIpc, sendClaudeMessage } from '@/lib/ipc'
+import { claudeStatus, sendClaudeMessage } from '@/lib/ipc'
 import { useUpdate } from '@/lib/update'
 import type { ClaudeChannelStatus } from '@shared/contract'
 
@@ -31,7 +31,7 @@ export function AppToolbar() {
 
     const check = async () => {
       try {
-        const next = await runIpc(claudeStatus)
+        const next = await claudeStatus()
         if (active) setStatus(next)
       } catch {
         // A failed probe means the same thing as no channel, and saying so is
@@ -66,7 +66,7 @@ export function AppToolbar() {
     try {
       // The full path, not the shortened label on screen — Claude has to be
       // able to open the file.
-      await runIpc(sendClaudeMessage(`${reference.label} ${text}`))
+      await sendClaudeMessage(`${reference.label} ${text}`)
       clear()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))

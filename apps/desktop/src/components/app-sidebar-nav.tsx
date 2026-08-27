@@ -6,7 +6,7 @@ import { Badge } from '@onlydiffs/ui/badge'
 import { Button } from '@onlydiffs/ui/button'
 import { SidebarNav, SidebarTrigger } from '@/components/ui/sidebar'
 import { useDiffLayout } from '@/lib/diff-layout'
-import { runIpc, writeClipboardText } from '@/lib/ipc'
+import { writeClipboardText } from '@/lib/ipc'
 import type { FileChange } from '@/types'
 
 function FilePath({ path }: { path: string | undefined }) {
@@ -27,7 +27,7 @@ function FilePath({ path }: { path: string | undefined }) {
       size="xs"
       className="min-w-0 justify-start font-mono font-normal"
       onPress={() => {
-        void runIpc(writeClipboardText(path)).then(
+        void writeClipboardText(path).then(
           () => {
             setCopied(true)
             clearTimeout(timer.current)

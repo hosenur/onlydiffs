@@ -26,7 +26,6 @@ import { fileIconUrl } from '@/lib/file-icon'
 import {
   commitAll,
   generateCommitMessage,
-  runIpc,
   stageFile,
   writeClipboardText,
 } from '@/lib/ipc'
@@ -137,8 +136,8 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
     setError(null)
     setNote(null)
     try {
-      const generated = await runIpc(generateCommitMessage)
-      await runIpc(writeClipboardText(generated))
+      const generated = await generateCommitMessage()
+      await writeClipboardText(generated)
       setNote(`Copied — ${generated.split('\n')[0]}`)
     } catch (cause) {
       setError(errorMessage(cause))
@@ -153,9 +152,7 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
     setError(null)
     setNote(null)
     try {
-      await runIpc(
-        stageFile({ path: stageable.path, oldPath: stageable.oldPath })
-      )
+      await stageFile({ path: stageable.path, oldPath: stageable.oldPath })
       setNote(`Staged ${stageable.path}`)
       await router.invalidate()
     } catch (cause) {
@@ -174,8 +171,8 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
       // Always a fresh read of the current diff. Reusing a message from an
       // earlier Generate would commit a description of the diff as it was
       // then — stale the moment anything else is edited.
-      const subject = await runIpc(generateCommitMessage)
-      const head = await runIpc(commitAll(subject))
+      const subject = await generateCommitMessage()
+      const head = await commitAll(subject)
       // Left open on purpose: this note is the only confirmation there is,
       // and closing straight away takes the commit hash with it.
       setNote(`Committed ${head}`)

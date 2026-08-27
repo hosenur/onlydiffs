@@ -6,7 +6,7 @@ import platypus from '@/assets/platypus.png'
 import { Button } from '@onlydiffs/ui/button'
 import { Loader } from '@onlydiffs/ui/loader'
 import { CodeBranchOutline18 } from '@/icons'
-import { forgetProject, listProjects, openProject, runIpc } from '@/lib/ipc'
+import { forgetProject, listProjects, openProject } from '@/lib/ipc'
 import type { Project } from '@shared/contract'
 
 /**
@@ -19,7 +19,7 @@ export const Route = createFileRoute('/')({
   // The history changes while the app is running, so never serve it from cache.
   shouldReload: true,
   staleTime: 0,
-  loader: () => runIpc(listProjects),
+  loader: () => listProjects(),
   component: Welcome,
 })
 
@@ -50,7 +50,7 @@ function Welcome() {
     setError(null)
     setBusy(target)
     try {
-      await runIpc(openProject(target))
+      await openProject(target)
       // The sidebar and every loader below it read the newly opened repository.
       await router.navigate({ to: '/diff' })
     } catch (cause) {
@@ -62,7 +62,7 @@ function Welcome() {
   async function forget(project: Project) {
     setError(null)
     try {
-      await runIpc(forgetProject(project.path))
+      await forgetProject(project.path)
       await router.invalidate()
     } catch (cause) {
       setError(errorMessage(cause))
