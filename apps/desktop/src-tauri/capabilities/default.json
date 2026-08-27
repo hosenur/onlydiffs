@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the window may call directly. The app's own commands are not ACL-gated; this covers only the core plugin calls the renderer makes.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show"
+  ]
+}

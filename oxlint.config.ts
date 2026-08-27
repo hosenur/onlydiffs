@@ -17,9 +17,8 @@ export default defineConfig({
     // The vendored plugin lints this repository; it is not part of it.
     "tools/oxlint/anti-slop/**",
     // Build output and vendored assets, in any workspace.
-    "**/out/**",
     "**/dist/**",
-    "**/release/**",
+    "**/target/**",
     "**/.next/**",
     "**/public/**",
     "**/node_modules/**",

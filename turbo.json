@@ -12,7 +12,6 @@
         "^build"
       ],
       "outputs": [
-        "out/**",
         ".next/**",
         "!.next/cache/**",
         "dist/**"
@@ -33,7 +32,7 @@
         "build"
       ],
       "outputs": [
-        "release/**"
+        "src-tauri/target/release/bundle/**"
       ]
     },
     "dev": {

@@ -11,7 +11,7 @@ A Turborepo holding the desktop app, its docs and blog site, and the Intent UI
 components they share.
 
 ```
-apps/desktop     Electron · Vite · TanStack Router · Effect
+apps/desktop     Tauri · Rust · Vite · TanStack Router
 apps/web         Next.js docs and blog
 packages/ui      Intent UI components used by both
 ```
@@ -75,4 +75,4 @@ arrives unset with no warning.
 
 ---
 
-Built with Electron, Next.js, React, TanStack Router, and Effect.
+Built with Tauri, Rust, Next.js, React, and TanStack Router.

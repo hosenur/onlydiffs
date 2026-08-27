@@ -1,0 +1,30 @@
+[package]
+name = "onlydiffs"
+version = "0.1.0"
+description = "See what your agent changed. Talk it through."
+authors = ["hosenur"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+# The desktop binary is a thin shell over this; `cdylib` keeps the mobile
+# entry point available and `rlib` is what the integration tests link against.
+name = "onlydiffs_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-clipboard-manager = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["process", "fs", "sync", "time", "macros", "rt-multi-thread"] }
+futures = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+dirs = "5"
+
+[dev-dependencies]
+tempfile = "3"

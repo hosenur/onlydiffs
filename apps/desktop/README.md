@@ -32,6 +32,9 @@ bun install
 bun run dev
 ```
 
+The Rust toolchain is a prerequisite — see
+[Tauri's setup guide](https://tauri.app/start/prerequisites/).
+
 Open a repository from the landing page, or jump straight into one:
 
 ```sh
@@ -43,7 +46,7 @@ Build a distributable with `bun run dist`.
 ### Not wired up yet
 
 The Claude Code channel and the Groq commit-message generator are implemented
-end to end — main process, IPC, and renderer client — but nothing in the UI
+end to end — Rust command, IPC, and renderer client — but nothing in the UI
 calls them while the review surface is being rebuilt. `bun run channel:setup`
 still registers the channel, and `GROQ_API_KEY` is still read from the app's
 environment.
@@ -59,4 +62,4 @@ environment.
 
 ---
 
-Built with Electron, React, TanStack Router, and Effect.
+Built with Tauri, Rust, React, and TanStack Router.

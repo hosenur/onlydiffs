@@ -5,21 +5,18 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node", "bun", "electron-vite/node"],
+    "types": ["node", "bun"],
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["./electron/shared/*"]
-    },
     "strict": true,
     "exactOptionalPropertyTypes": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["electron", "electron.vite.config.ts"]
+  "include": ["vite.config.ts", "scripts"]
 }

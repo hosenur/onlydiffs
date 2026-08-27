@@ -23,10 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Electron build output
-out
-release
+# Build output
 .tanstack
+
+# Rust / Tauri
+target
+apps/desktop/src-tauri/gen
 
 # TS project build info
 *.tsbuildinfo

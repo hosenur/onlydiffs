@@ -19,7 +19,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["./electron/shared/*"]
+      "@shared/*": ["./src/shared/*"]
     },
 
     /* Linting */
@@ -28,5 +28,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "electron/shared", "electron/preload/index.d.ts"]
+  "include": ["src"]
 }
