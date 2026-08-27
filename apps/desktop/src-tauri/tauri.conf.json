@@ -18,6 +18,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["dmg", "app", "nsis", "appimage", "deb"],
     "category": "DeveloperTool",
     "icon": [
@@ -27,5 +28,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY1MUE1MDdFRDE5NTU4NTUKUldSVldKWFJmbEFhWmJwT0F0cGZPci9UdlFBM3ArZGFGWnlQcE5RT2pCS2FZS0dFSnNsMlpHa1oK",
+      "endpoints": [
+        "https://github.com/hosenur/onlydiffs/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

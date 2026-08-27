@@ -11,6 +11,7 @@ import type {
   ClaudeChannelStatus,
   Project,
   RepoDiff,
+  UpdateStatus,
 } from '@shared/contract'
 import { Command } from '@shared/contract'
 
@@ -105,6 +106,19 @@ export const claudeStatus: Effect.Effect<ClaudeChannelStatus, IpcError> = call(C
 /** Repaints the native window frame to match the in-app theme. */
 export const setTheme = (theme: AppTheme): Effect.Effect<void, IpcError> =>
   call(Command.setTheme, { request: { theme } })
+
+/**
+ * Answers `available: false` rather than failing when there is nothing to
+ * install, so there is one shape to read either way. Always answers that way in
+ * a dev build, where the running tree is ahead of the last release.
+ */
+export const checkForUpdate: Effect.Effect<UpdateStatus, IpcError> = call(Command.checkForUpdate)
+
+/**
+ * Installs what the last check found and relaunches into it — so this resolves
+ * only if something went wrong on the way.
+ */
+export const installUpdate: Effect.Effect<void, IpcError> = call(Command.installUpdate)
 
 /**
  * Runs an Effect for callers that live in promise-land — route loaders, event

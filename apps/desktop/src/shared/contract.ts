@@ -86,6 +86,15 @@ export interface ClaudeChannelStatus {
   sessions: number;
 }
 
+/** Whether a newer release is waiting to be installed. */
+export interface UpdateStatus {
+  available: boolean;
+  /** The version on offer, e.g. `0.1.2`. `null` when nothing is. */
+  version: string | null;
+  /** The release notes, when the manifest carries any. */
+  notes: string | null;
+}
+
 /** The renderer's theme. `system` hands the window back to the OS setting. */
 export type AppTheme = "light" | "dark" | "system";
 
@@ -109,6 +118,8 @@ export const Command = {
   commitAll: "commit_all",
   claudeStatus: "claude_status",
   setTheme: "set_theme",
+  checkForUpdate: "check_for_update",
+  installUpdate: "install_update",
 } as const;
 
 export type CommandName = (typeof Command)[keyof typeof Command];

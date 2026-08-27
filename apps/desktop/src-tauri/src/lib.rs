@@ -26,6 +26,10 @@ pub struct AppState {
     /// One pooled client for both outbound callers — Groq and the loopback
     /// Claude channel.
     pub http: reqwest::Client,
+    /// The release a check turned up, held until the user installs it so that
+    /// installing applies the version they were offered.
+    #[cfg(desktop)]
+    pub pending_update: tokio::sync::Mutex<Option<tauri_plugin_updater::Update>>,
 }
 
 impl AppState {
@@ -33,6 +37,8 @@ impl AppState {
         Self {
             workspace: Workspace::from_env(),
             http: reqwest::Client::new(),
+            #[cfg(desktop)]
+            pending_update: tokio::sync::Mutex::new(None),
         }
     }
 }
@@ -50,7 +56,14 @@ fn is_internal(url: &tauri::Url) -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // Release builds only: the updater reads a signing key from the config at
+    // startup, and nothing in a dev build has any use for it.
+    #[cfg(all(desktop, not(debug_assertions)))]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
+    builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(AppState::new())
@@ -70,6 +83,8 @@ pub fn run() {
             commands::forget_project,
             commands::set_theme,
             commands::write_clipboard_text,
+            commands::check_for_update,
+            commands::install_update,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

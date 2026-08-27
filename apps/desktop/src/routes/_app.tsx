@@ -7,6 +7,7 @@ import { AppToolbar } from '@/components/app-toolbar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { DiffLayoutProvider } from '@/lib/diff-layout'
 import { LineReferenceProvider } from '@/lib/line-reference'
+import { UpdateProvider } from '@/lib/update'
 import { currentProject, getDiff, listFiles, runIpc } from '@/lib/ipc'
 
 /**
@@ -34,6 +35,7 @@ function AppLayout() {
   return (
     <DiffLayoutProvider>
       <LineReferenceProvider>
+      <UpdateProvider>
       {/* Fixed-height shell so each column scrolls on its own. */}
       <AppCommandMenu files={diff.files} />
 
@@ -49,6 +51,7 @@ function AppLayout() {
           <AppToolbar />
         </SidebarInset>
         </SidebarProvider>
+      </UpdateProvider>
       </LineReferenceProvider>
     </DiffLayoutProvider>
   )

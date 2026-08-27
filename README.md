@@ -63,6 +63,49 @@ arrives unset with no warning.
 | `ONLYDIFFS_STATE_DIR` | Where the recents list lives (default `~/.onlydiffs`) |
 | `GROQ_API_KEY` | Commit-message generation |
 
+## Releasing
+
+Tagging is the release. The version lives in three manifests, and CI refuses a
+tag that disagrees with any of them:
+
+```sh
+# tauri.conf.json, Cargo.toml, package.json — all three, then:
+git tag v0.1.1 && git push --tags
+```
+
+That builds `aarch64-apple-darwin` on GitHub Actions and opens a **draft**
+release. Publishing the draft is what makes `latest.json` reachable, and that
+file is what an installed copy looks for a few seconds after launch: a waiting
+release is named in the status bar and installs from `⌘` `k`.
+
+Updates are signed with a key that is not Apple's and not GitHub's. Generate it
+once with `bun tauri signer generate`, keep the public half in `tauri.conf.json`
+and the private half in the `TAURI_SIGNING_PRIVATE_KEY` and
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets. **Lose the private
+half and no installed copy can ever be updated again** — there is no recovery
+path but a fresh download.
+
+That key is required locally too. `bun run dist` now emits an update artifact,
+and the bundler will not leave one unsigned:
+
+```sh
+TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/onlydiffs.key)" \
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD=… bun run dist
+```
+
+### The download is not signed yet
+
+No Apple Developer ID sits behind these builds, so a `.dmg` from a browser opens
+to *"onlydiffs is damaged and can't be opened."* That is Gatekeeper objecting to
+the quarantine flag on an unsigned bundle, not to anything being wrong with it:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/onlydiffs.app
+```
+
+First install only. The updater writes later versions itself, and nothing it
+writes is quarantined.
+
 ## Keys
 
 | Key | Action |

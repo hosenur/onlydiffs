@@ -12,9 +12,10 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 
 use crate::contract::{
     AppTheme, ChangeStatus, ClaudeChannelStatus, Commit, FullFileContents, Project, RepoDiff,
+    UpdateStatus,
 };
 use crate::error::{AppError, IpcResult};
-use crate::services::{claude_channel, commit_message, diff, file_tree, history};
+use crate::services::{claude_channel, commit_message, diff, file_tree, history, updater};
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -205,4 +206,25 @@ pub async fn write_clipboard_text(app: AppHandle, text: String) -> Result<IpcRes
         .write_text(text)
         .map_err(|error| AppError::Clipboard(format!("failed to write to the clipboard: {error}")))
         .into())
+}
+
+/// Answers `available: false` rather than failing when there is no update, so
+/// the renderer has one shape to read either way. A dev build always answers
+/// that way — see `services::updater`.
+#[tauri::command]
+pub async fn check_for_update(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<IpcResult<UpdateStatus>, ()> {
+    Ok(updater::check(&app, &state).await.into())
+}
+
+/// Installs the release the last check turned up and relaunches into it, so a
+/// successful call never returns.
+#[tauri::command]
+pub async fn install_update(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<IpcResult<()>, ()> {
+    Ok(updater::install(&app, &state).await.into())
 }

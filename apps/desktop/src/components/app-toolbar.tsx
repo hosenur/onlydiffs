@@ -6,6 +6,7 @@ import { TextField } from '@onlydiffs/ui/text-field'
 import { Plug2Outline18, PlugOffOutline18 } from '@/icons'
 import { useLineReference } from '@/lib/line-reference'
 import { claudeStatus, runIpc, sendClaudeMessage } from '@/lib/ipc'
+import { useUpdate } from '@/lib/update'
 import type { ClaudeChannelStatus } from '@shared/contract'
 
 /**
@@ -18,6 +19,7 @@ const POLL_MS = 4000
 export function AppToolbar() {
   const [status, setStatus] = useState<ClaudeChannelStatus | null>(null)
   const { reference, clear } = useLineReference()
+  const { offer } = useUpdate()
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -162,6 +164,17 @@ export function AppToolbar() {
         <span aria-live="polite" className={connected ? 'text-fg' : 'text-muted-fg'}>
           {label}
         </span>
+
+        {/* A mention, not a prompt: the install lives in the command menu, so
+            nothing here interrupts what the window is already showing. */}
+        {offer && (
+          <span
+            title="Install it from the command menu (⌘K)"
+            className="ms-auto text-primary-subtle-fg"
+          >
+            Update available · v{offer.version}
+          </span>
+        )}
       </footer>
     </>
   )

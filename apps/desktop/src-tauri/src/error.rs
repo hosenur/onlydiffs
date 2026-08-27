@@ -20,6 +20,8 @@ pub enum AppError {
     NoProjectOpen(String),
     /// The path the user typed is not somewhere we can review.
     InvalidProject(String),
+    /// Checking for, downloading, or installing a new release went wrong.
+    Updater(String),
 }
 
 impl AppError {
@@ -35,6 +37,7 @@ impl AppError {
             Self::Clipboard(_) => "ClipboardError",
             Self::NoProjectOpen(_) => "NoProjectOpenError",
             Self::InvalidProject(_) => "InvalidProjectError",
+            Self::Updater(_) => "UpdaterError",
         }
     }
 
@@ -47,7 +50,8 @@ impl AppError {
             | Self::ClaudeChannel(m)
             | Self::Clipboard(m)
             | Self::NoProjectOpen(m)
-            | Self::InvalidProject(m) => m,
+            | Self::InvalidProject(m)
+            | Self::Updater(m) => m,
         }
     }
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import {
+  ArrowDownTrayIcon,
   CheckIcon,
   ComputerDesktopIcon,
   MoonIcon,
@@ -30,6 +31,7 @@ import {
   writeClipboardText,
 } from '@/lib/ipc'
 import { fileHref } from '@/lib/status'
+import { type UpdateValue, useUpdate } from '@/lib/update'
 import type { FileChange } from '@/types'
 
 interface AppCommandMenuProps {
@@ -57,6 +59,45 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
+/** Release notes are a changelog; a palette row has space for its headline. */
+function headline(notes: string) {
+  return notes.trim().split('\n')[0]
+}
+
+/**
+ * The row that only exists when a newer release is waiting. First in the list:
+ * it is the rarest thing here, and the one worth acting on when it shows up.
+ */
+function UpdateSection({ update }: { update: UpdateValue }) {
+  if (!update.offer) return null
+  const { version, notes } = update.offer
+
+  return (
+    <CommandMenuSection label="Update">
+      <CommandMenuItem
+        textValue={`Install update ${version ?? ''}`}
+        onAction={() => void update.install()}
+      >
+        {update.isInstalling ? <Loader /> : <ArrowDownTrayIcon />}
+        <CommandMenuLabel>
+          {/* No success state to render: installing relaunches the app. */}
+          {update.isInstalling ? 'Downloading…' : `Install update — v${version}`}
+        </CommandMenuLabel>
+        {notes && <CommandMenuDescription>{headline(notes)}</CommandMenuDescription>}
+      </CommandMenuItem>
+    </CommandMenuSection>
+  )
+}
+
+/**
+ * The palette's one status line, shared by every action in it: a failure if
+ * there is one, otherwise whatever the last action had to say.
+ */
+function statusLine(failures: (string | null)[], note: string | null) {
+  const failure = failures.find((message) => message !== null) ?? null
+  return { message: failure ?? note, isFailure: failure !== null }
+}
+
 export function AppCommandMenu({ files }: AppCommandMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [busy, setBusy] = useState<Busy>(null)
@@ -65,6 +106,7 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
   const navigate = useNavigate()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+  const update = useUpdate()
   // `strict: false` — the palette also renders on `/`, which has no splat.
   const params = useParams({ strict: false }) as { _splat?: string }
   const current = params._splat
@@ -145,10 +187,14 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
     }
   }
 
+  const status = statusLine([error, update.error], note)
+
   return (
     <CommandMenu isOpen={isOpen} onOpenChange={setIsOpen}>
       <CommandMenuSearch placeholder="Search files, or run a command…" />
       <CommandMenuList>
+        <UpdateSection update={update} />
+
         {stageable && (
           <CommandMenuSection label="File">
             <CommandMenuItem
@@ -240,14 +286,14 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
         )}
       </CommandMenuList>
 
-      {(note || error) && (
+      {status.message && (
         <p
-          role={error ? 'alert' : 'status'}
+          role={status.isFailure ? 'alert' : 'status'}
           className={`border-border border-t px-4 py-2.5 text-xs ${
-            error ? 'text-danger-subtle-fg' : 'text-muted-fg'
+            status.isFailure ? 'text-danger-subtle-fg' : 'text-muted-fg'
           }`}
         >
-          {error ?? note}
+          {status.message}
         </p>
       )}
     </CommandMenu>

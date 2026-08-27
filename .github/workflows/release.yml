@@ -1,0 +1,112 @@
+name: Release
+
+# Tagging is the release. Pushing `v0.1.1` builds the desktop app and opens a
+# draft GitHub Release; publishing that draft is what puts it in front of
+# users, and is also what makes `latest.json` reachable by the updater.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  macos-arm64:
+    name: macOS (Apple Silicon)
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # The tag is what names the release; tauri.conf.json is what the built
+      # app reports as its version. If they disagree, `latest.json` announces a
+      # version no install will ever match and the update offer never clears.
+      - name: Check the tag matches the app version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          read_json() { python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['version'])" "$1"; }
+          conf=$(read_json apps/desktop/src-tauri/tauri.conf.json)
+          pkg=$(read_json apps/desktop/package.json)
+          cargo=$(awk -F'"' '/^version = /{print $2; exit}' apps/desktop/src-tauri/Cargo.toml)
+
+          if [ "$tag" != "$conf" ] || [ "$tag" != "$pkg" ] || [ "$tag" != "$cargo" ]; then
+            echo "::error::Tag v$tag does not match the app version."
+            echo "  tauri.conf.json: $conf"
+            echo "  Cargo.toml:      $cargo"
+            echo "  package.json:    $pkg"
+            echo "Set all three to $tag, commit, then move the tag:"
+            echo "  git tag -f v$tag && git push --force origin v$tag"
+            exit 1
+          fi
+
+          # A placeholder key would build, ship, and then fail to launch: the
+          # updater parses it at startup. Cheaper to catch here.
+          pubkey=$(python3 -c "import json;print(json.load(open('apps/desktop/src-tauri/tauri.conf.json'))['plugins']['updater']['pubkey'])")
+          if [ "$pubkey" = "REPLACE_ME" ] || [ -z "$pubkey" ]; then
+            echo "::error::plugins.updater.pubkey in tauri.conf.json is still a placeholder."
+            echo "Generate a keypair and paste the public half in:"
+            echo "  cd apps/desktop && bun tauri signer generate -w ~/.tauri/onlydiffs.key"
+            exit 1
+          fi
+
+          echo "Releasing $tag."
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          # Keep in step with `packageManager` in the root package.json.
+          bun-version: 1.3.11
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - run: bun install --frozen-lockfile
+
+      # Cheap gates ahead of an expensive build. `cargo test` is deliberately
+      # not here: it would compile the crate a second time in the debug
+      # profile, and a Rust error fails the release build below anyway.
+      - name: Typecheck
+        run: bunx turbo run typecheck --filter=@onlydiffs/desktop
+
+      - name: Test the renderer
+        working-directory: apps/desktop
+        run: bun run test:renderer
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the update artifact. Without these the build still succeeds,
+          # but ships no `.sig` and no installed copy will accept the update.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Apple code signing and notarization. Empty until there is a
+          # Developer ID to sign with — Tauri skips both when they are unset,
+          # so filling these in later needs no change here. See the README for
+          # what an unsigned build costs the person downloading it.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: apps/desktop
+          # The workspace lockfile lives at the root, so let the app's own
+          # `tauri` script pick the CLI rather than leaving detection to guess.
+          tauriScript: bun run tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: onlydiffs ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true
+          # Overrides `bundle.targets`, which also names Windows and Linux
+          # formats this runner cannot produce. `app` is what becomes the
+          # `.app.tar.gz` the updater downloads; `dmg` is what a human does.
+          args: --target aarch64-apple-darwin --bundles app,dmg

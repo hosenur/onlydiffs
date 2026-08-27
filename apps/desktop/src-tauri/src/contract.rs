@@ -82,6 +82,29 @@ pub struct ClaudeChannelStatus {
     pub sessions: usize,
 }
 
+/// Whether a newer release is waiting to be installed.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateStatus {
+    pub available: bool,
+    /// The version on offer, e.g. `0.1.2`. `None` when nothing is.
+    pub version: Option<String>,
+    /// The release notes, when the manifest carries any.
+    pub notes: Option<String>,
+}
+
+impl UpdateStatus {
+    /// Nothing to install — either this is the newest release or we are in no
+    /// position to know, which the renderer treats the same way.
+    pub fn none() -> Self {
+        Self {
+            available: false,
+            version: None,
+            notes: None,
+        }
+    }
+}
+
 /// The renderer's theme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
