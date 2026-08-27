@@ -69,7 +69,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face{font-family:"Geist Mono";src:url(data:font/woff2;base64,${mono}) format("woff2");font-weight:100 900}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1280px;height:640px}
-body{background:#131419;display:flex;align-items:center;justify-content:center;
+body{background:#111114;display:flex;align-items:center;justify-content:center;
      font-family:"Geist",ui-sans-serif,system-ui,sans-serif;overflow:hidden;position:relative}
 body::after{content:"";position:absolute;inset:0;
   background:radial-gradient(820px 400px at 50% 44%,rgba(255,255,255,.06),transparent 72%)}

@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import * as path from "node:path";
-import { BrowserWindow, app, nativeImage, shell } from "electron";
+import { BrowserWindow, app, nativeImage, nativeTheme, shell } from "electron";
 import { registerIpcHandlers } from "./ipc";
 import { runtime } from "./runtime";
 
@@ -10,10 +10,13 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 
 /**
- * The app is dark in both appearances (see `src/index.css`), so painting the
- * window with the theme background avoids a white flash before React mounts.
+ * Painting the window up front avoids a flash of the wrong appearance before
+ * React mounts. These are Intent UI's `--bg` in each scheme (see
+ * `src/index.css`), picked by OS appearance to match the renderer's default
+ * "system" theme — someone who has pinned the other one in-app still gets a
+ * single frame of this before the ThemeProvider catches up.
  */
-const WINDOW_BACKGROUND = "#131419";
+const WINDOW_BACKGROUND = { light: "#ffffff", dark: "#111114" } as const;
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -22,7 +25,9 @@ function createWindow(): BrowserWindow {
     minWidth: 720,
     minHeight: 480,
     title: "onlydiffs",
-    backgroundColor: WINDOW_BACKGROUND,
+    backgroundColor: nativeTheme.shouldUseDarkColors
+      ? WINDOW_BACKGROUND.dark
+      : WINDOW_BACKGROUND.light,
     show: false,
     webPreferences: {
       preload: path.join(currentDir, "../preload/index.mjs"),
