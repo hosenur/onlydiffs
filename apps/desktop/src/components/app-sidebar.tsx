@@ -46,7 +46,7 @@ export function AppSidebar({ diff, paths, ...props }: AppSidebarProps) {
           <div className="flex min-w-0 flex-col">
             {/* Doubles as the way back to the project picker. */}
             <Link
-              to="/welcome"
+              to="/"
               title="Switch project"
               className="truncate font-medium hover:underline"
             >

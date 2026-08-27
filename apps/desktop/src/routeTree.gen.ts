@@ -9,23 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as WelcomeRouteImport } from './routes/welcome'
-import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppDiffRouteImport } from './routes/_app.diff'
 import { Route as AppFileSplatRouteImport } from './routes/_app.file.$'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WelcomeRoute = WelcomeRouteImport.update({
-  id: '/welcome',
-  path: '/welcome',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppIndexRoute = AppIndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AppDiffRoute = AppDiffRouteImport.update({
+  id: '/diff',
+  path: '/diff',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFileSplatRoute = AppFileSplatRouteImport.update({
@@ -35,37 +35,44 @@ const AppFileSplatRoute = AppFileSplatRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AppIndexRoute
-  '/welcome': typeof WelcomeRoute
+  '/': typeof IndexRoute
+  '/diff': typeof AppDiffRoute
   '/file/$': typeof AppFileSplatRoute
 }
 export interface FileRoutesByTo {
-  '/welcome': typeof WelcomeRoute
-  '/': typeof AppIndexRoute
+  '/': typeof IndexRoute
+  '/diff': typeof AppDiffRoute
   '/file/$': typeof AppFileSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/welcome': typeof WelcomeRoute
-  '/_app/': typeof AppIndexRoute
+  '/_app/diff': typeof AppDiffRoute
   '/_app/file/$': typeof AppFileSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/welcome' | '/file/$'
+  fullPaths: '/' | '/diff' | '/file/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/welcome' | '/' | '/file/$'
-  id: '__root__' | '/_app' | '/welcome' | '/_app/' | '/_app/file/$'
+  to: '/' | '/diff' | '/file/$'
+  id: '__root__' | '/' | '/_app' | '/_app/diff' | '/_app/file/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  WelcomeRoute: typeof WelcomeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -73,18 +80,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/welcome': {
-      id: '/welcome'
-      path: '/welcome'
-      fullPath: '/welcome'
-      preLoaderRoute: typeof WelcomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/': {
-      id: '/_app/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof AppIndexRouteImport
+    '/_app/diff': {
+      id: '/_app/diff'
+      path: '/diff'
+      fullPath: '/diff'
+      preLoaderRoute: typeof AppDiffRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/file/$': {
@@ -98,20 +98,20 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
-  AppIndexRoute: typeof AppIndexRoute
+  AppDiffRoute: typeof AppDiffRoute
   AppFileSplatRoute: typeof AppFileSplatRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppIndexRoute: AppIndexRoute,
+  AppDiffRoute: AppDiffRoute,
   AppFileSplatRoute: AppFileSplatRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  WelcomeRoute: WelcomeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

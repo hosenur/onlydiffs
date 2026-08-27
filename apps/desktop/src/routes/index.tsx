@@ -10,10 +10,12 @@ import { forgetProject, listProjects, openProject, runIpc } from '@/lib/ipc'
 import type { Project } from '@shared/contract'
 
 /**
- * The landing page. It sits outside the `_app` layout on purpose — there is no
- * repository to build a sidebar from until something here is opened.
+ * The landing page, and the app's index: a cold launch has no project open, so
+ * serving the picker from `/` saves the `currentProject` round-trip that a
+ * redirect would have cost. It sits outside the `_app` layout on purpose —
+ * there is no repository to build a sidebar from until something here is opened.
  */
-export const Route = createFileRoute('/welcome')({
+export const Route = createFileRoute('/')({
   // The history changes while the app is running, so never serve it from cache.
   shouldReload: true,
   staleTime: 0,
@@ -50,7 +52,7 @@ function Welcome() {
     try {
       await runIpc(openProject(target))
       // The sidebar and every loader below it read the newly opened repository.
-      await router.navigate({ to: '/' })
+      await router.navigate({ to: '/diff' })
     } catch (cause) {
       setError(errorMessage(cause))
       setBusy(null)

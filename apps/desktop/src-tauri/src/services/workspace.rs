@@ -119,7 +119,8 @@ pub struct Workspace {
 impl Workspace {
     /// `state_dir` is where the recents file lives; `initial_repo` is opened
     /// straight away when present, which is how the app lands on a repository
-    /// instead of the landing page.
+    /// instead of the landing page. With nothing named, the most recent entry
+    /// stands in, so quitting and relaunching returns to where you left off.
     pub fn new(state_dir: PathBuf, initial_repo: Option<String>) -> Self {
         let store_path = state_dir.join(STORE_FILE);
         let workspace = Self {
@@ -127,19 +128,22 @@ impl Workspace {
             store_path,
             current: Mutex::new(None),
         };
-        if let Some(path) = initial_repo {
-            if !path.trim().is_empty() {
-                // A bad value in the environment is not worth failing startup
-                // over; the landing page is a perfectly good fallback.
-                let _ = workspace.open(&path);
-            }
+        let requested = initial_repo.filter(|path| !path.trim().is_empty());
+        // `list` drops entries whose folder is gone, so the fallback never
+        // reopens a checkout that has since been deleted or unmounted.
+        let restored = || workspace.list().into_iter().next().map(|entry| entry.path);
+        if let Some(path) = requested.or_else(restored) {
+            // A bad value in the environment, or a repository that stopped
+            // being one, is not worth failing startup over; the landing page
+            // is a perfectly good fallback.
+            let _ = workspace.open(&path);
         }
         workspace
     }
 
     /// The two environment knobs: `ONLYDIFFS_STATE_DIR` redirects the recents
-    /// file, and `ONLYDIFFS_REPO_PATH` opens a repository at startup instead of
-    /// landing on the project picker.
+    /// file, and `ONLYDIFFS_REPO_PATH` pins the repository opened at startup,
+    /// overriding the most-recent one that would otherwise be restored.
     pub fn from_env() -> Self {
         let state_dir = std::env::var("ONLYDIFFS_STATE_DIR")
             .map(PathBuf::from)

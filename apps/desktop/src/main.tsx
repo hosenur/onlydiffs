@@ -4,8 +4,23 @@ import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { RouterProvider, createHashHistory, createRouter } from "@tanstack/react-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ThemeProvider } from "@/components/theme-provider";
+import { currentProject, runIpc } from "@/lib/ipc";
 import { routeTree } from "./routeTree.gen";
 import "./index.css";
+
+/*
+ * `/` is the project picker, so a launch that restored a repository would show
+ * it anyway. Deciding the entry here rather than redirecting out of `/` keeps
+ * the picker reachable: the sidebar's "Switch project" link still points at `/`
+ * and still lands there, because nothing bounces off it once the app is up.
+ *
+ * A failure means the bridge is missing (a plain `vite` server), where the
+ * picker is the honest thing to show.
+ */
+const opened = await runIpc(currentProject).catch(() => null);
+if (opened !== null && window.location.hash === "") {
+  window.location.hash = "/diff";
+}
 
 // Hash history: the window is served from a custom protocol with no server
 // behind it, so a pushState route would 404 on reload. Back/forward still work.

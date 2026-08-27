@@ -187,10 +187,66 @@ fn a_startup_repository_is_opened_immediately() {
 }
 
 #[test]
+fn the_most_recent_repository_reopens_on_the_next_launch() {
+    let sandbox = Sandbox::new();
+    let first = sandbox.make_repo("first");
+    let last = sandbox.make_repo("last");
+
+    {
+        let workspace = sandbox.workspace();
+        workspace.open(&as_str(&first)).expect("open first");
+        workspace.open(&as_str(&last)).expect("open last");
+    }
+
+    let relaunched = sandbox.workspace();
+    assert_eq!(relaunched.current_path().expect("current"), last);
+}
+
+#[test]
+fn a_vanished_recent_does_not_block_the_one_below_it() {
+    let sandbox = Sandbox::new();
+    let kept = sandbox.make_repo("kept");
+    let gone = sandbox.make_repo("gone");
+
+    {
+        let workspace = sandbox.workspace();
+        workspace.open(&as_str(&kept)).expect("open kept");
+        workspace.open(&as_str(&gone)).expect("open gone");
+    }
+    std::fs::remove_dir_all(&gone).expect("remove the vanished repo");
+
+    let relaunched = sandbox.workspace();
+    assert_eq!(relaunched.current_path().expect("current"), kept);
+}
+
+#[test]
+fn a_named_startup_repository_wins_over_the_most_recent_one() {
+    let sandbox = Sandbox::new();
+    let recent = sandbox.make_repo("recent");
+    let pinned = sandbox.make_repo("pinned");
+
+    {
+        let workspace = sandbox.workspace();
+        workspace.open(&as_str(&recent)).expect("open recent");
+    }
+
+    let workspace = Workspace::new(sandbox.state_dir(), Some(as_str(&pinned)));
+    assert_eq!(workspace.current_path().expect("current"), pinned);
+}
+
+#[test]
 fn a_bad_startup_repository_leaves_the_app_on_the_landing_page() {
     let sandbox = Sandbox::new();
+    let recent = sandbox.make_repo("recent");
     let missing = sandbox.root.path().join("not-here");
 
+    {
+        let workspace = sandbox.workspace();
+        workspace.open(&as_str(&recent)).expect("open recent");
+    }
+
+    // Naming a repository that cannot be opened is not an invitation to open a
+    // different one instead.
     let workspace = Workspace::new(sandbox.state_dir(), Some(as_str(&missing)));
     assert!(workspace.current_project().is_none());
 }

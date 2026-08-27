@@ -12,15 +12,16 @@ import { currentProject, getDiff, listFiles, runIpc } from '@/lib/ipc'
 
 /**
  * Pathless layout route: the `_` prefix means this contributes no URL segment,
- * it only wraps its children. `/` and `/file/*` both render inside it, so the
- * sidebar and its loader data survive navigation between them.
+ * it only wraps its children. `/diff` and `/file/*` both render inside it, so
+ * the sidebar and its loader data survive navigation between them.
  */
 export const Route = createFileRoute('/_app')({
   loader: async () => {
     // Nothing below this layout can render without a repository, so bounce to
-    // the landing page instead of letting every loader fail.
+    // the picker at `/` instead of letting every loader fail. A restored hash
+    // URL is the case that still reaches here after a reload.
     if ((await runIpc(currentProject)) === null) {
-      throw redirect({ to: '/welcome' })
+      throw redirect({ to: '/' })
     }
     return runIpc(
       Effect.all({ diff: getDiff, paths: listFiles }, { concurrency: 2 })
