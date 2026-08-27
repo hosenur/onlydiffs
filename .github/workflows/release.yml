@@ -85,17 +85,18 @@ jobs:
           # but ships no `.sig` and no installed copy will accept the update.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Apple code signing and notarization. Empty until there is a
-          # Developer ID to sign with — Tauri skips both when they are unset,
-          # so filling these in later needs no change here. See the README for
-          # what an unsigned build costs the person downloading it.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # No Apple code signing here yet, and the omission is deliberate:
+          # a missing secret still *defines* the variable as an empty string,
+          # and Tauri decides to codesign on the variable being present, not on
+          # it holding anything. `APPLE_CERTIFICATE: ''` gets as far as
+          # `security import` with nothing to import and fails the build.
+          #
+          # With a Developer ID in hand, add all four together — never one at
+          # a time — plus APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID to notarize:
+          #   APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          #   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          #   APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          #   KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         with:
           projectPath: apps/desktop
           # The workspace lockfile lives at the root, so let the app's own
