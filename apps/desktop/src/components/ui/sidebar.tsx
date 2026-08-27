@@ -246,7 +246,7 @@ const Sidebar = ({
             'group-data-[collapsible=dock]:w-[calc(var(--sidebar-width-dock)+(--spacing(2))+2px)] dark:bg-bg',
           intent === 'default' && [
             'group-data-[collapsible=dock]:w-(--sidebar-width-dock)',
-            'border-sidebar-border group-data-[side=left]:border-r group-data-[side=right]:border-l',
+            'border-border group-data-[side=left]:border-r group-data-[side=right]:border-l',
           ],
           className
         )}
@@ -257,7 +257,7 @@ const Sidebar = ({
           data-slot="sidebar-inner"
           className={twJoin(
             'flex size-full flex-col text-sidebar-fg',
-            'group-data-[intent=float]:rounded-lg group-data-[intent=float]:border group-data-[intent=float]:border-sidebar-border group-data-[intent=float]:bg-sidebar group-data-[intent=float]:shadow-xs'
+            'group-data-[intent=float]:rounded-lg group-data-[intent=float]:border group-data-[intent=float]:border-border group-data-[intent=float]:bg-sidebar group-data-[intent=float]:shadow-xs'
           )}
         >
           {children}
@@ -274,7 +274,7 @@ const SidebarHeader = ({ className, ref, ...props }: React.ComponentProps<'div'>
       ref={ref}
       data-slot="sidebar-header"
       className={twMerge(
-        'flex flex-col gap-2 p-2.5 [.border-b]:border-sidebar-border',
+        'flex flex-col gap-2 p-2.5 [.border-b]:border-border',
         'in-data-[intent=inset]:p-4',
         state === 'collapsed' ? 'items-center p-2.5' : 'p-4',
         className
@@ -484,7 +484,7 @@ function SidebarBadge({ className, ...props }: React.ComponentProps<'span'>) {
     <span
       data-slot="sidebar-badge"
       className={twMerge(
-        'absolute inset-ring-1 inset-ring-sidebar-border inset-y-1/2 end-1.5 h-5.5 w-auto -translate-y-1/2 rounded-full bg-fg/5 px-2 text-[10px]/5.5 group-hover/sidebar-item:inset-ring-muted-fg/30 group-current:inset-ring-transparent',
+        'absolute inset-ring-1 inset-ring-border inset-y-1/2 end-1.5 h-5.5 w-auto -translate-y-1/2 rounded-full bg-fg/5 px-2 text-[10px]/5.5 group-hover/sidebar-item:inset-ring-muted-fg/30 group-current:inset-ring-transparent',
         className
       )}
       {...props}
@@ -517,7 +517,7 @@ const SidebarInset = ({ className, ref, ...props }: React.ComponentProps<'main'>
       ref={ref}
       className={twMerge(
         'relative flex w-full flex-1 flex-col bg-bg lg:min-w-0',
-        'md:group-has-data-[intent=inset]/sidebar-root:border group-has-data-[intent=inset]/sidebar-root:border-sidebar-border group-has-data-[intent=inset]/sidebar-root:bg-muted',
+        'md:group-has-data-[intent=inset]/sidebar-root:border group-has-data-[intent=inset]/sidebar-root:border-border group-has-data-[intent=inset]/sidebar-root:bg-muted',
         'md:group-has-data-[intent=inset]/sidebar-root:m-2',
         'md:group-has-data-[side=left]:group-has-data-[intent=inset]/sidebar-root:ms-0',
         'md:group-has-data-[side=right]:group-has-data-[intent=inset]/sidebar-root:me-0',
@@ -638,7 +638,7 @@ const SidebarSeparator = ({ className, ...props }: SidebarSeparatorProps) => {
       data-slot="sidebar-separator"
       orientation="horizontal"
       className={twMerge(
-        'mx-auto h-px w-[calc(var(--sidebar-width)-(--spacing(10)))] border-0 bg-sidebar-border forced-colors:bg-[ButtonBorder]',
+        'mx-auto h-px w-[calc(var(--sidebar-width)-(--spacing(10)))] border-0 bg-border forced-colors:bg-[ButtonBorder]',
         className
       )}
       {...props}

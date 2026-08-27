@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useHotkeys } from '@tanstack/react-hotkeys'
 import { useParams, useRouter, useRouterState } from '@tanstack/react-router'
-import { ArrowPathIcon, CheckIcon, TrashIcon } from '@heroicons/react/16/solid'
+import { CheckIcon, TrashIcon } from '@heroicons/react/16/solid'
 import { Badge } from '@onlydiffs/ui/badge'
 import { Button } from '@onlydiffs/ui/button'
-import { Loader } from '@onlydiffs/ui/loader'
 import { SidebarNav, SidebarTrigger } from '@/components/ui/sidebar'
 import { useDiffLayout } from '@/lib/diff-layout'
 import { runIpc, writeClipboardText } from '@/lib/ipc'
@@ -66,7 +65,8 @@ export function AppSidebarNav({ files }: { files: FileChange[] }) {
   )
 
   // Cmd+B (sidebar) is SidebarProvider's own.
-  // `s` is the only way to reach split until the setting gets a home in the UI.
+  // `r` and `s` are the only ways to reach refresh and split — neither has a
+  // control in the UI.
   useHotkeys(
     [
       {
@@ -92,25 +92,12 @@ export function AppSidebarNav({ files }: { files: FileChange[] }) {
         <FilePath path={params._splat} />
       </span>
 
-      <span className="ml-auto flex flex-none items-center gap-2">
-        {isDeleted && (
-          <Badge intent="danger" className="shrink-0">
-            <TrashIcon className="size-3 shrink-0" />
-            Deleted
-          </Badge>
-        )}
-
-        <Button
-          intent="outline"
-          size="xs"
-          onPress={() => void router.invalidate()}
-          isPending={isLoading}
-          aria-label="Refresh diff"
-        >
-          {isLoading ? <Loader variant="ring" /> : <ArrowPathIcon />}
-          Refresh
-        </Button>
-      </span>
+      {isDeleted && (
+        <Badge intent="danger" className="ml-auto flex-none">
+          <TrashIcon className="size-3 shrink-0" />
+          Deleted
+        </Badge>
+      )}
     </SidebarNav>
   )
 }

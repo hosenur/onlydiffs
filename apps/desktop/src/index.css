@@ -86,7 +86,6 @@
   --color-sidebar-primary-fg: var(--sidebar-primary-fg);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-fg: var(--sidebar-accent-fg);
-  --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -184,8 +183,11 @@ diffs-container {
 /*
  * Intent UI's stock theme, verbatim from the `theme-default` registry item
  * (intentui.com/r/theme-default.json) — the same values `shadcn add
- * @intentui/theme-default` writes. Kept unmodified so it can be re-pulled
- * and diffed against upstream.
+ * @intentui/theme-default` writes, so it can be re-pulled and diffed against
+ * upstream.
+ *
+ * One deviation: no `--sidebar-border`. The sidebar was drawing its edges a
+ * shade off every other rule in the app, so it uses `--border` like the rest.
  */
 :root {
   --bg: oklch(1 0 0);
@@ -227,7 +229,6 @@ diffs-container {
   --sidebar-primary-fg: oklch(0.488 0.243 264.376);
   --sidebar-accent: oklch(0.92 0.004 286.32);
   --sidebar-accent-fg: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.901 0.006 286.286);
   --sidebar-ring: oklch(0.546 0.245 262.881);
   --chart-1: oklch(0.546 0.245 262.881);
   --chart-2: oklch(0.623 0.214 259.815);
@@ -281,7 +282,6 @@ diffs-container {
   --sidebar-primary-fg: oklch(0.707 0.165 254.624);
   --sidebar-accent: oklch(0.274 0.006 286.033);
   --sidebar-accent-fg: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.274 0.006 286.033);
   --sidebar-ring: oklch(0.546 0.245 262.881);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.623 0.214 259.815);

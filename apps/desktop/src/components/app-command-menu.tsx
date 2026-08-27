@@ -1,7 +1,15 @@
 import { useState } from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
-import { CheckIcon, PlusIcon, SparklesIcon } from '@heroicons/react/16/solid'
+import {
+  CheckIcon,
+  ComputerDesktopIcon,
+  MoonIcon,
+  PlusIcon,
+  SparklesIcon,
+  SunIcon,
+} from '@heroicons/react/16/solid'
+import { type Theme, useTheme } from '@/components/theme-provider'
 import {
   CommandMenu,
   CommandMenuDescription,
@@ -31,6 +39,20 @@ interface AppCommandMenuProps {
 /** Which long-running action is in flight, so the palette can say so. */
 type Busy = 'generate' | 'commit' | 'stage' | null
 
+/**
+ * One row per theme rather than a single cycling "Toggle theme": the palette
+ * is a search field, so typing "dark" should land on Dark instead of on a
+ * command whose effect depends on a current state you cannot see from here.
+ *
+ * This is the only way to change the theme — nothing else in the app calls
+ * `setTheme`.
+ */
+const THEMES: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
+  { value: 'light', label: 'Light', Icon: SunIcon },
+  { value: 'dark', label: 'Dark', Icon: MoonIcon },
+  { value: 'system', label: 'System', Icon: ComputerDesktopIcon },
+]
+
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
@@ -42,6 +64,7 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   // `strict: false` — the palette also renders on `/`, which has no splat.
   const params = useParams({ strict: false }) as { _splat?: string }
   const current = params._splat
@@ -166,6 +189,25 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
           </CommandMenuItem>
         </CommandMenuSection>
 
+        <CommandMenuSection label="Appearance">
+          {THEMES.map(({ value, label, Icon }) => (
+            <CommandMenuItem
+              key={value}
+              textValue={`Theme ${label}`}
+              onAction={() => {
+                setTheme(value)
+                setIsOpen(false)
+              }}
+            >
+              <Icon />
+              <CommandMenuLabel>{label}</CommandMenuLabel>
+              {theme === value && (
+                <CommandMenuShortcut>active</CommandMenuShortcut>
+              )}
+            </CommandMenuItem>
+          ))}
+        </CommandMenuSection>
+
         {changed.length > 0 && (
           <CommandMenuSection label="Changed files">
             {changed.map((file) => (
@@ -177,12 +219,16 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
                   void navigate({ to: fileHref(file.path) })
                 }}
               >
+                {/* `me-1.5` to match the sidebar's `gap-1.5`. The row's grid
+                    spaces its icon column with `me-(--me-icon)`, but that rule
+                    only selects svg children, so an img would sit flush
+                    against the name. */}
                 <img
                   src={fileIconUrl(file.path)}
                   alt=""
                   width={16}
                   height={16}
-                  className="size-4 shrink-0"
+                  className="me-1.5 size-4 shrink-0"
                 />
                 <CommandMenuLabel>{file.path}</CommandMenuLabel>
                 <CommandMenuShortcut>

@@ -1,6 +1,9 @@
 import { createContext, use, useEffect, useState } from "react"
+import type { AppTheme } from "@shared/contract"
+import { runIpc, setTheme as setNativeTheme } from "@/lib/ipc"
 
-type Theme = "dark" | "light" | "system"
+/** Aliased off the IPC contract so the two cannot drift apart. */
+type Theme = AppTheme
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -47,6 +50,18 @@ function ThemeProvider({
     }
 
     apply()
+
+    /*
+     * The page can only paint inside the window. The frame around it — title
+     * bar, traffic lights — is the OS's, and follows the window's own theme,
+     * so it has to be told separately or it stays on the system appearance
+     * while the app sits on the opposite one.
+     *
+     * Deliberately not awaited, and a failure is swallowed: the cost is a
+     * frame that keeps its old colour, which is not worth failing a render or
+     * surfacing to someone who just picked a theme.
+     */
+    void runIpc(setNativeTheme(theme)).catch(() => {})
 
     // Desktop app: the window outlives OS appearance changes, so keep following.
     if (theme !== "system") return
