@@ -27,7 +27,7 @@ export function Navigation({ docsTree }: { docsTree?: PageTreeRoot }) {
           <div className="flex h-14 items-center justify-between">
             {isMobile ? <ResponsiveNavigation tree={docsTree} /> : null}
             <div className="flex items-center gap-x-3">
-              <Link href="/" aria-label="Gridlines" className="lg:mr-4">
+              <Link href="/" aria-label="onlydiffs" className="lg:mr-4">
                 <Logo className="size-5" />
               </Link>
 

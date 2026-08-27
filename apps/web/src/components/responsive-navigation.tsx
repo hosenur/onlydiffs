@@ -54,7 +54,7 @@ export function ResponsiveNavigation({ tree }: { tree?: PageTreeRoot }) {
         ])}
         containerPadding={0}
       >
-        <Logo className="-rotate-6 -right-10 fixed bottom-4 size-56 opacity-5" />
+        <Logo className="-rotate-6 -right-10 fixed bottom-4 size-56 opacity-5" sizes="224px" />
         <Autocomplete filter={contains}>
           {tree && (
             <div className="-mt-2.5 sticky top-0 h-16 shrink-0 bg-linear-to-b from-bg via-bg px-4 pt-3">

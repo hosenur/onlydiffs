@@ -1,21 +1,31 @@
+import Image from "next/image"
 import { twMerge } from "tailwind-merge"
 
-export const Logo = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
+/**
+ * The onlydiffs mark — byte-identical to the icon the desktop build ships, so
+ * the site and the app show the same thing. Shared by the header, the footer,
+ * and the mobile nav's watermark.
+ *
+ * A raster illustration rather than an inline SVG, so it goes through
+ * next/image for sized variants instead of riding in every page bundle.
+ *
+ * `sizes` defaults to the small chrome uses; without it next/image assumes the
+ * mark is full-bleed and hands a 20px slot a 640w file. The watermark renders
+ * an order of magnitude larger and passes its own.
+ *
+ * The OG route cannot use this — Satori resolves images itself and will not
+ * fetch a relative `/_next/image` URL — so it inlines the same file instead.
+ */
+export const Logo = ({ className, sizes = "32px" }: { className?: string; sizes?: string }) => {
   return (
-    <svg
-      className={twMerge("shrink-0", className)}
+    <Image
+      src="/logo.png"
+      alt=""
       aria-hidden
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      fill="none"
-      viewBox="0 0 24 24"
-      {...props}
-    >
-      <path
-        fill="currentColor"
-        d="M13.12 22.07C6.354 22.07 3 18.2 3 11.522 3 5.185 7.1 1 13.292 1c2.38 0 4.5.401 6.421 1.204l-.63 1.405c-1.835-.774-3.784-1.147-5.849-1.147-1.834 0-3.411.373-4.73 1.09v16.11c1.262.631 2.781.947 4.587.947.487 0 1.147-.029 1.95-.144v-7.97h-2.982v-1.519H20v10.005c-1.978.717-4.271 1.09-6.88 1.09m-6.135-3.497V4.698c-1.577 1.577-2.38 3.899-2.38 6.91 0 3.095.803 5.417 2.38 6.965m9.575 1.663a14 14 0 0 0 1.92-.43v-7.31h-1.92z"
-      />
-    </svg>
+      width={512}
+      height={512}
+      sizes={sizes}
+      className={twMerge("shrink-0", className)}
+    />
   )
 }

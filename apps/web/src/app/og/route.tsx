@@ -1,5 +1,16 @@
+import { readFile } from "node:fs/promises"
+import { join } from "node:path"
 import { ImageResponse } from "next/og"
-import { Logo } from "@/components/logo"
+
+/**
+ * Satori resolves image sources itself and will not fetch a site-relative
+ * path, so the mark is read off disk and inlined rather than imported from
+ * `@/components/logo`, which renders a next/image.
+ */
+async function loadLogo(): Promise<string> {
+  const data = await readFile(join(process.cwd(), "public", "logo.png"))
+  return `data:image/png;base64,${data.toString("base64")}`
+}
 
 async function loadAssets(): Promise<
   { name: string; data: Buffer; weight: 400 | 500; style: "normal" }[]
@@ -30,7 +41,7 @@ export async function GET(request: Request) {
   const title = searchParams.get("title")
   const description = searchParams.get("description")
 
-  const fonts = await loadAssets()
+  const [fonts, logo] = await Promise.all([loadAssets(), loadLogo()])
 
   return new ImageResponse(
     <div
@@ -41,12 +52,7 @@ export async function GET(request: Request) {
       }}
     >
       <div tw="flex absolute flex-row top-0 left-34 top-32 text-white">
-        <Logo
-          style={{
-            width: "32px",
-            height: "32px",
-          }}
-        />
+        <img src={logo} alt="" width={32} height={32} />
       </div>
       <div tw="flex flex-col justify-start items-start inset-34 mt-16">
         <div
