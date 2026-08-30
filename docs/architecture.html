@@ -1,0 +1,1114 @@
+<meta charset="utf-8">
+<title>OnlyDiffs architecture</title>
+<style>
+  @page { size: A4; margin: 11mm 11mm 12mm; }
+
+  :root {
+    --ink: #14161a;
+    --muted: #55606d;
+    --rule: #c8ced6;
+    --faint: #eef1f4;
+    --accent: #1f4fd8;
+  }
+
+  html { font-size: 9pt; }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: #fff;
+    font-family: "Charter", "Iowan Old Style", Georgia, serif;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    hyphens: auto;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0;
+    break-after: avoid;
+  }
+
+  h1 { font-size: 17pt; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 11.5pt;
+    margin: 10pt 0 3.5pt;
+    padding-bottom: 2pt;
+    border-bottom: 1.2px solid var(--ink);
+    letter-spacing: -0.01em;
+  }
+  h3 { font-size: 9.8pt; margin: 7pt 0 2pt; }
+  h4 { font-size: 9.2pt; margin: 5.5pt 0 1.5pt; color: var(--muted); }
+
+  p { margin: 0 0 4pt; orphans: 2; widows: 2; }
+  ul, ol { margin: 0 0 4pt; padding-left: 14pt; }
+  li { margin-bottom: 1pt; }
+
+  code, pre, .mono {
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.87em;
+  }
+  code { background: var(--faint); padding: 0.5pt 2pt; border-radius: 2px; }
+  pre {
+    background: var(--faint);
+    border-left: 2px solid var(--rule);
+    padding: 4pt 6pt;
+    margin: 0 0 5pt;
+    overflow-x: auto;
+    break-inside: avoid;
+    line-height: 1.35;
+  }
+  pre code { background: none; padding: 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 5pt;
+    font-size: 8.4pt;
+    break-inside: auto;
+  }
+  thead { break-inside: avoid; break-after: avoid; }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 1.9pt 5pt 1.9pt 0;
+    border-bottom: 0.6px solid var(--rule);
+  }
+  th {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    font-size: 7.6pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--ink);
+  }
+  td.mono, th.mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 7.9pt; }
+  tr { break-inside: avoid; }
+
+  .lede {
+    font-size: 10pt;
+    color: var(--muted);
+    margin: 3pt 0 0;
+    max-width: 46em;
+  }
+  .meta {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 7.6pt;
+    color: var(--muted);
+    margin: 4pt 0 0;
+    padding-top: 3.5pt;
+    border-top: 0.6px solid var(--rule);
+  }
+  header { margin-bottom: 8pt; }
+
+  .cols { column-count: 2; column-gap: 14pt; }
+  .cols > * { break-inside: avoid; }
+
+  .note {
+    background: var(--faint);
+    border-left: 2px solid var(--accent);
+    padding: 4pt 6pt;
+    margin: 0 0 5pt;
+    break-inside: avoid;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note strong { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 8.4pt; }
+
+  figure { margin: 0 0 6pt; break-inside: avoid; }
+  figcaption {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 7.6pt;
+    color: var(--muted);
+    margin-top: 3pt;
+  }
+  svg { display: block; max-width: 100%; }
+
+  .tight li { margin-bottom: 1pt; }
+
+  .cand {
+    border: 0.8px solid var(--rule);
+    padding: 5pt 7pt 6pt;
+    margin: 0 0 6pt;
+  }
+  .cand-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8pt;
+    margin-bottom: 3pt;
+    break-after: avoid;
+  }
+  .cand-head h3 { margin: 0; }
+  .badge {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 6.6pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1pt 4pt;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .badge-strong { background: var(--accent); color: #fff; }
+  .badge-worth { background: #dde5f8; color: var(--accent); }
+  dl.spec { display: grid; grid-template-columns: 4.6em 1fr; gap: 1pt 6pt; margin: 0 0 4pt; }
+  dl.spec dt {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 6.8pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    padding-top: 1.4pt;
+  }
+  dl.spec dd { margin: 0; }
+</style>
+
+<header>
+  <h1>OnlyDiffs architecture</h1>
+  <p class="lede">
+    A desktop git diff viewer built on Tauri 2, with a Rust backend that shells out to
+    <code>git</code> and a React renderer that never touches the filesystem. This is the map:
+    what the pieces are, which one calls which, and where the decisions live.
+  </p>
+  <p class="meta">
+    Version 0.1.6 &middot; 2,926 lines of Rust, 5,163 of TypeScript in the desktop app &middot;
+    52 Rust tests, 21 renderer tests
+  </p>
+</header>
+
+<h2>1. The shape of the thing</h2>
+
+<p>
+  OnlyDiffs shows you the working tree of one git repository and lets you talk to a Claude Code
+  session about a specific line of it. That is the whole product. Everything below serves those
+  two jobs.
+</p>
+
+<p>
+  The app runs as two processes that Tauri glues together. A Rust backend owns all state that
+  outlives a render, spawns every <code>git</code> child process, and holds the only network
+  clients. A React renderer draws, and asks the backend for data through a typed command
+  bridge. The renderer has no filesystem access and no way to run a subprocess, which is the
+  point: a compromised page cannot reach the repository except through the seventeen commands
+  the backend chooses to expose.
+</p>
+
+<figure>
+<svg viewBox="0 0 700 268" width="700" height="268" role="img" aria-label="Process diagram">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#14161a"/>
+    </marker>
+  </defs>
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#14161a">
+
+    <rect x="8" y="16" width="196" height="150" fill="#fff" stroke="#14161a" stroke-width="1.2"/>
+    <text x="18" y="32" font-size="9" font-weight="600" letter-spacing="0.04em">RENDERER (WEBVIEW)</text>
+    <text x="18" y="50" font-size="8.5" fill="#55606d">React 19, TanStack Router</text>
+    <rect x="18" y="60" width="176" height="20" fill="#eef1f4"/>
+    <text x="24" y="74" font-size="9">routes/ &middot; components/</text>
+    <rect x="18" y="86" width="176" height="20" fill="#eef1f4"/>
+    <text x="24" y="100" font-size="9">lib/ipc.ts</text>
+    <rect x="18" y="112" width="176" height="20" fill="#eef1f4"/>
+    <text x="24" y="126" font-size="9">shared/contract.ts</text>
+    <text x="18" y="152" font-size="8" fill="#55606d">no fs, no subprocess</text>
+
+    <rect x="252" y="16" width="196" height="150" fill="#fff" stroke="#14161a" stroke-width="1.2"/>
+    <text x="262" y="32" font-size="9" font-weight="600" letter-spacing="0.04em">BACKEND (RUST)</text>
+    <text x="262" y="50" font-size="8.5" fill="#55606d">Tauri 2, tokio</text>
+    <rect x="262" y="60" width="176" height="20" fill="#eef1f4"/>
+    <text x="268" y="74" font-size="9">commands.rs (17)</text>
+    <rect x="262" y="86" width="176" height="20" fill="#eef1f4"/>
+    <text x="268" y="100" font-size="9">services/ (9 modules)</text>
+    <rect x="262" y="112" width="176" height="20" fill="#eef1f4"/>
+    <text x="268" y="126" font-size="9">AppState</text>
+    <text x="262" y="152" font-size="8" fill="#55606d">owns all long-lived state</text>
+
+    <rect x="496" y="16" width="196" height="150" fill="#fff" stroke="#14161a" stroke-width="1.2"/>
+    <text x="506" y="32" font-size="9" font-weight="600" letter-spacing="0.04em">OUTSIDE</text>
+    <rect x="506" y="44" width="176" height="19" fill="#eef1f4"/>
+    <text x="512" y="57" font-size="9">git (child process)</text>
+    <rect x="506" y="69" width="176" height="19" fill="#eef1f4"/>
+    <text x="512" y="82" font-size="9">Groq API (2 models)</text>
+    <rect x="506" y="94" width="176" height="19" fill="#eef1f4"/>
+    <text x="512" y="107" font-size="9">Claude Code (loopback)</text>
+    <rect x="506" y="119" width="176" height="19" fill="#eef1f4"/>
+    <text x="512" y="132" font-size="9">~/.onlydiffs/</text>
+    <text x="506" y="155" font-size="8" fill="#55606d">update feed (release only)</text>
+
+    <line x1="204" y1="74" x2="248" y2="74" stroke="#14161a" stroke-width="1.2" marker-end="url(#a)"/>
+    <text x="208" y="69" font-size="7.5" fill="#55606d">invoke</text>
+    <line x1="248" y1="112" x2="204" y2="112" stroke="#14161a" stroke-width="1.2" marker-end="url(#a)"/>
+    <text x="206" y="107" font-size="7.5" fill="#55606d">events</text>
+    <line x1="448" y1="92" x2="492" y2="92" stroke="#14161a" stroke-width="1.2" marker-end="url(#a)"/>
+
+    <rect x="8" y="192" width="684" height="60" fill="#fff" stroke="#c8ced6" stroke-width="1"/>
+    <text x="18" y="209" font-size="9" font-weight="600" letter-spacing="0.04em">FOUR BACKGROUND LOOPS</text>
+    <text x="18" y="226" font-size="8.5">1. filesystem watcher, 300ms debounce, pushes repo:changed</text>
+    <text x="18" y="240" font-size="8.5">2. project icon resolver, once per repo, pushes project:icon-changed</text>
+    <text x="360" y="226" font-size="8.5">3. Claude channel poll, every 4s, renderer-driven</text>
+    <text x="360" y="240" font-size="8.5">4. update check, once at +5s, release builds only</text>
+  </g>
+</svg>
+<figcaption>Processes and the traffic between them. Arrows left of centre are the command bridge; everything right of centre is the backend talking to the world.</figcaption>
+</figure>
+
+<h2>2. Repository layout</h2>
+
+<p>
+  A bun workspace driven by Turbo. Four packages, only one of which is the actual app.
+</p>
+
+<table>
+  <thead><tr><th class="mono">Path</th><th>What it is</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">apps/desktop</td><td>The product. React renderer in <code>src/</code>, Rust backend in <code>src-tauri/</code>.</td></tr>
+    <tr><td class="mono">apps/web</td><td>Next.js marketing site. Shares nothing with the desktop app but the design system.</td></tr>
+    <tr><td class="mono">packages/ui</td><td>Design system on react-aria-components and tailwind-variants. Buttons, inputs, dialogs, loaders.</td></tr>
+    <tr><td class="mono">tools/oxlint</td><td>Anti-slop lint plugins, wired into the root <code>oxlint</code> task.</td></tr>
+    <tr><td class="mono">docs/research</td><td>Research notes. One file so far, on why GitHub cannot give a repository its own avatar.</td></tr>
+  </tbody>
+</table>
+
+<p>
+  Turbo passes exactly three environment variables through to tasks:
+  <code>ONLYDIFFS_REPO_PATH</code>, <code>ONLYDIFFS_STATE_DIR</code>, and
+  <code>GROQ_API_KEY</code>. That list is worth knowing, because those three are the only knobs
+  the app reads from its environment.
+</p>
+
+<h2>3. The command bridge</h2>
+
+<p>
+  This is the most opinionated part of the codebase and the part most worth copying.
+</p>
+
+<p>
+  Tauri commands normally return <code>Result&lt;T, E&gt;</code>, and a returned <code>Err</code>
+  gets stringified on its way across. That flattens a structured failure into prose and throws
+  away the discriminant. OnlyDiffs refuses to lose that. Every command returns
+  <code>Result&lt;IpcResult&lt;T&gt;, ()&gt;</code>, where the error case is a value inside a
+  successful response:
+</p>
+
+<pre><code>{ ok: true,  value: T }
+{ ok: false, error: { _tag: "GitError", message: "..." } }</code></pre>
+
+<p>
+  The renderer's <code>call()</code> in <code>lib/ipc.ts</code> unwraps that and throws an
+  <code>IpcError</code> carrying both <code>tag</code> and <code>operation</code>. Callers that
+  only want a string read it as an ordinary <code>Error</code>. Callers that need to branch match
+  on the tag. A genuine Tauri rejection, meaning a missing command or a payload that failed to
+  deserialize, folds into the same error type with the tag <code>ChannelError</code>.
+</p>
+
+<p>
+  <code>AppError</code> has nine variants and <code>tag()</code> maps each to a string. Those
+  strings are load-bearing contract, not debug output.
+</p>
+
+<table>
+  <thead><tr><th class="mono">Variant</th><th class="mono">Tag</th><th>Raised when</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">Git</td><td class="mono">GitError</td><td>A git invocation failed or could not be spawned.</td></tr>
+    <tr><td class="mono">WorkTree</td><td class="mono">WorkTreeError</td><td>Reading or writing the working tree failed.</td></tr>
+    <tr><td class="mono">InvalidPath</td><td class="mono">InvalidPathError</td><td>A renderer-supplied path escaped the repository.</td></tr>
+    <tr><td class="mono">CommitMessage</td><td class="mono">CommitMessageError</td><td>Groq generation failed, or the diff was too large.</td></tr>
+    <tr><td class="mono">ClaudeChannel</td><td class="mono">ClaudeChannelError</td><td>No live session, or the loopback send failed.</td></tr>
+    <tr><td class="mono">Clipboard</td><td class="mono">ClipboardError</td><td>The clipboard plugin refused a write.</td></tr>
+    <tr><td class="mono">NoProjectOpen</td><td class="mono">NoProjectOpenError</td><td>Nothing is open. The renderer shows the picker.</td></tr>
+    <tr><td class="mono">InvalidProject</td><td class="mono">InvalidProjectError</td><td>The path is not a git repository.</td></tr>
+    <tr><td class="mono">Updater</td><td class="mono">UpdaterError</td><td>A check, download, or install went wrong.</td></tr>
+  </tbody>
+</table>
+
+<h3>The seventeen commands</h3>
+
+<p>
+  <code>shared/contract.ts</code> holds a <code>Command</code> map from camelCase key to the
+  Rust function name, and <code>CommandName</code> is derived from it. Nothing else is
+  reachable from the page.
+</p>
+
+<table>
+  <thead><tr><th class="mono">Command</th><th>Delegates to</th><th>Returns</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">get_diff</td><td class="mono">diff::get_diff</td><td class="mono">RepoDiff</td></tr>
+    <tr><td class="mono">get_file_contents</td><td class="mono">diff::get_file_contents</td><td class="mono">FullFileContents</td></tr>
+    <tr><td class="mono">get_history</td><td class="mono">history::get_history</td><td class="mono">Vec&lt;Commit&gt;</td></tr>
+    <tr><td class="mono">stage_file</td><td class="mono">diff::stage_file</td><td class="mono">()</td></tr>
+    <tr><td class="mono">commit_all</td><td class="mono">diff::commit_all</td><td class="mono">String</td></tr>
+    <tr><td class="mono">list_files</td><td class="mono">file_tree::list_files</td><td class="mono">Vec&lt;String&gt;</td></tr>
+    <tr><td class="mono">generate_commit_message</td><td class="mono">commit_message::generate</td><td class="mono">String</td></tr>
+    <tr><td class="mono">send_claude_message</td><td class="mono">claude_channel::send</td><td class="mono">String</td></tr>
+    <tr><td class="mono">claude_status</td><td class="mono">claude_channel::status</td><td class="mono">ClaudeChannelStatus</td></tr>
+    <tr><td class="mono">list_projects</td><td class="mono">workspace.list</td><td class="mono">Vec&lt;Project&gt;</td></tr>
+    <tr><td class="mono">current_project</td><td class="mono">workspace.current_project</td><td class="mono">Option&lt;Project&gt;</td></tr>
+    <tr><td class="mono">open_project</td><td class="mono">workspace.open</td><td class="mono">Project</td></tr>
+    <tr><td class="mono">forget_project</td><td class="mono">workspace.forget</td><td class="mono">()</td></tr>
+    <tr><td class="mono">set_theme</td><td>window.set_theme</td><td class="mono">()</td></tr>
+    <tr><td class="mono">write_clipboard_text</td><td>clipboard plugin</td><td class="mono">()</td></tr>
+    <tr><td class="mono">check_for_update</td><td class="mono">updater::check</td><td class="mono">UpdateStatus</td></tr>
+    <tr><td class="mono">install_update</td><td class="mono">updater::install</td><td class="mono">()</td></tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <p><strong>Why two of these look out of place.</strong>
+  <code>write_clipboard_text</code> exists because <code>navigator.clipboard</code> needs a secure
+  context, and the packaged app loads from a custom protocol where it does not have one.
+  <code>set_theme</code> exists because the OS draws the window frame, so an in-app theme that
+  disagrees with the system one leaves the title bar out of step.</p>
+</div>
+
+<p>
+  Payloads deserialize into request structs before any service sees them:
+  <code>GetFileContentsRequest</code>, <code>StageFileRequest</code>,
+  <code>GetHistoryRequest</code>, <code>SendClaudeMessageRequest</code>,
+  <code>CommitAllRequest</code>, <code>OpenProjectRequest</code>,
+  <code>ForgetProjectRequest</code>, <code>SetThemeRequest</code>. A tampered renderer cannot
+  hand an arbitrary shape to <code>git</code>.
+</p>
+
+<h2>4. Backend</h2>
+
+<h3>AppState and startup</h3>
+
+<p><code>lib.rs</code> builds one <code>AppState</code> and Tauri manages it for the process lifetime.</p>
+
+<table>
+  <thead><tr><th class="mono">Field</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">workspace</td><td>Which repository is open, and the remembered list of them.</td></tr>
+    <tr><td class="mono">watcher</td><td>The active filesystem watch. Moves when the project changes.</td></tr>
+    <tr><td class="mono">http</td><td>One pooled <code>reqwest::Client</code> shared by Groq and the Claude channel.</td></tr>
+    <tr><td class="mono">icon_resolution</td><td>A mutex that stops startup and a fresh <code>open_project</code> from running overlapping icon passes.</td></tr>
+    <tr><td class="mono">pending_update</td><td>The update handle from the last check, held so installing applies the version the user was offered.</td></tr>
+  </tbody>
+</table>
+
+<p>Startup runs in this order:</p>
+
+<ol class="tight">
+  <li><code>Workspace::from_env()</code> reads <code>ONLYDIFFS_STATE_DIR</code> and
+      <code>ONLYDIFFS_REPO_PATH</code>, loads <code>projects.json</code>, and opens either the
+      pinned repository or the most recently used one that still exists on disk.</li>
+  <li><code>setup()</code> starts watching that repository. This happens here rather than in
+      <code>AppState::new</code> because there is no <code>AppHandle</code> to emit through yet.</li>
+  <li>The window is built at 1100x760, minimum 720x480, and <strong>hidden</strong>.</li>
+  <li>A task sleeps 3 seconds and shows the window regardless. That is a safety net for a
+      renderer that throws before it can show itself.</li>
+  <li>A second task sleeps 500ms, then starts icon resolution, so Groq calls never delay the
+      first frame.</li>
+  <li>The renderer shows the window itself, on the second animation frame after first render.
+      That is the earliest moment the page is genuinely painted.</li>
+</ol>
+
+<p>
+  <code>on_navigation</code> runs <code>is_internal()</code> on every attempted navigation.
+  <code>tauri:</code>, <code>asset:</code>, and loopback HTTP pass. Everything else is handed to
+  the system browser and the navigation is refused, so no link can replace the app with a web page.
+</p>
+
+<h3>Services</h3>
+
+<table>
+  <thead><tr><th class="mono">Module</th><th>Lines</th><th>Responsibility</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">git.rs</td><td>65</td><td>The single place that spawns <code>git</code>.</td></tr>
+    <tr><td class="mono">diff.rs</td><td>419</td><td>Status walk, per-file patches, file contents, staging, committing.</td></tr>
+    <tr><td class="mono">workspace.rs</td><td>355</td><td>Which repository is open, and the persisted project list.</td></tr>
+    <tr><td class="mono">project_icon.rs</td><td>687</td><td>Finds repository artwork and asks a vision model to pick one.</td></tr>
+    <tr><td class="mono">claude_channel.rs</td><td>247</td><td>The loopback bridge to a Claude Code session.</td></tr>
+    <tr><td class="mono">watcher.rs</td><td>193</td><td>Debounced, gitignore-filtered filesystem watch.</td></tr>
+    <tr><td class="mono">commit_message.rs</td><td>142</td><td>Generates a commit message from the working tree via Groq.</td></tr>
+    <tr><td class="mono">updater.rs</td><td>79</td><td>Finds and installs a newer release.</td></tr>
+    <tr><td class="mono">history.rs</td><td>63</td><td>Commit log parsing.</td></tr>
+    <tr><td class="mono">file_tree.rs</td><td>24</td><td>Every path in the repository, flat.</td></tr>
+  </tbody>
+</table>
+
+<h4>git.rs</h4>
+
+<p>
+  Three functions: <code>run_in(cwd, args)</code>, <code>run(workspace, args)</code> which
+  resolves the current repository first, and <code>show_file(workspace, revision, path)</code>
+  where an empty revision means the index.
+</p>
+
+<p>
+  Two details here are not stylistic. It uses <code>output()</code> rather than spawning and
+  waiting, because <code>output()</code> drains stdout and stderr while it waits, and a patch
+  larger than the OS pipe buffer would otherwise deadlock the child forever. And it treats
+  non-empty stdout as success even on a non-zero exit, because
+  <code>git diff --no-index</code> exits non-zero precisely when it did produce a patch. Decoding
+  is deliberately lossy, so one stray byte renders a file rather than blanking the card.
+</p>
+
+<h4>diff.rs</h4>
+
+<p>The busiest module. Five public functions.</p>
+
+<p>
+  <code>get_diff</code> is the startup read. It runs three git commands concurrently through
+  <code>try_join!</code>: <code>rev-parse --abbrev-ref HEAD</code> for the branch,
+  <code>log -1</code> for the head line, and <code>status --porcelain -z -uall</code> for the
+  changes. The <code>-uall</code> matters, because without it an untracked directory collapses
+  into a single record and you cannot diff a directory.
+</p>
+
+<p>
+  <code>parse_porcelain</code> splits that status output into <code>Side</code> records, one per
+  changed half. A path that was edited, staged, then edited again produces two of them, because
+  those are genuinely two different patches. Then the per-file patches run through
+  <code>stream::buffered</code> at a concurrency of 8, and results sort by path with the staged
+  half first.
+</p>
+
+<p>
+  <code>get_file_contents</code> is deliberately a separate command. If it were folded into
+  <code>get_diff</code>, startup would read every changed file in full. Instead the cards ask
+  for their own contents as they approach the viewport.
+</p>
+
+<p>
+  Path safety lives in <code>is_safe_repo_path</code> and <code>validate_path</code>. Paths
+  arrive from the renderer, so <code>..</code>, a leading separator, and a Windows drive letter
+  are all rejected before anything is handed to <code>git show</code> or joined onto the root.
+</p>
+
+<p>
+  <code>commit_all</code> runs <code>git add -A</code> and then <code>git commit -m</code>,
+  rather than <code>commit -a</code>, because <code>-a</code> skips untracked files and that is
+  not what a user means by "commit all". The message goes through <code>-m</code> as one
+  argument, so nothing in it reaches a shell or is read as a flag.
+</p>
+
+<p>
+  <code>commit_message_diff</code> assembles the whole working tree into one annotated document
+  for the model, with each patch under a <code>### staged:</code>, <code>### unstaged:</code>, or
+  <code>### untracked:</code> heading.
+</p>
+
+<h4>workspace.rs</h4>
+
+<p>
+  Holds <code>current: Mutex&lt;Option&lt;PathBuf&gt;&gt;</code> and
+  <code>recents: Mutex&lt;Vec&lt;StoredProject&gt;&gt;</code>, persisted to
+  <code>~/.onlydiffs/projects.json</code> at schema version 1. Opening a path walks up to find
+  the repository root, so opening any file inside a checkout opens the checkout.
+</p>
+
+<p>
+  Two ordering decisions are easy to get wrong. The project list keeps first-opened order rather
+  than most-recent order, so switching projects never makes the rail jump around under the
+  cursor. Restoring at startup uses <code>last_opened_at</code> separately, and that timestamp is
+  kept strictly increasing even when two opens land in the same millisecond. Entries whose folder
+  has since vanished are skipped rather than deleted, so unplugging a drive does not erase history.
+</p>
+
+<p>
+  <code>project_icon_jobs()</code> and <code>record_icon_scan()</code> are the icon resolver's
+  view of this store. Jobs sort the currently open project first.
+</p>
+
+<h4>watcher.rs</h4>
+
+<p>
+  Before this existed the diff only refreshed when a route loader ran, which made a stale view
+  the default: an agent could rewrite twenty files and the screen would not move until you
+  navigated. Now the backend pushes.
+</p>
+
+<p>
+  <code>ChangeFilter</code> applies the repository's own ignore rules through the
+  <code>ignore</code> crate, so <code>node_modules</code> and <code>target</code> never produce
+  an event, and <code>is_git_signal</code> lets through the few <code>.git</code> entries that
+  actually mean something while dropping the rest. What survives is debounced at 300ms and
+  emitted once as <code>repo:changed</code>. A thirty-file rewrite is one refresh.
+</p>
+
+<h4>claude_channel.rs</h4>
+
+<p>
+  Claude Code sessions advertise themselves by writing a JSON file into
+  <code>~/.onlydiffs/claude-channels/</code>. A registration carries a schema version, a port, a
+  bearer token, a pid, and the working directory.
+</p>
+
+<p>
+  <code>registrations()</code> reads that directory and keeps a file only if the schema version
+  matches, the port is non-zero, the token is non-empty, the <code>cwd</code> normalizes to the
+  open repository, and the process is still alive. The liveness check is last on purpose,
+  because it is the only one that costs a syscall. Survivors sort newest first. Half-written and
+  stale files are skipped in silence rather than raised, since the next candidate may well work.
+</p>
+
+<p>
+  <code>send()</code> posts to <code>127.0.0.1</code> with the token, capped at 64KB and 10
+  seconds. The channel is one-way by design. It resolves with a message id, which is only useful
+  for correlating logs, and whatever Claude does next happens in Claude Code.
+</p>
+
+<h4>The two Groq integrations</h4>
+
+<p>
+  Both read <code>GROQ_API_KEY</code> from the process environment. The key never reaches the
+  renderer bundle.
+</p>
+
+<table>
+  <thead><tr><th></th><th>Commit message</th><th>Project icon</th></tr></thead>
+  <tbody>
+    <tr><td>Model</td><td class="mono">openai/gpt-oss-120b</td><td class="mono">qwen/qwen3.6-27b</td></tr>
+    <tr><td>Trigger</td><td>User, from the palette</td><td>Background, once per repository</td></tr>
+    <tr><td>Input cap</td><td>240,000 chars of diff</td><td>3 images, 256px each</td></tr>
+    <tr><td>Reasoning</td><td class="mono">low</td><td class="mono">none</td></tr>
+    <tr><td>Timeout</td><td>120s</td><td>45s</td></tr>
+    <tr><td>Failure</td><td>Surfaced to the user</td><td>Logged, cube fallback kept</td></tr>
+  </tbody>
+</table>
+
+<p>
+  The icon resolver is the more interesting of the two. It ranks candidate image files by name
+  (<code>icon</code> and <code>logo</code> score high, anything matching
+  <code>screenshot</code> or <code>banner</code> is penalized 100), takes the top 32, renders
+  each to a 256px PNG, drops byte-identical duplicates, and sends at most three to the vision
+  model. Three is not a taste decision. Groq rejects a request carrying more than three images.
+  SVGs rasterize through resvg with no resource directory, so a candidate cannot read sibling
+  files or fetch a remote URL while being rendered.
+</p>
+
+<p>
+  The model may also decline every candidate, and that is a real answer rather than a failure. A
+  repository whose only image is a screenshot keeps the cube. The result is keyed by a hash of
+  the candidate shortlist, so an unchanged repository is never sent twice. A failed Groq call
+  stops the whole pass rather than retrying per repository, because a rejected key or a retired
+  model will fail identically for every project still queued.
+</p>
+
+<h2>5. Renderer</h2>
+
+<h3>Entry and routing</h3>
+
+<p>
+  <code>main.tsx</code> awaits <code>currentProject()</code> at module scope and picks the
+  starting route from the answer: <code>/</code> when nothing is open, <code>/diff</code>
+  otherwise. Deciding it here rather than redirecting out of <code>/</code> keeps the picker
+  reachable, since the sidebar's link to <code>/</code> still lands there.
+</p>
+
+<p>
+  The router uses <code>createMemoryHistory</code>, not hash history. WebKit binds Backspace to
+  its own page history even while a text input is focused, so hash routes meant that deleting
+  text in the command palette could navigate out of the repository. A desktop window has no URL
+  to restore anyway.
+</p>
+
+<p>
+  StrictMode is on, and the comment explaining why the first diff blanks in dev is worth reading
+  before anyone "fixes" it: <code>@pierre/diffs</code> writes imperatively into a shadow root,
+  and the simulated unmount tears that down.
+</p>
+
+<table>
+  <thead><tr><th class="mono">Route</th><th>Component</th><th>Loader</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">__root</td><td>Outlet only</td><td>none</td></tr>
+    <tr><td class="mono">/</td><td>Welcome, the project picker</td><td><code>listProjects</code></td></tr>
+    <tr><td class="mono">/_app</td><td>Layout: rails, nav, toolbar</td><td><code>getDiff</code>, <code>listFiles</code>, <code>listProjects</code> in parallel</td></tr>
+    <tr><td class="mono">/_app/diff</td><td>AppNoSelection, the changed-file list</td><td>reads the layout's data</td></tr>
+    <tr><td class="mono">/_app/file/$</td><td>SingleFile, one path's diff</td><td>reads the layout's data</td></tr>
+  </tbody>
+</table>
+
+<p>
+  <code>/_app</code> is a pathless layout route, so it contributes no URL segment. Both content
+  routes render inside it and share its loader data, which is why navigating between files does
+  not refetch the diff. Its loader redirects to <code>/</code> when
+  <code>currentProject()</code> returns null. Everything below it refreshes together, because
+  every refresh path calls <code>router.invalidate()</code> on the same loader.
+</p>
+
+<h3>Components</h3>
+
+<table>
+  <thead><tr><th class="mono">File</th><th>Lines</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">app-command-menu</td><td>413</td><td>Cmd+K palette: stage, commit, generate message, switch project, theme, install update.</td></tr>
+    <tr><td class="mono">file-diff-card</td><td>249</td><td>One file's diff, lazily loaded and error-boundaried.</td></tr>
+    <tr><td class="mono">app-file-tree</td><td>212</td><td>Virtualized tree with a filter box.</td></tr>
+    <tr><td class="mono">app-toolbar</td><td>206</td><td>Footer status, and the line composer that talks to Claude.</td></tr>
+    <tr><td class="mono">project-sidebar</td><td>159</td><td>The 32px project rail down the left edge.</td></tr>
+    <tr><td class="mono">app-sidebar-nav</td><td>103</td><td>Breadcrumb path, deleted badge, R and S hotkeys.</td></tr>
+    <tr><td class="mono">theme-provider</td><td>95</td><td>Theme state, and the call that repaints the native frame.</td></tr>
+    <tr><td class="mono">app-sidebar</td><td>87</td><td>Header, totals, hosts the file tree.</td></tr>
+    <tr><td class="mono">app-no-selection</td><td>48</td><td>The changed-file list shown before you pick one.</td></tr>
+    <tr><td class="mono">project-tile</td><td>37</td><td>Squircle-clipped tiles for the rail, via Lisse.</td></tr>
+  </tbody>
+</table>
+
+<h4>file-diff-card.tsx</h4>
+
+<p>
+  Three mechanisms worth knowing. An <code>IntersectionObserver</code> with a 600px margin sets
+  <code>shouldRender</code>, so a repository with eighty changed files does not fetch eighty file
+  bodies at once. A module-level <code>WeakMap</code> keyed on the <code>FileChange</code>
+  deduplicates in-flight content requests, so two cards for the same object share one promise and
+  the entry is collected with the object. And <code>DiffBoundary</code> is a class error boundary,
+  because <code>@pierre/diffs</code> parses patches at render time and a malformed one should cost
+  a card, not the window.
+</p>
+
+<p>
+  The single-file route skips the observer entirely. There is exactly one card and it is always
+  in view, and waiting on an observer there can strand the card if the pane has not been laid out
+  when the observer starts.
+</p>
+
+<h4>app-file-tree.tsx</h4>
+
+<p>
+  <code>lib/file-tree.ts</code> splits the work in two on purpose. <code>buildFileTree</code> is
+  O(paths) and runs once per repository load. <code>flattenTree</code> runs on every expand,
+  collapse, and keystroke, so it stays cheap. Runs of single-child directories fold into one row,
+  which is why you see <code>.github/workflows</code> rather than two levels.
+</p>
+
+<p>
+  Rows are 26px. Virtualization switches on above 150 rows rather than always, since a virtualizer
+  costs more than it saves on a short list. The filter goes through
+  <code>useDeferredValue</code> so typing never blocks on a re-flatten.
+</p>
+
+<h3>Contexts and hooks</h3>
+
+<table>
+  <thead><tr><th class="mono">Module</th><th>Shares</th><th>Why a context</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">line-reference</td><td>The last diff line clicked</td><td>The click is deep under the route outlet; the input is in the toolbar beside it.</td></tr>
+    <tr><td class="mono">diff-layout</td><td>Split or unified</td><td>Toggled by a hotkey in the nav, read by every card.</td></tr>
+    <tr><td class="mono">update</td><td>The release on offer</td><td>The footer mentions it, the palette installs it.</td></tr>
+    <tr><td class="mono">theme-provider</td><td>Theme, and the native frame call</td><td>Read by the palette, applied to the document root.</td></tr>
+  </tbody>
+</table>
+
+<p>
+  <code>useRepoWatch</code> listens for <code>repo:changed</code> and coalesces. A signal arriving
+  mid-refresh sets a flag instead of starting a second pass, and the loop runs once more when the
+  first settles, so any number of bursts collapse into at most one queued refresh and the last
+  pass always reads the final state. It also refreshes on window focus, because a watch can be
+  missed on a network mount or after a machine resumes, and coming back to the window is exactly
+  when you would notice a stale view.
+</p>
+
+<p>
+  <code>useProjectIcons</code> is the same shape but simpler: listen for
+  <code>project:icon-changed</code>, invalidate, done.
+</p>
+
+<h3>Keyboard</h3>
+
+<table>
+  <thead><tr><th class="mono">Key</th><th>Action</th><th>Defined in</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">Cmd+K</td><td>Toggle the command palette</td><td class="mono">app-command-menu</td></tr>
+    <tr><td class="mono">Cmd+B</td><td>Toggle the file sidebar</td><td class="mono">ui/sidebar</td></tr>
+    <tr><td class="mono">Cmd+Enter</td><td>Stage the current file</td><td class="mono">routes/_app.file.$</td></tr>
+    <tr><td class="mono">R</td><td>Refresh</td><td class="mono">app-sidebar-nav</td></tr>
+    <tr><td class="mono">S</td><td>Split or unified</td><td class="mono">app-sidebar-nav</td></tr>
+  </tbody>
+</table>
+
+<p>
+  R and S have no on-screen control at all. They are the only way to reach refresh and the split
+  toggle, which is a real discoverability gap rather than a deliberate minimalism.
+</p>
+
+<h2>6. State on disk</h2>
+
+<table>
+  <thead><tr><th class="mono">Path</th><th>Written by</th><th>Holds</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">~/.onlydiffs/projects.json</td><td>Backend, <code>workspace.rs</code></td><td>Project list, open timestamps, resolved icons as data URLs, icon scan hashes.</td></tr>
+    <tr><td class="mono">~/.onlydiffs/claude-channels/&lt;pid&gt;.json</td><td>The MCP script, per session</td><td>Port, bearer token, pid, cwd, schema version, start time.</td></tr>
+  </tbody>
+</table>
+
+<p>
+  Both live under one directory the user can delete without losing anything but convenience.
+  <code>ONLYDIFFS_STATE_DIR</code> redirects the first, which is what keeps the test suite out of
+  a real home directory.
+</p>
+
+<h2>7. The Claude Code channel</h2>
+
+<p>
+  <code>scripts/claude-channel.ts</code> is the other half of the bridge, registered as a
+  user-scope MCP server by <code>bun run channel:setup</code>. One script does two jobs at once.
+</p>
+
+<p>
+  It connects to Claude Code over stdio as an MCP server, declaring an experimental
+  <code>claude/channel</code> capability and instructions telling Claude that arriving messages
+  come from the user working in this repository. Separately it starts a Bun HTTP server bound to
+  <code>127.0.0.1</code> on port 0, so the OS picks a free port. A 32-byte random token guards
+  it, compared with <code>timingSafeEqual</code>. Then it writes its registration file with mode
+  bits restricted, and removes it on exit.
+</p>
+
+<p>
+  So the full path from a click to Claude runs: a diff line click sets the line reference, the
+  toolbar composer sends the text, <code>send_claude_message</code> reaches
+  <code>claude_channel::send</code>, which finds the live registration for the open repository and
+  POSTs to its loopback port with the token, and the script forwards it into the MCP session.
+  Nothing comes back.
+</p>
+
+<h2>8. Tests</h2>
+
+<table>
+  <thead><tr><th class="mono">Suite</th><th>Count</th><th>Covers</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">tests/workspace.rs</td><td>21</td><td>Open, restore, forget, ordering, store migration, icon persistence.</td></tr>
+    <tr><td class="mono">project_icon (unit)</td><td>12</td><td>Name ranking, path safety, SVG rasterizing, dedupe, model refusal.</td></tr>
+    <tr><td class="mono">tests/watcher.rs</td><td>10</td><td>Ignore rules, git internals, debouncing.</td></tr>
+    <tr><td class="mono">tests/diff.rs</td><td>6</td><td>Path escapes, renames, both halves of one path, history order.</td></tr>
+    <tr><td class="mono">tests/claude_channel.rs</td><td>3</td><td>Registration validation.</td></tr>
+    <tr><td class="mono">src/lib/*.test.ts</td><td>21</td><td>File tree building and flattening, file icon resolution.</td></tr>
+  </tbody>
+</table>
+
+<p>
+  The Rust integration tests drive the services directly rather than going through Tauri, which
+  is why <code>contract</code>, <code>error</code>, and <code>services</code> are all
+  <code>pub</code> from the library. <code>Workspace::new</code> takes its state directory and
+  startup repository as arguments instead of reading the environment, so the suite runs in
+  parallel without racing over process-wide variables. One test exists purely to assert the store
+  never lands in a real home directory.
+</p>
+
+<h2>9. Build and release</h2>
+
+<p>
+  <code>bun run dev</code> at the root runs every workspace through Turbo;
+  <code>dev:desktop</code> filters to the app. Inside <code>apps/desktop</code>,
+  <code>tauri dev</code> starts Vite on a fixed port 1420 and fails loudly on a clash, because
+  silently serving somewhere the window will not look is worse than stopping.
+</p>
+
+<p>
+  <code>bun run build</code> is typecheck, then tests, then the Vite build.
+  <code>bun run dist</code> bundles: dmg and app on macOS, nsis on Windows, appimage and deb on
+  Linux. The updater plugin is compiled in only for desktop release builds, since it reads a
+  signing key at startup that a dev build has no use for.
+</p>
+
+<p>
+  Three webviews, and it is worth remembering which is which. Windows gets WebView2, which is
+  evergreen Chromium. macOS gets WKWebView and Linux gets WebKitGTK, both WebKit. Two of the
+  three targets are WebKit, so a WebKit-only rendering bug is the default case here, not an edge
+  case.
+</p>
+
+<h2>10. Things I would flag to a new contributor</h2>
+
+<p>
+  The contract files are duplicated by hand. <code>contract.rs</code> and
+  <code>contract.ts</code> mirror each other with a comment in each asking you to update the
+  other, and nothing enforces it. A field added on one side and forgotten on the other
+  typechecks fine and fails at runtime. That is the highest-risk seam in the codebase.
+</p>
+
+<p>
+  Failure handling is not uniform, and mostly for good reasons. A failed update check stays
+  silent because the user did not ask and offline is a laptop's normal state. A failed icon
+  resolution logs and keeps the fallback. A failed commit-message generation goes straight to the
+  palette. Those are three different policies, and each is defensible, but you have to read each
+  one to know which you are in.
+</p>
+
+<p>
+  The renderer holds no cache of its own. Every refresh path funnels into
+  <code>router.invalidate()</code> on the <code>/_app</code> loader, which is why refresh, the
+  watcher, focus, project switching, and icon resolution all take the same code path. It is a
+  simple design that has held up, though it does mean any refresh re-reads the entire diff.
+</p>
+
+<h2>11. Architecture review: deepening opportunities</h2>
+
+<p>
+  Four places where the current shape costs something. Each is judged on <em>depth</em>, meaning
+  how much behaviour a caller or a test gets per unit of interface it has to learn, and on where
+  the <em>seam</em> sits. The repository has no <code>CONTEXT.md</code> and no ADRs, so the
+  domain names below are the ones the code already uses: Workspace, Project, RepoDiff, Side,
+  ProjectIcon.
+</p>
+
+<p>
+  Scope came from the churn. <code>app-command-menu.tsx</code> is the most-edited source file in
+  the last sixty commits, the IPC seam has been rewritten twice (Electron to Tauri, then Effect
+  out of the IPC layer), and the project and icon cluster is where the newest 829 lines landed.
+</p>
+
+<div class="cand">
+  <div class="cand-head">
+    <h3>A. Opening a project is written three times, and the three disagree</h3>
+    <span class="badge badge-strong">Strong</span>
+  </div>
+  <dl class="spec">
+    <dt>Files</dt>
+    <dd><code>project-sidebar.tsx:30</code>, <code>app-command-menu.tsx:128</code>, <code>routes/index.tsx:65</code></dd>
+    <dt>Problem</dt>
+    <dd>
+      All three run the same sequence: mark busy, call <code>openProject</code>, navigate to
+      <code>/diff</code>, refresh loaders, catch, clear busy. They do not agree on the last
+      details. The rail and the palette pass <code>replace: true</code> and then call
+      <code>router.invalidate()</code>; the landing page passes neither. Both behaviours are
+      defensible, because entering <code>/_app</code> from <code>/</code> runs the layout loader
+      anyway and there is no file route to replace. Nothing says so. A reader cannot tell the
+      difference between a considered choice and an oversight, which is what makes it a locality
+      problem rather than a bug.
+      <br />
+      <code>OtherProjectsSection</code> is the sharper symptom. It takes seven props, four of them
+      lifecycle callbacks (<code>onStart</code>, <code>onOpened</code>, <code>onError</code>,
+      <code>onFinish</code>), to wrap about thirty lines. Its interface is nearly as large as its
+      implementation, which is the definition of a shallow module. Deleting it would move those
+      lines back to its parent rather than concentrate anything.
+    </dd>
+    <dt>Solution</dt>
+    <dd>
+      One project-opening module, <code>useOpenProject()</code>, returning
+      <code>{ open, opening, failure }</code>. The navigation rule moves inside it, stated once:
+      replace the route when already inside <code>/_app</code>, invalidate when the loader will
+      not re-run on its own. The three call sites keep their own presentation and lose their copy
+      of the sequence. <code>OtherProjectsSection</code> collapses into the palette that holds it.
+    </dd>
+    <dt>Benefits</dt>
+    <dd>
+      Leverage across three call sites for one interface of three names. Locality for the
+      ordering rule, which is currently implicit in three files. For tests this is the clearest
+      win: today the sequence is only reachable by rendering three components, and it is
+      untested in all three. Behind one module it becomes one thing to test.
+    </dd>
+  </dl>
+  <figure>
+    <svg viewBox="0 0 690 128" width="690" height="128" role="img" aria-label="Before and after: project opening">
+      <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="8" fill="#14161a">
+        <text x="0" y="9" font-size="7" font-weight="600" letter-spacing="0.05em" fill="#55606d">BEFORE &middot; THE SEQUENCE LIVES IN THREE PLACES</text>
+        <rect x="0" y="18" width="96" height="46" fill="#fff" stroke="#c8ced6"/>
+        <text x="6" y="31" font-size="7.5">project-sidebar</text>
+        <text x="6" y="42" font-size="6.5" fill="#55606d">busy + open + nav</text>
+        <text x="6" y="52" font-size="6.5" fill="#55606d">replace, invalidate</text>
+        <rect x="104" y="18" width="96" height="46" fill="#fff" stroke="#c8ced6"/>
+        <text x="110" y="31" font-size="7.5">command-menu</text>
+        <text x="110" y="42" font-size="6.5" fill="#55606d">busy + open + nav</text>
+        <text x="110" y="52" font-size="6.5" fill="#55606d">replace, invalidate</text>
+        <rect x="208" y="18" width="96" height="46" fill="#fff" stroke="#14161a" stroke-dasharray="2 1.5"/>
+        <text x="214" y="31" font-size="7.5">routes/index</text>
+        <text x="214" y="42" font-size="6.5" fill="#55606d">busy + open + nav</text>
+        <text x="214" y="52" font-size="6.5" fill="#1f4fd8">neither flag</text>
+        <text x="0" y="78" font-size="6.5" fill="#55606d">3 copies &middot; 0 tests &middot; the rule is nowhere</text>
+
+        <text x="360" y="9" font-size="7" font-weight="600" letter-spacing="0.05em" fill="#55606d">AFTER &middot; ONE MODULE, THREE CALLERS</text>
+        <rect x="360" y="18" width="86" height="20" fill="#fff" stroke="#c8ced6"/>
+        <text x="366" y="31" font-size="7.5">rail</text>
+        <rect x="360" y="42" width="86" height="20" fill="#fff" stroke="#c8ced6"/>
+        <text x="366" y="55" font-size="7.5">palette</text>
+        <rect x="360" y="66" width="86" height="20" fill="#fff" stroke="#c8ced6"/>
+        <text x="366" y="79" font-size="7.5">landing</text>
+        <line x1="446" y1="52" x2="486" y2="52" stroke="#14161a" stroke-width="1.1" marker-end="url(#a)"/>
+        <rect x="490" y="18" width="150" height="68" fill="#eef1f4" stroke="#14161a"/>
+        <text x="498" y="32" font-size="7.5" font-weight="600">useOpenProject()</text>
+        <text x="498" y="45" font-size="6.5" fill="#55606d">open &middot; opening &middot; failure</text>
+        <line x1="498" y1="52" x2="632" y2="52" stroke="#c8ced6"/>
+        <text x="498" y="64" font-size="6.5" fill="#55606d">the navigate and invalidate</text>
+        <text x="498" y="74" font-size="6.5" fill="#55606d">rule, stated once</text>
+        <text x="360" y="102" font-size="6.5" fill="#55606d">1 interface of 3 names &middot; testable without rendering anything</text>
+      </g>
+    </svg>
+  </figure>
+</div>
+
+<div class="cand">
+  <div class="cand-head">
+    <h3>B. The icon resolver's decisions cannot be reached through its interface</h3>
+    <span class="badge badge-strong">Strong</span>
+  </div>
+  <dl class="spec">
+    <dt>Files</dt>
+    <dd><code>services/project_icon.rs:435</code> (<code>resolve_job</code>), <code>:472</code> (<code>resolve_missing</code>)</dd>
+    <dt>Problem</dt>
+    <dd>
+      <code>resolve_missing(&amp;AppHandle, &amp;Workspace, &amp;Client)</code> needs a live Tauri
+      handle and a working Groq key to run at all, so no test calls it. The twelve tests in this
+      module reach past the interface to internals instead: <code>discover</code>,
+      <code>selection</code>, <code>scan_hash</code>, <code>name_score</code>,
+      <code>request_content</code>. Neither orchestration function is imported by any test.
+      <br />
+      That leaves the decisions about whether a project gets an icon at all completely uncovered:
+      the unchanged-hash short circuit, recording an empty shortlist, recording a model refusal,
+      and the split between a per-project failure that continues the loop and a Groq failure that
+      stops it. Ten decision points, zero tests. This is also the newest code in the repository
+      and the error handling was rewritten most recently, which is exactly the combination that
+      should worry someone.
+    </dd>
+    <dt>Solution</dt>
+    <dd>
+      Put a seam where the model choice happens: a one-method <code>ChooseIcon</code> trait with
+      the Groq call behind it, and have the resolver take a notifier callback rather than an
+      <code>AppHandle</code>. The pipeline stages, discovery, choice, persistence and
+      notification, stay where they are; only the two that reach outside the process move behind
+      adapters.
+    </dd>
+    <dt>Benefits</dt>
+    <dd>
+      The interface becomes the test surface. Each branch turns into a sentence a test can state:
+      a repository with no artwork records its hash and emits nothing, a refusal keeps the
+      fallback, a rejected key stops the pass instead of firing one doomed request per project.
+      Locality improves too, because the retry policy stops being spread between the resolver and
+      the shape of the Workspace store.
+      <br />
+      Worth being honest about the cost. One adapter is a hypothetical seam; two make it real.
+      Here the second adapter is a test double, which is the weaker justification for a seam. Ten
+      untested decision points in the newest code is what tips it.
+    </dd>
+  </dl>
+  <figure>
+    <svg viewBox="0 0 690 116" width="690" height="116" role="img" aria-label="Before and after: icon resolver">
+      <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="8" fill="#14161a">
+        <text x="0" y="9" font-size="7" font-weight="600" letter-spacing="0.05em" fill="#55606d">BEFORE &middot; TESTS REACH PAST THE INTERFACE</text>
+        <rect x="0" y="16" width="300" height="58" fill="#fff" stroke="#14161a"/>
+        <text x="8" y="29" font-size="7.5" font-weight="600">resolve_missing(AppHandle, Workspace, Client)</text>
+        <line x1="8" y1="35" x2="292" y2="35" stroke="#c8ced6"/>
+        <rect x="10" y="41" width="66" height="15" fill="#eef1f4"/><text x="16" y="51" font-size="6.5">discover</text>
+        <rect x="80" y="41" width="66" height="15" fill="#eef1f4"/><text x="86" y="51" font-size="6.5">selection</text>
+        <rect x="150" y="41" width="66" height="15" fill="#eef1f4"/><text x="156" y="51" font-size="6.5">scan_hash</text>
+        <rect x="220" y="41" width="70" height="15" fill="#fff" stroke="#1f4fd8" stroke-dasharray="2 1.5"/>
+        <text x="226" y="51" font-size="6.5" fill="#1f4fd8">resolve_job</text>
+        <text x="8" y="68" font-size="6.5" fill="#1f4fd8">10 decision points, 0 tests</text>
+        <line x1="0" y1="86" x2="300" y2="86" stroke="#c8ced6" stroke-dasharray="2 2"/>
+        <text x="0" y="98" font-size="6.5" fill="#55606d">tests enter here, one level below the interface</text>
+        <path d="M120 84 L120 76" stroke="#1f4fd8" stroke-width="1.1" marker-end="url(#a)"/>
+
+        <text x="360" y="9" font-size="7" font-weight="600" letter-spacing="0.05em" fill="#55606d">AFTER &middot; THE INTERFACE IS THE TEST SURFACE</text>
+        <rect x="360" y="16" width="330" height="58" fill="#fff" stroke="#14161a"/>
+        <text x="368" y="29" font-size="7.5" font-weight="600">resolve_missing(Workspace, impl ChooseIcon, notify)</text>
+        <line x1="368" y1="35" x2="682" y2="35" stroke="#c8ced6"/>
+        <rect x="370" y="41" width="150" height="15" fill="#eef1f4"/><text x="376" y="51" font-size="6.5">discover &middot; persist &middot; notify</text>
+        <rect x="526" y="41" width="152" height="15" fill="#fff" stroke="#1f4fd8"/>
+        <text x="532" y="51" font-size="6.5" fill="#1f4fd8">ChooseIcon: groq | fake</text>
+        <text x="368" y="68" font-size="6.5" fill="#55606d">every branch stated as a test</text>
+        <line x1="360" y1="86" x2="690" y2="86" stroke="#c8ced6" stroke-dasharray="2 2"/>
+        <text x="360" y="98" font-size="6.5" fill="#55606d">tests enter at the interface, same door as callers</text>
+        <path d="M480 84 L480 76" stroke="#14161a" stroke-width="1.1" marker-end="url(#a)"/>
+      </g>
+    </svg>
+  </figure>
+</div>
+
+<div class="cand">
+  <div class="cand-head">
+    <h3>C. The IPC seam has one interface spread across five files</h3>
+    <span class="badge badge-strong">Strong</span>
+  </div>
+  <dl class="spec">
+    <dt>Files</dt>
+    <dd><code>contract.rs</code>, <code>commands.rs</code>, <code>error.rs</code>, <code>shared/contract.ts</code>, <code>lib/ipc.ts</code></dd>
+    <dt>Problem</dt>
+    <dd>
+      Both contract files open with a comment calling themselves the mirror of the other. Only
+      half of that is true. The response types do mirror <code>contract.rs</code>, but the four
+      request shapes on the TypeScript side, <code>GetFileContentsRequest</code>,
+      <code>GetHistoryRequest</code>, <code>StageFileRequest</code> and
+      <code>IpcFailure</code>, have no counterpart there at all. Their Rust definitions live in
+      <code>commands.rs</code> and <code>error.rs</code>. Adding one command means editing five
+      files, and nothing checks that any of them agree.
+      <br />
+      I compared the two files field by field while writing this. They are in sync today, so this
+      is prevention rather than a live defect. The failure mode is quiet: a field added on one
+      side and forgotten on the other typechecks on both sides and fails at runtime.
+    </dd>
+    <dt>Solution</dt>
+    <dd>
+      Derive the TypeScript from the Rust, with <code>ts-rs</code> or <code>tauri-specta</code>,
+      so the interface has one definition and the second adapter is generated rather than
+      maintained. If that is too much for now, the cheap version is a test that parses both files
+      and asserts the field sets match, which is roughly twenty lines and catches the same class
+      of drift.
+    </dd>
+    <dt>Benefits</dt>
+    <dd>
+      Locality for the whole seam: one place to change a payload instead of five to remember.
+      Leverage for callers, since the command names and their argument shapes stop being three
+      separate facts to keep in your head. The test story is the clearest part, because drift
+      moves from something a reviewer has to notice to something CI fails on.
+    </dd>
+  </dl>
+</div>
+
+<div class="cand">
+  <div class="cand-head">
+    <h3>D. One invariant, two implementations: repository-relative path safety</h3>
+    <span class="badge badge-worth">Worth exploring</span>
+  </div>
+  <dl class="spec">
+    <dt>Files</dt>
+    <dd><code>services/diff.rs</code> (<code>is_safe_repo_path</code>), <code>services/project_icon.rs</code> (<code>is_safe_relative</code>)</dd>
+    <dt>Problem</dt>
+    <dd>
+      Both enforce the same rule, that a path must stay inside the repository, and they do it
+      differently. <code>is_safe_repo_path</code> works on a string and rejects an empty value, a
+      leading separator, a Windows drive letter, and any <code>..</code> segment.
+      <code>is_safe_relative</code> works on a <code>Path</code> and requires every component to
+      be <code>Normal</code>. They disagree on real input: <code>./assets/icon.png</code> passes
+      the first and fails the second. Neither is wrong, but the rule now lives in two places, and
+      tightening it later means finding both.
+    </dd>
+    <dt>Solution</dt>
+    <dd>
+      One path-safety module both call, with the two entry points kept because the callers
+      genuinely differ: paths arrive from the renderer as strings and from
+      <code>git ls-files</code> as paths.
+    </dd>
+    <dt>Benefits</dt>
+    <dd>
+      Locality for a security-relevant rule, which is the kind worth having in one place. The
+      leverage is small, two callers, which is why this is worth exploring rather than urgent.
+      Both call sites already have a test, so those tests move rather than multiply.
+    </dd>
+  </dl>
+</div>
+
+<h3>Top recommendation</h3>
+
+<p>
+  Start with <strong>A</strong>. It is the smallest change, it sits in the most-edited file in
+  the repository, and it is the only one of the four where three copies of the same operation are
+  already behaving differently in shipped code. It also has the cleanest deletion test in both
+  directions: removing <code>OtherProjectsSection</code> moves complexity rather than
+  concentrating it, which marks it as shallow, while removing the proposed module would scatter
+  the sequence back across three files, which marks that one as earning its keep.
+</p>
+
+<p>
+  Take <strong>B</strong> next, and take it seriously. A is about tidiness; B is about not
+  knowing whether the newest code in the repository works. Ten decision points with no test,
+  in error-handling logic that changed most recently, is the highest correctness risk here.
+</p>
+
+<p>
+  <strong>C</strong> is prevention and can wait for the next time someone adds a command, which
+  is the moment its cost is felt. <strong>D</strong> is worth doing whenever
+  <code>project_icon.rs</code> is next open.
+</p>
+
+<p class="meta">
+  Generated from the source at 0.1.6. Line counts and constants were read from the tree, not
+  recalled. Where a number appears here it came from the file it describes.
+</p>
