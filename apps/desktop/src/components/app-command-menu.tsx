@@ -3,6 +3,7 @@ import { useHotkey } from '@tanstack/react-hotkeys'
 import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import {
   ArrowDownTrayIcon,
+  ArrowPathIcon,
   CheckIcon,
   ComputerDesktopIcon,
   FolderOpenIcon,
@@ -231,6 +232,21 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
         </CommandMenuSection>
 
         <CommandMenuSection label="Project">
+          {/* `r` does the same thing, but a bare key is ignored while focus is
+              in a text field -- and the Claude toolbar takes focus whenever a
+              line is referenced. This row is the one that always works. */}
+          <CommandMenuItem
+            textValue="Refresh Reload the diff"
+            onAction={() => {
+              setIsOpen(false)
+              void router.invalidate()
+            }}
+          >
+            <ArrowPathIcon />
+            <CommandMenuLabel>Refresh</CommandMenuLabel>
+            <CommandMenuShortcut>r</CommandMenuShortcut>
+          </CommandMenuItem>
+
           <CommandMenuItem
             textValue="Switch project Open another repository"
             onAction={() => {

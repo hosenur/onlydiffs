@@ -6,6 +6,7 @@ import { AppToolbar } from '@/components/app-toolbar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { DiffLayoutProvider } from '@/lib/diff-layout'
 import { LineReferenceProvider } from '@/lib/line-reference'
+import { useRepoWatch } from '@/lib/repo-watch'
 import { UpdateProvider } from '@/lib/update'
 import { currentProject, getDiff, listFiles } from '@/lib/ipc'
 
@@ -32,6 +33,9 @@ export const Route = createFileRoute('/_app')({
 
 function AppLayout() {
   const { diff, paths } = Route.useLoaderData()
+  // Everything below reads this layout's loader data, so refreshing here
+  // refreshes the sidebar, the file tree, and the open diff together.
+  useRepoWatch()
 
   return (
     <DiffLayoutProvider>

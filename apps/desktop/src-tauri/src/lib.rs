@@ -12,9 +12,10 @@ pub mod contract;
 pub mod error;
 pub mod services;
 
-use tauri::{WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 
+use services::watcher::{self, RepoWatcher};
 use services::workspace::Workspace;
 
 /// How long the renderer gets to paint before the window is shown regardless.
@@ -23,6 +24,9 @@ const FIRST_PAINT_GRACE: std::time::Duration = std::time::Duration::from_secs(3)
 /// Everything the commands share. Built once, at startup.
 pub struct AppState {
     pub workspace: Workspace,
+    /// Follows the open repository and tells the renderer when it changes, so
+    /// the diff on screen is the diff on disk without anyone asking.
+    pub watcher: RepoWatcher,
     /// One pooled client for both outbound callers — Groq and the loopback
     /// Claude channel.
     pub http: reqwest::Client,
@@ -36,6 +40,7 @@ impl AppState {
     fn new() -> Self {
         Self {
             workspace: Workspace::from_env(),
+            watcher: RepoWatcher::new(),
             http: reqwest::Client::new(),
             #[cfg(desktop)]
             pending_update: tokio::sync::Mutex::new(None),
@@ -88,6 +93,14 @@ pub fn run() {
         ])
         .setup(|app| {
             let handle = app.handle().clone();
+
+            // `AppState` is built before there is a handle to emit through, so
+            // the repository restored at startup starts being watched here.
+            let state = app.state::<AppState>();
+            if let Ok(root) = state.workspace.current_path() {
+                watcher::watch_repo(app.handle(), &state.watcher, root);
+            }
+
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("onlydiffs")
                 .inner_size(1100.0, 760.0)

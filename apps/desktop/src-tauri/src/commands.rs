@@ -15,7 +15,7 @@ use crate::contract::{
     UpdateStatus,
 };
 use crate::error::{AppError, IpcResult};
-use crate::services::{claude_channel, commit_message, diff, file_tree, history, updater};
+use crate::services::{claude_channel, commit_message, diff, file_tree, history, updater, watcher};
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -161,10 +161,19 @@ pub async fn current_project(state: State<'_, AppState>) -> Result<IpcResult<Opt
 
 #[tauri::command]
 pub async fn open_project(
+    app: AppHandle,
     state: State<'_, AppState>,
     request: OpenProjectRequest,
 ) -> Result<IpcResult<Project>, ()> {
-    Ok(state.workspace.open(&request.path).into())
+    let opened = state.workspace.open(&request.path);
+    // Move the watch with the project. Reopening the current repository lands
+    // on the same root and is a no-op inside the watcher.
+    if opened.is_ok() {
+        if let Ok(root) = state.workspace.current_path() {
+            watcher::watch_repo(&app, &state.watcher, root);
+        }
+    }
+    Ok(opened.into())
 }
 
 #[tauri::command]
