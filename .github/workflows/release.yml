@@ -85,14 +85,14 @@ jobs:
           # but ships no `.sig` and no installed copy will accept the update.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # No Apple code signing here yet, and the omission is deliberate:
-          # a missing secret still *defines* the variable as an empty string,
-          # and Tauri decides to codesign on the variable being present, not on
-          # it holding anything. `APPLE_CERTIFICATE: ''` gets as far as
-          # `security import` with nothing to import and fails the build.
+          # tauri.conf.json uses identity `-` to give the complete app bundle a
+          # valid ad-hoc seal. That catches corruption but does not establish an
+          # Apple identity or satisfy Gatekeeper. Do not define empty APPLE_*
+          # variables: Tauri would try to import an empty certificate.
           #
-          # With a Developer ID in hand, add all four together — never one at
-          # a time — plus APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID to notarize:
+          # With a Developer ID in hand, add all four together, plus APPLE_ID /
+          # APPLE_PASSWORD / APPLE_TEAM_ID to notarize. The environment identity
+          # then replaces the ad-hoc identity from the config:
           #   APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           #   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           #   APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -111,3 +111,23 @@ jobs:
           # formats this runner cannot produce. `app` is what becomes the
           # `.app.tar.gz` the updater downloads; `dmg` is what a human does.
           args: --target aarch64-apple-darwin --bundles app,dmg
+
+      # A linker ad-hoc signs an Apple Silicon executable, but that alone does
+      # not seal Info.plist or Resources. Gatekeeper reports that half-signed
+      # bundle as damaged. Check both the bundle and the exact updater archive;
+      # the release remains a draft if either one has lost its resource seal.
+      - name: Verify the macOS bundle signatures
+        run: |
+          set -euo pipefail
+          bundle_dir=apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos
+          app="$bundle_dir/onlydiffs.app"
+          archive="$bundle_dir/onlydiffs.app.tar.gz"
+
+          test -f "$app/Contents/_CodeSignature/CodeResources"
+          codesign --verify --deep --strict --verbose=2 "$app"
+
+          extracted=$(mktemp -d)
+          trap 'rm -rf "$extracted"' EXIT
+          tar -xzf "$archive" -C "$extracted"
+          test -f "$extracted/onlydiffs.app/Contents/_CodeSignature/CodeResources"
+          codesign --verify --deep --strict --verbose=2 "$extracted/onlydiffs.app"

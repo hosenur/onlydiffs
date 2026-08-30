@@ -93,18 +93,21 @@ TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/onlydiffs.key)" \
 TAURI_SIGNING_PRIVATE_KEY_PASSWORD=… bun run dist
 ```
 
-### The download is not signed yet
+### The download is not notarized yet
 
-No Apple Developer ID sits behind these builds, so a `.dmg` from a browser opens
-to *"onlydiffs is damaged and can't be opened."* That is Gatekeeper objecting to
-the quarantine flag on an unsigned bundle, not to anything being wrong with it:
+No Apple Developer ID sits behind these builds. CI gives the complete `.app`
+bundle a valid ad-hoc seal, but Gatekeeper does not trust ad-hoc identities. A
+`.dmg` downloaded in a browser may therefore open to *"Apple could not verify
+onlydiffs"* or *"onlydiffs is damaged and can't be opened."* After dragging the
+app into Applications, remove the browser's quarantine flag:
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/onlydiffs.app
 ```
 
-First install only. The updater writes later versions itself, and nothing it
-writes is quarantined.
+This is required only for the first install. The updater writes later versions
+without a quarantine flag. CI also runs strict `codesign` verification against
+the app and the archived updater bundle before a draft can be published.
 
 ## Keys
 
