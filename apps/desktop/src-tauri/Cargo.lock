@@ -2819,6 +2819,7 @@ dependencies = [
  "dirs 5.0.1",
  "futures",
  "ignore",
+ "libc",
  "notify-debouncer-full",
  "reqwest 0.12.28",
  "serde",

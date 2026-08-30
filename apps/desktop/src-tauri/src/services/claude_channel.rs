@@ -55,6 +55,41 @@ fn registrations_dir() -> PathBuf {
         .join(REGISTRATIONS_DIR)
 }
 
+/// Whether the process that registered a channel is still running.
+///
+/// A registration is a file, and a file outlives the session that wrote it:
+/// `cleanup` runs on `exit`, `SIGINT`, and `SIGTERM`, so a `kill -9`, an OOM
+/// kill, or a crash leaves one behind with nobody on the other end. Without
+/// this the status indicator reports those forever, and the first thing to
+/// discover the truth is a message the user has already typed.
+///
+/// This does not prove the channel is *serving* — the process could be alive
+/// with its HTTP server gone — but it settles the common case for the price of
+/// one syscall, which matters at a four-second poll.
+#[cfg(unix)]
+pub fn is_process_alive(pid: i64) -> bool {
+    // Signal 0 sends nothing; it runs the existence and permission checks and
+    // reports what they found. A pid that has been recycled onto another
+    // user's process answers EPERM rather than 0, which is the right answer
+    // here anyway: whatever holds that pid now, it is not our session.
+    let Ok(pid) = i32::try_from(pid) else {
+        return false;
+    };
+    if pid <= 0 {
+        return false;
+    }
+    // SAFETY: `kill` with signal 0 touches no memory and delivers no signal,
+    // and `pid` has been checked positive so it cannot address a process group.
+    unsafe { libc::kill(pid, 0) == 0 }
+}
+
+/// Windows has no equally cheap equivalent, so registrations are taken at face
+/// value there and `send` stays the thing that finds out.
+#[cfg(not(unix))]
+pub fn is_process_alive(pid: i64) -> bool {
+    pid > 0
+}
+
 /// Live channels for this repository, newest first.
 async fn registrations(workspace: &Workspace) -> Result<Vec<Registration>, AppError> {
     let repo_path = workspace
@@ -86,10 +121,11 @@ async fn registrations(workspace: &Workspace) -> Result<Vec<Registration>, AppEr
         };
         let belongs = normalize(Path::new(&registration.cwd)) == repo_path;
         if registration.schema_version == SCHEMA_VERSION
-            && registration.pid > 0
             && registration.port > 0
             && !registration.token.is_empty()
             && belongs
+            // Last, because it is the only check that costs a syscall.
+            && is_process_alive(registration.pid)
         {
             live.push(registration);
         }
