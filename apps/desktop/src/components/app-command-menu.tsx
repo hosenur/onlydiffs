@@ -216,9 +216,6 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
           >
             {busy === 'generate' ? <Loader /> : <SparklesIcon />}
             <CommandMenuLabel>Generate commit message</CommandMenuLabel>
-            <CommandMenuDescription>
-              Reads the whole diff, copies it
-            </CommandMenuDescription>
           </CommandMenuItem>
 
           <CommandMenuItem
@@ -243,9 +240,6 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
           >
             <FolderOpenIcon />
             <CommandMenuLabel>Switch project</CommandMenuLabel>
-            <CommandMenuDescription>
-              Back to the picker and its recents
-            </CommandMenuDescription>
           </CommandMenuItem>
         </CommandMenuSection>
 
