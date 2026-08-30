@@ -133,18 +133,30 @@ mod fires {
         );
     }
 
+    /// How many signals a thirty-file burst may produce before the debounce is
+    /// not doing its job. Not one: a burst that takes longer to write than the
+    /// debounce window legitimately closes one and opens another, and a loaded
+    /// machine makes that likely. The property worth holding is the ratio.
+    const BURST_CEILING: usize = 5;
+
     #[test]
-    fn a_burst_of_writes_collapses_into_one_signal() {
+    fn a_burst_of_writes_collapses_into_a_few_signals() {
         let (root, rx, _watcher) = watched("");
         for index in 0..30 {
             std::fs::write(root.path().join(format!("file{index}.rs")), "x").expect("write file");
         }
         assert!(rx.recv_timeout(PATIENCE).is_ok(), "no signal for the burst");
-        // The debounce window has long closed by the time the first arrives,
-        // so anything still queued would be a second, redundant refresh.
+
+        // Drain whatever else the burst produced. Each refresh is a `git
+        // status` plus a `git diff` per changed file, so the count here is the
+        // cost the app actually pays for one agent run.
+        let mut signals = 1;
+        while rx.recv_timeout(Duration::from_millis(800)).is_ok() {
+            signals += 1;
+        }
         assert!(
-            rx.recv_timeout(Duration::from_millis(600)).is_err(),
-            "thirty writes produced more than one refresh"
+            signals <= BURST_CEILING,
+            "thirty writes produced {signals} refreshes"
         );
     }
 
