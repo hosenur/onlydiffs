@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HotkeysProvider } from "@tanstack/react-hotkeys";
-import { RouterProvider, createHashHistory, createRouter } from "@tanstack/react-router";
+import { RouterProvider, createMemoryHistory, createRouter } from "@tanstack/react-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ThemeProvider } from "@/components/theme-provider";
 import { currentProject } from "@/lib/ipc";
@@ -18,15 +18,18 @@ import "./index.css";
  * picker is the honest thing to show.
  */
 const opened = await currentProject().catch(() => null);
-if (opened !== null && window.location.hash === "") {
-  window.location.hash = "/diff";
-}
+const initialPath = opened === null ? "/" : "/diff";
 
-// Hash history: the window is served from a custom protocol with no server
-// behind it, so a pushState route would 404 on reload. Back/forward still work.
+/*
+ * Keep route history inside the router. WebKit binds Backspace to its own page
+ * history even while a text input is focused; hash routes gave it entries to
+ * traverse, so deleting palette text could leave the repository. A desktop
+ * window has no URL to restore: every launch starts here and chooses its route
+ * from the persisted project above.
+ */
 const router = createRouter({
   routeTree,
-  history: createHashHistory(),
+  history: createMemoryHistory({ initialEntries: [initialPath] }),
   defaultPreload: false,
 });
 
