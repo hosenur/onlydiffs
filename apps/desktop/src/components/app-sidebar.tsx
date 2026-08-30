@@ -1,6 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router'
 import { ArrowsRightLeftIcon } from '@heroicons/react/16/solid'
-import platypus from '@/assets/platypus.png'
 import { AppFileTree } from '@/components/app-file-tree'
 import {
   Sidebar,
@@ -19,8 +18,8 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ diff, paths, ...props }: AppSidebarProps) {
-  // `strict: false` — this renders on both `/` and `/file/$`, and only the
-  // latter has a splat param.
+  // SAFETY: `strict: false` lets this render on both `/diff` and `/file/$`;
+  // only the latter route can contribute the optional splat.
   const params = useParams({ strict: false }) as { _splat?: string }
   const current = params._splat
 
@@ -34,16 +33,8 @@ export function AppSidebar({ diff, paths, ...props }: AppSidebarProps) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader>
-        <div className="flex min-w-0 items-center gap-x-2.5">
-          {/* Artwork is dark-on-white with no alpha, so give it a tile. */}
-          <img
-            src={platypus}
-            alt=""
-            width={32}
-            height={32}
-            className="size-8 shrink-0 rounded-md"
-          />
+      <SidebarHeader className="h-16 border-b">
+        <div className="flex min-w-0 items-center">
           <div className="flex min-w-0 flex-col">
             {/* The way back to the project picker, and the only one in the
                 chrome — so it carries an icon rather than relying on someone

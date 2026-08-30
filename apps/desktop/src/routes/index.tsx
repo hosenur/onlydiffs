@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { ArrowRightIcon, FolderOpenIcon, XMarkIcon } from '@heroicons/react/16/solid'
+import { ArrowRightIcon, XMarkIcon } from '@heroicons/react/16/solid'
 import platypus from '@/assets/platypus.png'
 import { Button } from '@onlydiffs/ui/button'
 import { Loader } from '@onlydiffs/ui/loader'
+import { useProjectIcons } from '@/hooks/use-project-icons'
 import { CodeBranchOutline18 } from '@/icons'
+import { projectInitials, projectTint } from '@/lib/project-identity'
 import { forgetProject, listProjects, openProject } from '@/lib/ipc'
 import type { Project } from '@shared/contract'
 
@@ -26,8 +28,12 @@ export const Route = createFileRoute('/')({
 /** Rows past this all animate together, so the list always settles by ~360ms. */
 const STAGGER_CAP = 4
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error)
+interface RecentProjectStyle extends CSSProperties {
+  '--i': number
+}
+
+function recentProjectStyle(index: number): RecentProjectStyle {
+  return { '--i': Math.min(index, STAGGER_CAP) }
 }
 
 function Welcome() {
@@ -39,10 +45,21 @@ function Welcome() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
+  const projectButtons = useRef<Array<HTMLButtonElement | null>>([])
+  useProjectIcons()
 
   useEffect(() => {
     input.current?.focus()
   }, [])
+
+  function focusProject(index: number) {
+    if (index < 0) {
+      input.current?.focus()
+      return
+    }
+    const target = Math.min(index, projects.length - 1)
+    projectButtons.current[target]?.focus()
+  }
 
   async function open(value: string) {
     const target = value.trim()
@@ -54,7 +71,7 @@ function Welcome() {
       // The sidebar and every loader below it read the newly opened repository.
       await router.navigate({ to: '/diff' })
     } catch (cause) {
-      setError(errorMessage(cause))
+      setError(cause instanceof Error ? cause.message : String(cause))
       setBusy(null)
     }
   }
@@ -65,7 +82,7 @@ function Welcome() {
       await forgetProject(project.path)
       await router.invalidate()
     } catch (cause) {
-      setError(errorMessage(cause))
+      setError(cause instanceof Error ? cause.message : String(cause))
     }
   }
 
@@ -101,6 +118,16 @@ function Welcome() {
                 setPath(event.target.value)
                 setError(null)
               }}
+              onKeyDown={(event) => {
+                if (busy !== null || projects.length === 0) return
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault()
+                  focusProject(0)
+                } else if (event.key === 'ArrowUp') {
+                  event.preventDefault()
+                  focusProject(projects.length - 1)
+                }
+              }}
               placeholder="~/Developer/my-project"
               spellCheck={false}
               autoComplete="off"
@@ -120,7 +147,7 @@ function Welcome() {
 
         <section className="flex flex-col gap-2">
           <h2 className="font-medium text-muted-fg text-xs uppercase tracking-wide">
-            Recent
+            Projects
           </h2>
           {projects.length === 0 ? (
             <p className="rounded-lg border border-border border-dashed px-3 py-6 text-center text-muted-fg text-sm">
@@ -133,19 +160,43 @@ function Welcome() {
                   key={project.path}
                   // Capped so a long history does not turn into a slow reveal:
                   // past the fifth row everything lands together.
-                  style={{ '--i': Math.min(index, STAGGER_CAP) } as CSSProperties}
+                  style={recentProjectStyle(index)}
                   className="recent-project group/row flex items-center gap-1"
                 >
                   <button
+                    ref={(element) => {
+                      projectButtons.current[index] = element
+                    }}
                     type="button"
                     onClick={() => void open(project.path)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowDown') {
+                        event.preventDefault()
+                        focusProject(index + 1)
+                      } else if (event.key === 'ArrowUp') {
+                        event.preventDefault()
+                        focusProject(index - 1)
+                      }
+                    }}
                     disabled={busy !== null}
                     className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-start hover:bg-secondary disabled:opacity-50"
                   >
                     {busy === project.path ? (
                       <Loader className="size-4 shrink-0" />
+                    ) : project.icon ? (
+                      <img
+                        src={project.icon.dataUrl}
+                        alt=""
+                        draggable={false}
+                        className="size-4 shrink-0 rounded-sm bg-white object-contain"
+                      />
                     ) : (
-                      <FolderOpenIcon className="size-4 shrink-0 text-muted-fg" />
+                      <span
+                        aria-hidden
+                        className={`grid size-4 shrink-0 select-none place-items-center rounded-sm font-semibold text-[7px] leading-none ${projectTint(project.path)}`}
+                      >
+                        {projectInitials(project.name)}
+                      </span>
                     )}
                     <span className="flex min-w-0 flex-col">
                       <span className="truncate font-medium text-sm">{project.name}</span>

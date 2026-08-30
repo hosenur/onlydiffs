@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@heroicons/react": "^2.2.0",
+    "@lisse/react": "^0.7.2",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@onlydiffs/ui": "workspace:*",
     "@pierre/diffs": "^1.3.6",

@@ -6,7 +6,6 @@ import {
   ArrowPathIcon,
   CheckIcon,
   ComputerDesktopIcon,
-  FolderOpenIcon,
   MoonIcon,
   PlusIcon,
   SparklesIcon,
@@ -24,23 +23,29 @@ import {
   CommandMenuShortcut,
 } from '@/components/ui/command-menu'
 import { Loader } from '@onlydiffs/ui/loader'
+import { IsometricCubeIcon } from '@/icons'
 import { fileIconUrl } from '@/lib/file-icon'
 import {
   commitAll,
   generateCommitMessage,
+  openProject,
   stageFile,
   writeClipboardText,
 } from '@/lib/ipc'
+import { projectInitials, projectTint } from '@/lib/project-identity'
 import { fileHref } from '@/lib/status'
 import { type UpdateValue, useUpdate } from '@/lib/update'
 import type { FileChange } from '@/types'
+import type { Project } from '@shared/contract'
 
 interface AppCommandMenuProps {
   files: FileChange[]
+  projects: Project[]
+  currentProjectPath: string
 }
 
 /** Which long-running action is in flight, so the palette can say so. */
-type Busy = 'generate' | 'commit' | 'stage' | null
+type Busy = 'generate' | 'commit' | 'stage' | 'project' | null
 
 /**
  * One row per theme rather than a single cycling "Toggle theme": the palette
@@ -55,10 +60,6 @@ const THEMES: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
   { value: 'dark', label: 'Dark', Icon: MoonIcon },
   { value: 'system', label: 'System', Icon: ComputerDesktopIcon },
 ]
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error)
-}
 
 /** Release notes are a changelog; a palette row has space for its headline. */
 function headline(notes: string) {
@@ -99,7 +100,85 @@ function statusLine(failures: (string | null)[], note: string | null) {
   return { message: failure ?? note, isFailure: failure !== null }
 }
 
-export function AppCommandMenu({ files }: AppCommandMenuProps) {
+interface OtherProjectsSectionProps {
+  projects: Project[]
+  currentPath: string
+  isDisabled: boolean
+  onStart: () => void
+  onOpened: () => void
+  onError: (message: string) => void
+  onFinish: () => void
+}
+
+function OtherProjectsSection({
+  projects,
+  currentPath,
+  isDisabled,
+  onStart,
+  onOpened,
+  onError,
+  onFinish,
+}: OtherProjectsSectionProps) {
+  const router = useRouter()
+  const [opening, setOpening] = useState<string | null>(null)
+  const otherProjects = projects.filter((project) => project.path !== currentPath)
+
+  if (otherProjects.length === 0) return null
+
+  async function open(project: Project) {
+    if (opening !== null || isDisabled) return
+    setOpening(project.path)
+    onStart()
+    try {
+      await openProject(project.path)
+      await router.navigate({ to: '/diff', replace: true })
+      await router.invalidate()
+      onOpened()
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setOpening(null)
+      onFinish()
+    }
+  }
+
+  return (
+    <CommandMenuSection label="Other projects">
+      {otherProjects.map((project) => (
+        <CommandMenuItem
+          key={project.path}
+          textValue={`Open project ${project.name} ${project.path}`}
+          isDisabled={opening !== null || isDisabled}
+          onAction={() => void open(project)}
+        >
+          {opening === project.path ? (
+            <Loader />
+          ) : project.icon ? (
+            <img
+              src={project.icon.dataUrl}
+              alt=""
+              draggable={false}
+              className="me-1.5 size-4 rounded-sm bg-white object-contain"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className={`me-1.5 grid size-4 shrink-0 select-none place-items-center rounded-sm font-semibold text-[7px] leading-none ${projectTint(project.path)}`}
+            >
+              {projectInitials(project.name)}
+            </span>
+          )}
+          <CommandMenuLabel>{project.name}</CommandMenuLabel>
+          <CommandMenuDescription className="max-w-72 truncate">
+            {project.path}
+          </CommandMenuDescription>
+        </CommandMenuItem>
+      ))}
+    </CommandMenuSection>
+  )
+}
+
+export function AppCommandMenu({ files, projects, currentProjectPath }: AppCommandMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [busy, setBusy] = useState<Busy>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -108,7 +187,8 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const update = useUpdate()
-  // `strict: false` — the palette also renders on `/`, which has no splat.
+  // SAFETY: `strict: false` lets the palette render on both `/diff` and
+  // `/file/$`; only the latter route can contribute the optional splat.
   const params = useParams({ strict: false }) as { _splat?: string }
   const current = params._splat
 
@@ -142,7 +222,7 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
       await writeClipboardText(generated)
       setNote(`Copied — ${generated.split('\n')[0]}`)
     } catch (cause) {
-      setError(errorMessage(cause))
+      setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setBusy(null)
     }
@@ -158,7 +238,7 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
       setNote(`Staged ${stageable.path}`)
       await router.invalidate()
     } catch (cause) {
-      setError(errorMessage(cause))
+      setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setBusy(null)
     }
@@ -180,7 +260,7 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
       setNote(`Committed ${head}`)
       await router.invalidate()
     } catch (cause) {
-      setError(errorMessage(cause))
+      setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setBusy(null)
     }
@@ -254,7 +334,7 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
               void navigate({ to: '/' })
             }}
           >
-            <FolderOpenIcon />
+            <IsometricCubeIcon />
             <CommandMenuLabel>Switch project</CommandMenuLabel>
           </CommandMenuItem>
         </CommandMenuSection>
@@ -308,6 +388,20 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
             ))}
           </CommandMenuSection>
         )}
+
+        <OtherProjectsSection
+          projects={projects}
+          currentPath={currentProjectPath}
+          isDisabled={busy !== null}
+          onStart={() => {
+            setBusy('project')
+            setError(null)
+            setNote(null)
+          }}
+          onOpened={() => setIsOpen(false)}
+          onError={setError}
+          onFinish={() => setBusy(null)}
+        />
       </CommandMenuList>
 
       {status.message && (
