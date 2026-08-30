@@ -5,6 +5,7 @@ import {
   ArrowDownTrayIcon,
   CheckIcon,
   ComputerDesktopIcon,
+  FolderOpenIcon,
   MoonIcon,
   PlusIcon,
   SparklesIcon,
@@ -229,6 +230,22 @@ export function AppCommandMenu({ files }: AppCommandMenuProps) {
             <CommandMenuShortcut>
               {changed.length} {changed.length === 1 ? 'file' : 'files'}
             </CommandMenuShortcut>
+          </CommandMenuItem>
+        </CommandMenuSection>
+
+        <CommandMenuSection label="Project">
+          <CommandMenuItem
+            textValue="Switch project Open another repository"
+            onAction={() => {
+              setIsOpen(false)
+              void navigate({ to: '/' })
+            }}
+          >
+            <FolderOpenIcon />
+            <CommandMenuLabel>Switch project</CommandMenuLabel>
+            <CommandMenuDescription>
+              Back to the picker and its recents
+            </CommandMenuDescription>
           </CommandMenuItem>
         </CommandMenuSection>
 

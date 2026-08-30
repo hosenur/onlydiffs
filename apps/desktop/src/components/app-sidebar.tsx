@@ -1,4 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router'
+import { ArrowsRightLeftIcon } from '@heroicons/react/16/solid'
 import platypus from '@/assets/platypus.png'
 import { AppFileTree } from '@/components/app-file-tree'
 import {
@@ -44,13 +45,19 @@ export function AppSidebar({ diff, paths, ...props }: AppSidebarProps) {
             className="size-8 shrink-0 rounded-md"
           />
           <div className="flex min-w-0 flex-col">
-            {/* Doubles as the way back to the project picker. */}
+            {/* The way back to the project picker, and the only one in the
+                chrome — so it carries an icon rather than relying on someone
+                guessing that the repository name is a link. */}
             <Link
               to="/"
               title="Switch project"
-              className="truncate font-medium hover:underline"
+              className="flex min-w-0 items-center gap-x-1 font-medium hover:underline"
             >
-              {diff.repoPath.split('/').pop()}
+              <span className="truncate">{diff.repoPath.split('/').pop()}</span>
+              <ArrowsRightLeftIcon
+                aria-hidden
+                className="size-3 shrink-0 text-muted-fg"
+              />
             </Link>
             <span className="flex min-w-0 items-center gap-x-1 text-muted-fg">
               <CodeBranchOutline18 aria-hidden className="size-3 shrink-0" />
