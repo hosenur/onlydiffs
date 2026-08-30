@@ -16,9 +16,26 @@ import type { ClaudeChannelStatus } from '@shared/contract'
  */
 const POLL_MS = 4000
 
+/**
+ * Holds the last non-null value so a surface can keep rendering its content
+ * while it animates out. The live value always wins, so switching from one
+ * reference straight to another shows the new one immediately.
+ */
+function useRetained<T>(value: T | null): T | null {
+  const [retained, setRetained] = useState(value)
+
+  useEffect(() => {
+    if (value !== null) setRetained(value)
+  }, [value])
+
+  return value ?? retained
+}
+
 export function AppToolbar() {
   const [status, setStatus] = useState<ClaudeChannelStatus | null>(null)
   const { reference, clear } = useLineReference()
+  // The composer animates out, so it outlives the reference that opened it.
+  const shown = useRetained(reference)
   const { offer } = useUpdate()
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -49,11 +66,14 @@ export function AppToolbar() {
   }, [])
 
   // A fresh line means a fresh message; carrying the old draft across would
-  // silently attach it to a line the user did not mean.
+  // silently attach it to a line the user did not mean. Dismissal deliberately
+  // leaves the draft alone: the bar is still on screen fading out, and watching
+  // the text blank out first reads as a glitch.
   useEffect(() => {
+    if (!reference) return
     setMessage('')
     setError(null)
-    if (reference) input.current?.focus()
+    input.current?.focus()
   }, [reference])
 
   const connected = status?.connected ?? false
@@ -90,20 +110,25 @@ export function AppToolbar() {
 
   return (
     <>
-      {reference && (
+      {shown && (
         // Fixed to the window rather than the content pane, so hiding the
         // sidebar does not slide the composer sideways underneath the cursor.
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-12">
-          <div className="composer pointer-events-auto w-full max-w-xl rounded-xl border bg-overlay p-2 shadow-lg">
+          {/* Mounted from the first reference onwards; `data-open` is what
+              opens and closes it, so dismissal has something to animate. */}
+          <div
+            data-open={reference !== null}
+            className="composer pointer-events-auto w-full max-w-xl rounded-xl border bg-overlay p-2 shadow-lg"
+          >
             <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
               <span
-                title={reference.label}
+                title={shown.label}
                 className="flex min-w-0 font-mono text-[11px] text-primary-subtle-fg"
               >
                 {/* The number sits outside the truncation: a clipped name is
                     still recognisable, a clipped line number is not. */}
-                <span className="truncate">{reference.name}</span>
-                <span>:{reference.lineNumber}</span>
+                <span className="truncate">{shown.name}</span>
+                <span>:{shown.lineNumber}</span>
               </span>
               <button
                 type="button"
@@ -116,7 +141,7 @@ export function AppToolbar() {
             </div>
 
             <TextField
-              aria-label={`Message Claude about ${reference.label}`}
+              aria-label={`Message Claude about ${shown.label}`}
               value={message}
               onChange={setMessage}
               isDisabled={isSending || !connected}

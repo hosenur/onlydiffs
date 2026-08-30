@@ -351,19 +351,37 @@ diffs-container {
 
 /*
  * The line composer, which slides up from the bottom edge when a diff line is
- * clicked. Occasional rather than constant, so it earns a real entrance; the
- * curve and duration match the recent-projects list above.
+ * clicked and leaves the same way when it is dismissed. Occasional rather than
+ * constant, so it earns a real entrance; the curve and duration match the
+ * recent-projects list above.
  *
- * `@starting-style` rather than a keyframe: the bar mounts and unmounts with
- * the reference, and a transition retargets cleanly if a second line is
- * clicked before the first has settled.
+ * `@starting-style` covers the first open, when the bar mounts alongside the
+ * first reference. Every open after that is a `data-open` flip on a bar that
+ * stays mounted -- React removes an element too quickly for it to animate on
+ * the way out, so the component holds it and toggles the attribute instead. A
+ * transition retargets cleanly in either direction if a second line is clicked
+ * before the first has settled.
+ *
+ * `visibility` is what takes the closed bar out of the tab order and the
+ * accessibility tree. It flips in one step at the end of the fade, so it
+ * carries a delay rather than a duration.
  */
 .composer {
   opacity: 1;
   transform: translateY(0);
+  visibility: visible;
   transition:
     opacity 240ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 240ms cubic-bezier(0.23, 1, 0.32, 1);
+    transform 240ms cubic-bezier(0.23, 1, 0.32, 1),
+    visibility 0s;
+}
+
+.composer[data-open='false'] {
+  opacity: 0;
+  transform: translateY(16px);
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, 0s, 240ms;
 }
 
 @starting-style {
@@ -374,8 +392,17 @@ diffs-container {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* The bar still fades, it just stops travelling. `transform` keeps its slot
+     in the list so `transition-delay` above still lands on `visibility`. */
   .composer {
-    transition: opacity 240ms ease;
+    transition:
+      opacity 240ms ease,
+      transform 0s,
+      visibility 0s;
+  }
+
+  .composer[data-open='false'] {
+    transform: translateY(0);
   }
 
   @starting-style {
