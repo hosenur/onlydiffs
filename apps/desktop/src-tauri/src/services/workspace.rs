@@ -14,13 +14,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use crate::contract::Project;
+use crate::contract::{Project, ProjectIcon};
 use crate::error::AppError;
 
 /// Where the recents list is kept, relative to the user's home directory.
 const STORE_DIR: &str = ".onlydiffs";
 const STORE_FILE: &str = "projects.json";
-const MAX_RECENTS: usize = 20;
 const STORE_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,6 +27,23 @@ const STORE_VERSION: u32 = 1;
 struct StoredProject {
     path: String,
     last_opened_at: u64,
+    #[serde(default)]
+    icon: Option<StoredProjectIcon>,
+    #[serde(default)]
+    icon_scan_hash: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredProjectIcon {
+    source_path: String,
+    data_url: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProjectIconJob {
+    pub path: PathBuf,
+    pub previous_scan_hash: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -100,14 +116,21 @@ fn find_repo_root(dir: &Path) -> Option<PathBuf> {
     }
 }
 
-fn describe(repo_path: &Path) -> Project {
+fn describe(repo_path: &Path, icon: Option<&StoredProjectIcon>) -> Project {
     let display = repo_path.to_string_lossy().into_owned();
     let name = repo_path
         .file_name()
         .map(|segment| segment.to_string_lossy().into_owned())
         .filter(|segment| !segment.is_empty())
         .unwrap_or_else(|| display.clone());
-    Project { path: display, name }
+    Project {
+        path: display,
+        name,
+        icon: icon.map(|icon| ProjectIcon {
+            source_path: icon.source_path.clone(),
+            data_url: icon.data_url.clone(),
+        }),
+    }
 }
 
 pub struct Workspace {
@@ -129,9 +152,9 @@ impl Workspace {
             current: Mutex::new(None),
         };
         let requested = initial_repo.filter(|path| !path.trim().is_empty());
-        // `list` drops entries whose folder is gone, so the fallback never
-        // reopens a checkout that has since been deleted or unmounted.
-        let restored = || workspace.list().into_iter().next().map(|entry| entry.path);
+        // Missing folders are skipped, so the fallback never reopens a
+        // checkout that has since been deleted or unmounted.
+        let restored = || workspace.most_recent_path();
         if let Some(path) = requested.or_else(restored) {
             // A bad value in the environment, or a repository that stopped
             // being one, is not worth failing startup over; the landing page
@@ -182,19 +205,30 @@ impl Workspace {
         *self.current.lock().expect("workspace lock") = Some(root.clone());
         {
             let mut recents = self.recents.lock().expect("recents lock");
-            recents.retain(|entry| entry.path != display);
-            recents.insert(
-                0,
-                StoredProject {
-                    path: display,
-                    last_opened_at: now_millis(),
-                },
+            // The timestamp controls startup restoration, not display order.
+            // Keep it monotonic even when two opens land in the same millisecond.
+            let opened_at = now_millis().max(
+                recents
+                    .iter()
+                    .map(|entry| entry.last_opened_at)
+                    .max()
+                    .unwrap_or(0)
+                    .saturating_add(1),
             );
-            recents.truncate(MAX_RECENTS);
+            if let Some(entry) = recents.iter_mut().find(|entry| entry.path == display) {
+                entry.last_opened_at = opened_at;
+            } else {
+                recents.push(StoredProject {
+                    path: display,
+                    last_opened_at: opened_at,
+                    icon: None,
+                    icon_scan_hash: None,
+                });
+            }
         }
         self.write_store();
 
-        Ok(describe(&root))
+        Ok(self.describe_path(&root))
     }
 
     /// The active repository. Everything that shells out to git needs this.
@@ -207,22 +241,82 @@ impl Workspace {
     }
 
     pub fn current_project(&self) -> Option<Project> {
-        self.current
-            .lock()
-            .expect("workspace lock")
-            .as_deref()
-            .map(describe)
+        let path = self.current.lock().expect("workspace lock").clone()?;
+        Some(self.describe_path(&path))
     }
 
-    /// Recents, newest first, with entries that no longer exist dropped.
+    /// Projects stay in first-opened order so switching one never moves its UI.
+    /// Entries whose folders no longer exist are omitted.
     pub fn list(&self) -> Vec<Project> {
-        let mut entries = self.recents.lock().expect("recents lock").clone();
-        entries.sort_by(|a, b| b.last_opened_at.cmp(&a.last_opened_at));
-        entries
-            .into_iter()
+        self.recents
+            .lock()
+            .expect("recents lock")
+            .iter()
             .filter(|entry| Path::new(&entry.path).exists())
-            .map(|entry| describe(Path::new(&entry.path)))
+            .map(|entry| describe(Path::new(&entry.path), entry.icon.as_ref()))
             .collect()
+    }
+
+    fn describe_path(&self, repo_path: &Path) -> Project {
+        let display = repo_path.to_string_lossy();
+        let recents = self.recents.lock().expect("recents lock");
+        let icon = recents
+            .iter()
+            .find(|entry| entry.path == display)
+            .and_then(|entry| entry.icon.as_ref());
+        describe(repo_path, icon)
+    }
+
+    pub fn project_icon_jobs(&self) -> Vec<ProjectIconJob> {
+        let current = self.current.lock().expect("workspace lock").clone();
+        let mut jobs: Vec<ProjectIconJob> = self
+            .recents
+            .lock()
+            .expect("recents lock")
+            .iter()
+            .filter(|entry| entry.icon.is_none() && Path::new(&entry.path).exists())
+            .map(|entry| ProjectIconJob {
+                path: PathBuf::from(&entry.path),
+                previous_scan_hash: entry.icon_scan_hash.clone(),
+            })
+            .collect();
+        jobs.sort_by_key(|job| match &current {
+            Some(path) => path != &job.path,
+            None => true,
+        });
+        jobs
+    }
+
+    pub fn record_icon_scan(
+        &self,
+        repo_path: &Path,
+        scan_hash: String,
+        icon: Option<(String, String)>,
+    ) {
+        let display = repo_path.to_string_lossy();
+        let mut recents = self.recents.lock().expect("recents lock");
+        let Some(entry) = recents.iter_mut().find(|entry| entry.path == display) else {
+            return;
+        };
+        entry.icon_scan_hash = Some(scan_hash);
+        if let Some((source_path, data_url)) = icon {
+            entry.icon = Some(StoredProjectIcon {
+                source_path,
+                data_url,
+            });
+        }
+        drop(recents);
+        self.write_store();
+    }
+
+    fn most_recent_path(&self) -> Option<String> {
+        self.recents
+            .lock()
+            .expect("recents lock")
+            .iter()
+            .filter(|entry| Path::new(&entry.path).exists())
+            .max_by_key(|entry| entry.last_opened_at)
+            .map(|entry| entry.path.clone())
     }
 
     pub fn forget(&self, repo_path: &str) {

@@ -43,13 +43,19 @@ ONLYDIFFS_REPO_PATH=~/code/my-project bun run dev
 
 Build a distributable with `bun run dist`.
 
-### Not wired up yet
+### Groq
+
+When `GROQ_API_KEY` is set, the background project-icon resolver shortlists a
+repository's own artwork — app icons, logos, favicons — and shows the best three
+to Groq's Qwen 3.6 vision model, which names one or declines them all. Three is
+the most images that model accepts in a request. The chosen thumbnail and its
+repository-relative source path stay in `~/.onlydiffs/projects.json`, keyed by a
+hash of the shortlist so an unchanged repository is never re-sent. Projects with
+no artwork, or none the model would use, keep the cube fallback.
 
 The Claude Code channel and the Groq commit-message generator are implemented
-end to end — Rust command, IPC, and renderer client — but nothing in the UI
-calls them while the review surface is being rebuilt. `bun run channel:setup`
-still registers the channel, and `GROQ_API_KEY` is still read from the app's
-environment.
+end to end, but the review UI does not call either yet. `bun run channel:setup`
+still registers the channel.
 
 ## Keys
 

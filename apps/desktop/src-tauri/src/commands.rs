@@ -172,6 +172,7 @@ pub async fn open_project(
         if let Ok(root) = state.workspace.current_path() {
             watcher::watch_repo(&app, &state.watcher, root);
         }
+        crate::resolve_project_icons_in_background(app.clone());
     }
     Ok(opened.into())
 }

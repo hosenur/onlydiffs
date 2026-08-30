@@ -55,12 +55,21 @@ export interface Commit {
   refs: string;
 }
 
+export interface ProjectIcon {
+  /** Repository-relative path chosen as the icon source. */
+  sourcePath: string;
+  /** Small cached image, ready for an <img> source. */
+  dataUrl: string;
+}
+
 /** A repository the app can open. */
 export interface Project {
   /** Absolute path to the repository root. */
   path: string;
   /** Last path segment, for display. */
   name: string;
+  /** Resolved in the background; null keeps the cube fallback. */
+  icon: ProjectIcon | null;
 }
 
 export interface GetFileContentsRequest {

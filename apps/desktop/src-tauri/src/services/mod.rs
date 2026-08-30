@@ -4,6 +4,7 @@ pub mod diff;
 pub mod file_tree;
 pub mod git;
 pub mod history;
+pub mod project_icon;
 pub mod updater;
 pub mod watcher;
 pub mod workspace;

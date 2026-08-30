@@ -15,6 +15,7 @@ pub mod services;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 
+use services::project_icon;
 use services::watcher::{self, RepoWatcher};
 use services::workspace::Workspace;
 
@@ -30,6 +31,9 @@ pub struct AppState {
     /// One pooled client for both outbound callers — Groq and the loopback
     /// Claude channel.
     pub http: reqwest::Client,
+    /// Stops startup and newly opened projects from launching overlapping
+    /// Groq image-selection requests.
+    pub icon_resolution: tokio::sync::Mutex<()>,
     /// The release a check turned up, held until the user installs it so that
     /// installing applies the version they were offered.
     #[cfg(desktop)]
@@ -42,10 +46,19 @@ impl AppState {
             workspace: Workspace::from_env(),
             watcher: RepoWatcher::new(),
             http: reqwest::Client::new(),
+            icon_resolution: tokio::sync::Mutex::new(()),
             #[cfg(desktop)]
             pending_update: tokio::sync::Mutex::new(None),
         }
     }
+}
+
+pub(crate) fn resolve_project_icons_in_background(app: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let state = app.state::<AppState>();
+        let _guard = state.icon_resolution.lock().await;
+        project_icon::resolve_missing(&app, &state.workspace, &state.http).await;
+    });
 }
 
 /// Nothing in this app should navigate away from the bundle. Anything that
@@ -127,6 +140,14 @@ pub fn run() {
                 if matches!(fallback.is_visible(), Ok(false)) {
                     let _ = fallback.show();
                 }
+            });
+
+            // Icon discovery reads every remembered repository and may call
+            // Groq, so it starts after the first frame rather than delaying it.
+            let icon_app = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                resolve_project_icons_in_background(icon_app);
             });
 
             Ok(())

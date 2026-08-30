@@ -117,7 +117,7 @@ fn an_empty_path_is_rejected() {
 }
 
 #[test]
-fn recents_are_newest_first_and_de_duplicated() {
+fn project_order_is_fixed_and_de_duplicated() {
     let sandbox = Sandbox::new();
     let workspace = sandbox.workspace();
     let one = sandbox.make_repo("one");
@@ -125,10 +125,23 @@ fn recents_are_newest_first_and_de_duplicated() {
 
     workspace.open(&as_str(&one)).expect("open one");
     workspace.open(&as_str(&two)).expect("open two");
-    workspace.open(&as_str(&one)).expect("re-open one");
+    workspace.open(&as_str(&two)).expect("re-open two");
 
     let names: Vec<String> = workspace.list().into_iter().map(|p| p.name).collect();
     assert_eq!(names, vec!["one", "two"]);
+}
+
+#[test]
+fn every_opened_repository_stays_in_the_history() {
+    let sandbox = Sandbox::new();
+    let workspace = sandbox.workspace();
+
+    for index in 0..25 {
+        let repo = sandbox.make_repo(&format!("project-{index}"));
+        workspace.open(&as_str(&repo)).expect("open project");
+    }
+
+    assert_eq!(workspace.list().len(), 25);
 }
 
 #[test]
@@ -165,6 +178,29 @@ fn forget_removes_a_project_from_the_history() {
     workspace.open(&as_str(&repo)).expect("open");
     workspace.forget(&as_str(&repo));
     assert!(workspace.list().is_empty());
+}
+
+#[test]
+fn history_from_before_project_icons_is_preserved() {
+    let sandbox = Sandbox::new();
+    let repo = sandbox.make_repo("legacy");
+    std::fs::create_dir_all(sandbox.state_dir()).expect("create state dir");
+    let stored = serde_json::json!({
+        "version": 1,
+        "projects": [{
+            "path": as_str(&repo),
+            "lastOpenedAt": 1
+        }]
+    });
+    std::fs::write(
+        sandbox.state_dir().join("projects.json"),
+        serde_json::to_string(&stored).expect("serialize store"),
+    )
+    .expect("write legacy store");
+
+    let workspace = sandbox.workspace();
+    assert_eq!(workspace.list()[0].name, "legacy");
+    assert!(workspace.list()[0].icon.is_none());
 }
 
 #[test]
@@ -256,4 +292,67 @@ fn the_store_never_lands_in_the_real_home_directory_during_tests() {
     let sandbox = Sandbox::new();
     let home_store = dirs::home_dir().expect("home").join(".onlydiffs");
     assert!(!sandbox.state_dir().starts_with(home_store));
+}
+
+#[test]
+fn a_resolved_icon_reaches_the_project_list_and_survives_a_restart() {
+    let sandbox = Sandbox::new();
+    let repo = sandbox.make_repo("charted");
+    {
+        let workspace = sandbox.workspace();
+        workspace.open(&as_str(&repo)).expect("open repo");
+        workspace.record_icon_scan(
+            &repo,
+            "abc123".to_owned(),
+            Some(("assets/logo.png".to_owned(), "data:image/png;base64,AA".to_owned())),
+        );
+
+        let icon = workspace.list()[0].icon.clone().expect("icon on the project");
+        assert_eq!(icon.source_path, "assets/logo.png");
+    }
+
+    // A second workspace over the same state directory is what the next launch
+    // sees: the artwork is already there, so nothing is sent to Groq again.
+    let restarted = sandbox.workspace();
+    let icon = restarted.list()[0].icon.clone().expect("icon after restart");
+    assert_eq!(icon.data_url, "data:image/png;base64,AA");
+    assert!(restarted.project_icon_jobs().is_empty());
+}
+
+#[test]
+fn a_scan_that_found_nothing_is_remembered_so_it_is_not_re_sent() {
+    let sandbox = Sandbox::new();
+    let repo = sandbox.make_repo("bare");
+    let workspace = sandbox.workspace();
+    workspace.open(&as_str(&repo)).expect("open repo");
+    workspace.record_icon_scan(&repo, "no-artwork".to_owned(), None);
+
+    let restarted = sandbox.workspace();
+    let jobs = restarted.project_icon_jobs();
+
+    // The repository is still queued — its artwork could appear at any commit —
+    // but it carries the hash that stops the scan short of a Groq request.
+    assert_eq!(jobs.len(), 1);
+    assert_eq!(jobs[0].previous_scan_hash.as_deref(), Some("no-artwork"));
+    assert!(restarted.list()[0].icon.is_none());
+}
+
+#[test]
+fn the_open_project_is_the_first_icon_resolved() {
+    let sandbox = Sandbox::new();
+    let first = sandbox.make_repo("first");
+    let second = sandbox.make_repo("second");
+    let third = sandbox.make_repo("third");
+    let workspace = sandbox.workspace();
+    for repo in [&first, &second, &third] {
+        workspace.open(&as_str(repo)).expect("open repo");
+    }
+    workspace.open(&as_str(&second)).expect("re-open second");
+
+    let jobs = workspace.project_icon_jobs();
+
+    // Whichever project the user is looking at gets its icon first, even though
+    // the list itself stays in first-opened order.
+    assert_eq!(jobs[0].path, second);
+    assert_eq!(jobs.len(), 3);
 }

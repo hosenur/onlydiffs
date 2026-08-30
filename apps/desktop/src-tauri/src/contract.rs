@@ -65,6 +65,15 @@ pub struct Commit {
     pub refs: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectIcon {
+    /// Repository-relative path chosen as the icon source.
+    pub source_path: String,
+    /// A small cached image that the renderer can use without filesystem access.
+    pub data_url: String,
+}
+
 /// A repository the app can open.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Project {
@@ -72,6 +81,8 @@ pub struct Project {
     pub path: String,
     /// Last path segment, for display.
     pub name: String,
+    /// Resolved in the background; absent until a suitable image is found.
+    pub icon: Option<ProjectIcon>,
 }
 
 /// Whether a Claude Code session is listening for the open repository.

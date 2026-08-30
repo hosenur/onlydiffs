@@ -21,6 +21,9 @@ tauri-plugin-opener = "2"
 tauri-plugin-clipboard-manager = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+base64 = "0.22"
+image = { version = "0.24.9", default-features = false, features = ["gif", "ico", "jpeg", "png", "webp"] }
+resvg = { version = "0.41", default-features = false }
 tokio = { version = "1", features = ["process", "fs", "sync", "time", "macros", "rt-multi-thread"] }
 futures = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
