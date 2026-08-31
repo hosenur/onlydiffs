@@ -62,6 +62,7 @@ struct Decision {
 
 /// One repository failing to scan says nothing about the next one; a refused
 /// Groq call says everything about it.
+#[derive(Debug)]
 enum Failure {
     Project(String),
     Groq(String),
@@ -633,7 +634,7 @@ mod discovery {
     use std::path::Path;
     use std::process::Command;
 
-    fn git(repo: &Path, args: &[&str]) {
+    pub(super) fn git(repo: &Path, args: &[&str]) {
         let output = Command::new("git")
             .arg("-C")
             .arg(repo)
@@ -645,7 +646,7 @@ mod discovery {
 
     /// A flat colour, so two files written with the same shade encode to the
     /// same bytes and stand in for artwork committed twice over.
-    fn write_png(repo: &Path, relative_path: &str, shade: u8) {
+    pub(super) fn write_png(repo: &Path, relative_path: &str, shade: u8) {
         let absolute = repo.join(relative_path);
         std::fs::create_dir_all(absolute.parent().expect("parent")).expect("create dir");
         image::RgbImage::from_pixel(64, 64, image::Rgb([shade, shade, shade]))
@@ -683,5 +684,101 @@ mod discovery {
         std::fs::write(repo.path().join("README.md"), "# no artwork").expect("write readme");
 
         assert!(discover(repo.path()).await.expect("discover").is_empty());
+    }
+}
+
+/// `resolve_job` decides three things before it ever reaches Groq: whether the
+/// shortlist has changed, whether there is anything on it, and what to record
+/// either way. All three are reachable with no network and no `AppHandle`, so
+/// they are tested here; only the branches downstream of the model's answer
+/// still need a seam through `GROQ_CHAT_COMPLETIONS_URL`.
+#[cfg(test)]
+mod resolution {
+    use super::discovery::{git, write_png};
+    use super::{discover, resolve_job, scan_hash};
+    use crate::services::workspace::{ProjectIconJob, Workspace};
+    use reqwest::Client;
+
+    /// Any request that escapes the short circuits fails against this, which is
+    /// what makes `Ok(false)` below mean "never asked" rather than "asked and
+    /// was told no".
+    const UNUSABLE_TOKEN: &str = "not-a-real-groq-key";
+
+    fn repo_with(artwork: &[&str]) -> tempfile::TempDir {
+        let repo = tempfile::TempDir::new().expect("temp repo");
+        git(repo.path(), &["init", "-q"]);
+        for (offset, path) in artwork.iter().enumerate() {
+            write_png(repo.path(), path, 10 + offset as u8);
+        }
+        std::fs::write(repo.path().join("README.md"), "# a project").expect("write readme");
+        repo
+    }
+
+    fn workspace_for(repo: &tempfile::TempDir, state: &tempfile::TempDir) -> Workspace {
+        let workspace = Workspace::new(state.path().to_path_buf(), None);
+        workspace
+            .open(&repo.path().to_string_lossy())
+            .expect("open repo");
+        workspace
+    }
+
+    #[tokio::test]
+    async fn a_repository_with_no_artwork_is_remembered_as_having_none() {
+        let repo = repo_with(&[]);
+        let state = tempfile::TempDir::new().expect("temp state");
+        let workspace = workspace_for(&repo, &state);
+
+        let job = workspace
+            .project_icon_jobs()
+            .pop()
+            .expect("the open repository is queued");
+        assert!(job.previous_scan_hash.is_none(), "nothing scanned it yet");
+
+        let changed = resolve_job(&workspace, &Client::new(), UNUSABLE_TOKEN, job)
+            .await
+            .expect("an empty shortlist is not a failure");
+
+        assert!(!changed, "there was no icon to paint");
+        // Still queued, because it still has no icon -- but now carrying the
+        // hash that stops the next launch scanning it all over again.
+        let requeued = workspace
+            .project_icon_jobs()
+            .pop()
+            .expect("still queued, still iconless");
+        assert!(
+            requeued.previous_scan_hash.is_some(),
+            "the empty shortlist should have been recorded"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_unchanged_shortlist_is_never_sent_to_the_model_again() {
+        let repo = repo_with(&["icon.png"]);
+        let state = tempfile::TempDir::new().expect("temp state");
+        let workspace = workspace_for(&repo, &state);
+
+        let candidates = discover(repo.path()).await.expect("discover");
+        assert_eq!(candidates.len(), 1, "the artwork is a candidate");
+
+        let job = ProjectIconJob {
+            path: repo.path().to_path_buf(),
+            previous_scan_hash: Some(scan_hash(&candidates)),
+        };
+        let changed = resolve_job(&workspace, &Client::new(), UNUSABLE_TOKEN, job)
+            .await
+            .expect("a shortlist that was already answered is not a failure");
+
+        assert!(!changed, "the previous answer still stands");
+    }
+
+    #[tokio::test]
+    async fn new_artwork_reopens_a_question_an_earlier_scan_had_closed() {
+        let repo = repo_with(&["icon.png"]);
+        let before = scan_hash(&discover(repo.path()).await.expect("discover"));
+
+        write_png(repo.path(), "logo.png", 200);
+        let after = scan_hash(&discover(repo.path()).await.expect("discover"));
+
+        assert_ne!(before, after, "added artwork has to reopen the question");
     }
 }

@@ -12,6 +12,7 @@ import {
   SunIcon,
 } from '@heroicons/react/16/solid'
 import { type Theme, useTheme } from '@/components/theme-provider'
+import { useProjectOpener } from '@/hooks/use-project-opener'
 import {
   CommandMenu,
   CommandMenuDescription,
@@ -25,13 +26,7 @@ import {
 import { Loader } from '@onlydiffs/ui/loader'
 import { IsometricCubeIcon } from '@/icons'
 import { fileIconUrl } from '@/lib/file-icon'
-import {
-  commitAll,
-  generateCommitMessage,
-  openProject,
-  stageFile,
-  writeClipboardText,
-} from '@/lib/ipc'
+import { commitAll, generateCommitMessage, stageFile, writeClipboardText } from '@/lib/ipc'
 import { projectInitials, projectTint } from '@/lib/project-identity'
 import { fileHref } from '@/lib/status'
 import { type UpdateValue, useUpdate } from '@/lib/update'
@@ -45,7 +40,7 @@ interface AppCommandMenuProps {
 }
 
 /** Which long-running action is in flight, so the palette can say so. */
-type Busy = 'generate' | 'commit' | 'stage' | 'project' | null
+type Busy = 'generate' | 'commit' | 'stage' | null
 
 /**
  * One row per theme rather than a single cycling "Toggle theme": the palette
@@ -103,44 +98,26 @@ function statusLine(failures: (string | null)[], note: string | null) {
 interface OtherProjectsSectionProps {
   projects: Project[]
   currentPath: string
+  /** The project being opened, if any, so its row can show the spinner. */
+  openingPath: string | null
   isDisabled: boolean
-  onStart: () => void
-  onOpened: () => void
-  onError: (message: string) => void
-  onFinish: () => void
+  onOpen: (path: string) => void
 }
 
+/**
+ * Rows only. Opening a project is `useProjectOpener`'s job, and the palette
+ * has to hear about it anyway to close itself, so the sequence stays up there.
+ */
 function OtherProjectsSection({
   projects,
   currentPath,
+  openingPath,
   isDisabled,
-  onStart,
-  onOpened,
-  onError,
-  onFinish,
+  onOpen,
 }: OtherProjectsSectionProps) {
-  const router = useRouter()
-  const [opening, setOpening] = useState<string | null>(null)
   const otherProjects = projects.filter((project) => project.path !== currentPath)
 
   if (otherProjects.length === 0) return null
-
-  async function open(project: Project) {
-    if (opening !== null || isDisabled) return
-    setOpening(project.path)
-    onStart()
-    try {
-      await openProject(project.path)
-      await router.navigate({ to: '/diff', replace: true })
-      await router.invalidate()
-      onOpened()
-    } catch (cause) {
-      onError(cause instanceof Error ? cause.message : String(cause))
-    } finally {
-      setOpening(null)
-      onFinish()
-    }
-  }
 
   return (
     <CommandMenuSection label="Other projects">
@@ -148,10 +125,10 @@ function OtherProjectsSection({
         <CommandMenuItem
           key={project.path}
           textValue={`Open project ${project.name} ${project.path}`}
-          isDisabled={opening !== null || isDisabled}
-          onAction={() => void open(project)}
+          isDisabled={isDisabled}
+          onAction={() => onOpen(project.path)}
         >
-          {opening === project.path ? (
+          {openingPath === project.path ? (
             <Loader />
           ) : project.icon ? (
             <img
@@ -187,6 +164,7 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const update = useUpdate()
+  const { openingPath, failure, open } = useProjectOpener()
   // SAFETY: `strict: false` lets the palette render on both `/diff` and
   // `/file/$`; only the latter route can contribute the optional splat.
   const params = useParams({ strict: false }) as { _splat?: string }
@@ -212,8 +190,12 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
     ? files.find((file) => file.path === current && !file.staged)
     : undefined
 
+  // Nothing else in the palette runs while a project is being opened: the
+  // repository every other command reads is about to change underneath it.
+  const isBusy = busy !== null || openingPath !== null
+
   async function generate() {
-    if (busy) return
+    if (isBusy) return
     setBusy('generate')
     setError(null)
     setNote(null)
@@ -229,7 +211,7 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
   }
 
   async function stage() {
-    if (busy || !stageable) return
+    if (isBusy || !stageable) return
     setBusy('stage')
     setError(null)
     setNote(null)
@@ -245,7 +227,7 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
   }
 
   async function commit() {
-    if (busy) return
+    if (isBusy) return
     setBusy('commit')
     setError(null)
     setNote(null)
@@ -266,7 +248,14 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
     }
   }
 
-  const status = statusLine([error, update.error], note)
+  const status = statusLine([error, failure?.message ?? null, update.error], note)
+
+  async function switchProject(path: string) {
+    setError(null)
+    setNote(null)
+    // Left open on a failure so the status line below can say what went wrong.
+    if (await open(path)) setIsOpen(false)
+  }
 
   return (
     <CommandMenu isOpen={isOpen} onOpenChange={setIsOpen}>
@@ -392,15 +381,9 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
         <OtherProjectsSection
           projects={projects}
           currentPath={currentProjectPath}
-          isDisabled={busy !== null}
-          onStart={() => {
-            setBusy('project')
-            setError(null)
-            setNote(null)
-          }}
-          onOpened={() => setIsOpen(false)}
-          onError={setError}
-          onFinish={() => setBusy(null)}
+          openingPath={openingPath}
+          isDisabled={isBusy}
+          onOpen={(path) => void switchProject(path)}
         />
       </CommandMenuList>
 

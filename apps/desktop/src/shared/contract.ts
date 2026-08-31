@@ -72,6 +72,13 @@ export interface Project {
   icon: ProjectIcon | null;
 }
 
+/**
+ * The request payloads, one per command that takes arguments. Each is the
+ * mirror of a struct in `src-tauri/src/commands.rs`, and every one of them
+ * travels under a `request` key — except `writeClipboardText`, whose command
+ * takes a bare `text: String`. That one exception is why these are types
+ * rather than a single generic envelope.
+ */
 export interface GetFileContentsRequest {
   path: string;
   oldPath: string | null;
@@ -86,6 +93,26 @@ export interface StageFileRequest {
 
 export interface GetHistoryRequest {
   limit?: number;
+}
+
+export interface SendClaudeMessageRequest {
+  message: string;
+}
+
+export interface CommitAllRequest {
+  message: string;
+}
+
+export interface OpenProjectRequest {
+  path: string;
+}
+
+export interface ForgetProjectRequest {
+  path: string;
+}
+
+export interface SetThemeRequest {
+  theme: AppTheme;
 }
 
 /** Whether a Claude Code session is listening for the open repository. */
@@ -134,13 +161,36 @@ export const Command = {
 export type CommandName = (typeof Command)[keyof typeof Command];
 
 /**
+ * The tag a backend failure carries: the return values of `AppError::tag()` in
+ * `src-tauri/src/error.rs`. A test there is exhaustive over `AppError`, so a
+ * new variant stops the backend compiling until its tag is added to both.
+ */
+export type BackendErrorTag =
+  | "GitError"
+  | "WorkTreeError"
+  | "InvalidPathError"
+  | "CommitMessageError"
+  | "ClaudeChannelError"
+  | "ClipboardError"
+  | "NoProjectOpenError"
+  | "InvalidProjectError"
+  | "UpdaterError";
+
+/**
+ * What a caller can find on a thrown `IpcError`. `ChannelError` is the one tag
+ * the backend never sends: it means the call did not arrive, so there was
+ * nothing there to tag it.
+ */
+export type IpcErrorTag = BackendErrorTag | "ChannelError";
+
+/**
  * A failed command, flattened for the wire. Returning an `Err` from the command
  * would hand Tauri the failure to stringify, which flattens the variant into
  * prose and loses the tag; carrying it inside a successful response keeps both
  * halves intact.
  */
 export interface IpcFailure {
-  readonly _tag: string;
+  readonly _tag: BackendErrorTag;
   readonly message: string;
 }
 

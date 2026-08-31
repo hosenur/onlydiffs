@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link, useRouter } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@onlydiffs/ui/button'
 import { Loader } from '@onlydiffs/ui/loader'
 import platypus from '@/assets/platypus.png'
@@ -11,8 +10,8 @@ import {
 } from '@/components/ui/sidebar'
 import { TileImage, TileInitials } from '@/components/project-tile'
 import { Tooltip, TooltipContent } from '@/components/ui/tooltip'
+import { useProjectOpener } from '@/hooks/use-project-opener'
 import { IsometricCubeIcon } from '@/icons'
-import { openProject } from '@/lib/ipc'
 import type { Project } from '@shared/contract'
 
 interface ProjectSidebarProps {
@@ -21,29 +20,13 @@ interface ProjectSidebarProps {
 }
 
 export function ProjectSidebar({ projects, currentPath }: ProjectSidebarProps) {
-  const router = useRouter()
-  const [busy, setBusy] = useState<string | null>(null)
-  const [failure, setFailure] = useState<{ path: string; message: string } | null>(null)
+  const { openingPath, failure, open } = useProjectOpener()
 
-  async function open(project: Project) {
-    if (project.path === currentPath || busy !== null) return
-
-    setBusy(project.path)
-    setFailure(null)
-    try {
-      await openProject(project.path)
-      // Replace the old project's file route, then refresh every loader against
-      // the repository the backend has just made current.
-      await router.navigate({ to: '/diff', replace: true })
-      await router.invalidate()
-    } catch (error) {
-      setFailure({
-        path: project.path,
-        message: error instanceof Error ? error.message : 'Could not open this project.',
-      })
-    } finally {
-      setBusy(null)
-    }
+  function openUnlessCurrent(project: Project) {
+    // Reopening the project already on screen would blank it and reload it for
+    // no change; the rail is the one place a current row can still be pressed.
+    if (project.path === currentPath) return
+    void open(project.path)
   }
 
   return (
@@ -85,8 +68,8 @@ export function ProjectSidebar({ projects, currentPath }: ProjectSidebarProps) {
                 size="sq-md"
                 aria-label={`Open ${project.name}`}
                 aria-current={isCurrent ? 'page' : undefined}
-                isDisabled={busy !== null}
-                onPress={() => void open(project)}
+                isDisabled={openingPath !== null}
+                onPress={() => openUnlessCurrent(project)}
                 className={`rounded-lg p-0 ${
                   isCurrent
                     ? 'bg-primary-subtle inset-ring inset-ring-primary/70'
@@ -95,7 +78,7 @@ export function ProjectSidebar({ projects, currentPath }: ProjectSidebarProps) {
                       : ''
                 }`}
               >
-                {busy === project.path ? (
+                {openingPath === project.path ? (
                   <Loader />
                 ) : project.icon ? (
                   <TileImage

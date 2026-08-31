@@ -111,3 +111,46 @@ impl<T: Serialize> Serialize for IpcResult<T> {
         map.end()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::AppError;
+
+    /// A second, independent spelling of every tag, kept exhaustive on purpose:
+    /// adding a variant to `AppError` stops this compiling, which is the prompt
+    /// to add the same string to the `BackendErrorTag` union in
+    /// `src/shared/contract.ts`. Without that, the renderer is handed a tag it
+    /// has no name for.
+    fn tag_the_renderer_names(error: &AppError) -> &'static str {
+        match error {
+            AppError::Git(_) => "GitError",
+            AppError::WorkTree(_) => "WorkTreeError",
+            AppError::InvalidPath(_) => "InvalidPathError",
+            AppError::CommitMessage(_) => "CommitMessageError",
+            AppError::ClaudeChannel(_) => "ClaudeChannelError",
+            AppError::Clipboard(_) => "ClipboardError",
+            AppError::NoProjectOpen(_) => "NoProjectOpenError",
+            AppError::InvalidProject(_) => "InvalidProjectError",
+            AppError::Updater(_) => "UpdaterError",
+        }
+    }
+
+    #[test]
+    fn every_failure_carries_the_tag_the_renderer_expects() {
+        let message = || "something went wrong".to_owned();
+        for error in [
+            AppError::Git(message()),
+            AppError::WorkTree(message()),
+            AppError::InvalidPath(message()),
+            AppError::CommitMessage(message()),
+            AppError::ClaudeChannel(message()),
+            AppError::Clipboard(message()),
+            AppError::NoProjectOpen(message()),
+            AppError::InvalidProject(message()),
+            AppError::Updater(message()),
+        ] {
+            assert_eq!(error.tag(), tag_the_renderer_names(&error));
+            assert_eq!(error.message(), message());
+        }
+    }
+}

@@ -2,14 +2,22 @@ import { invoke } from '@tauri-apps/api/core'
 import type { InvokeArgs } from '@tauri-apps/api/core'
 import type {
   AppTheme,
-  ChangeStatus,
+  ClaudeChannelStatus,
   Commit,
   CommandName,
+  CommitAllRequest,
+  ForgetProjectRequest,
   FullFileContents,
+  GetFileContentsRequest,
+  GetHistoryRequest,
+  IpcErrorTag,
   IpcResult,
-  ClaudeChannelStatus,
+  OpenProjectRequest,
   Project,
   RepoDiff,
+  SendClaudeMessageRequest,
+  SetThemeRequest,
+  StageFileRequest,
   UpdateStatus,
 } from '@shared/contract'
 import { Command } from '@shared/contract'
@@ -21,10 +29,10 @@ import { Command } from '@shared/contract'
  */
 export class IpcError extends Error {
   /** The backend's error tag, e.g. `GitError`, or `ChannelError` locally. */
-  readonly tag: string
+  readonly tag: IpcErrorTag
   readonly operation: CommandName
 
-  constructor(options: { message: string; tag: string; operation: CommandName }) {
+  constructor(options: { message: string; tag: IpcErrorTag; operation: CommandName }) {
     super(options.message)
     this.name = 'IpcError'
     this.tag = options.tag
@@ -65,27 +73,24 @@ async function call<A>(operation: CommandName, args?: InvokeArgs): Promise<A> {
 export const getDiff = (): Promise<RepoDiff> => call(Command.getDiff)
 
 export const getHistory = (limit?: number): Promise<Commit[]> =>
-  call(Command.getHistory, { request: { limit } })
+  call(Command.getHistory, { request: { limit } satisfies GetHistoryRequest })
 
-export const getFileContents = (request: {
-  path: string
-  oldPath: string | null
-  status: ChangeStatus
-  staged: boolean
-}): Promise<FullFileContents> => call(Command.getFileContents, { request })
+export const getFileContents = (
+  request: GetFileContentsRequest
+): Promise<FullFileContents> => call(Command.getFileContents, { request })
 
-export const stageFile = (request: {
-  path: string
-  oldPath: string | null
-}): Promise<void> => call(Command.stageFile, { request })
+export const stageFile = (request: StageFileRequest): Promise<void> =>
+  call(Command.stageFile, { request })
 
 export const generateCommitMessage = (): Promise<string> =>
   call(Command.generateCommitMessage)
 
 /** One-way. Resolves with the channel's message id, not a reply. */
 export const sendClaudeMessage = (message: string): Promise<string> =>
-  call(Command.sendClaudeMessage, { request: { message } })
+  call(Command.sendClaudeMessage, { request: { message } satisfies SendClaudeMessageRequest })
 
+/** The one command with no `request` envelope — `write_clipboard_text` takes
+ *  the string itself. See the note on the request types in the contract. */
 export const writeClipboardText = (text: string): Promise<void> =>
   call(Command.writeClipboardText, { text })
 
@@ -94,21 +99,21 @@ export const listProjects = (): Promise<Project[]> => call(Command.listProjects)
 export const currentProject = (): Promise<Project | null> => call(Command.currentProject)
 
 export const openProject = (path: string): Promise<Project> =>
-  call(Command.openProject, { request: { path } })
+  call(Command.openProject, { request: { path } satisfies OpenProjectRequest })
 
 export const forgetProject = (path: string): Promise<void> =>
-  call(Command.forgetProject, { request: { path } })
+  call(Command.forgetProject, { request: { path } satisfies ForgetProjectRequest })
 
 export const listFiles = (): Promise<string[]> => call(Command.listFiles)
 
 export const commitAll = (message: string): Promise<string> =>
-  call(Command.commitAll, { request: { message } })
+  call(Command.commitAll, { request: { message } satisfies CommitAllRequest })
 
 export const claudeStatus = (): Promise<ClaudeChannelStatus> => call(Command.claudeStatus)
 
 /** Repaints the native window frame to match the in-app theme. */
 export const setTheme = (theme: AppTheme): Promise<void> =>
-  call(Command.setTheme, { request: { theme } })
+  call(Command.setTheme, { request: { theme } satisfies SetThemeRequest })
 
 /**
  * Answers `available: false` rather than failing when there is nothing to
