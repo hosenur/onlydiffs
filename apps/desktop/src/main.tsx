@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { flushSync } from "react-dom";
 import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { RouterProvider, createMemoryHistory, createRouter } from "@tanstack/react-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -40,6 +41,48 @@ declare module "@tanstack/react-router" {
 }
 
 /*
+ * How long the first navigation gets to resolve before the window is shown
+ * anyway. Well past a warm launch, and far short of the backstop in `lib.rs`.
+ */
+const FIRST_RESOLVE_BUDGET = 800;
+
+let shown = false;
+
+function show() {
+  if (shown) return;
+  shown = true;
+  void getCurrentWindow()
+    .show()
+    .catch(() => {
+      // Running outside a Tauri window (a plain `vite` server) — nothing to show.
+    });
+}
+
+/*
+ * The window is built hidden so no one sees a half-drawn frame, and it is shown
+ * from here because only the renderer knows when there is a frame worth showing.
+ * `onResolved` is that moment: the first navigation's loaders have returned and
+ * their data is committed, so the window opens on the diff rather than on the
+ * empty shell that precedes it.
+ *
+ * This waited on two nested animation frames until it was profiled. A hidden
+ * WebKit window is not being composited, so it serves no animation frames at
+ * all and that callback never ran — every launch instead sat out the
+ * three-second safety net in `lib.rs`, which was almost all of a 4.6s startup.
+ *
+ * Subscribed before the render below, so a first navigation that resolves
+ * quickly cannot land before anything is listening.
+ */
+const unsubscribe = router.subscribe("onResolved", () => {
+  unsubscribe();
+  show();
+});
+
+// A first navigation that never settles must not leave the window hidden for
+// the full three seconds; an empty shell is a better answer than nothing.
+setTimeout(show, FIRST_RESOLVE_BUDGET);
+
+/*
  * StrictMode's development-only double-mount blanks the first diff in `dev`:
  * `@pierre/diffs` writes into the `diffs-container` shadow root imperatively,
  * the simulated unmount tears that down, and nothing re-applies it until the
@@ -48,27 +91,21 @@ declare module "@tanstack/react-router" {
  */
 // SAFETY: `index.html` ships the #root div, and this module is the only thing
 // the page loads, so nothing can have removed it before this runs.
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <ThemeProvider>
-      <HotkeysProvider>
-        <RouterProvider router={router} />
-      </HotkeysProvider>
-    </ThemeProvider>
-  </React.StrictMode>,
-);
+const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
 
 /*
- * The window is built hidden so no one sees a half-drawn frame. Showing it from
- * here rather than on the Rust side is what makes that exact: the second frame
- * after the first render is the earliest point the page is actually painted.
+ * `flushSync` so the tree is committed in this task rather than at React's
+ * leisure a tick later, which is what starts the first navigation — and so the
+ * `onResolved` above — as early as there is anything to start it with.
  */
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    void getCurrentWindow()
-      .show()
-      .catch(() => {
-        // Running outside a Tauri window (a plain `vite` server) — nothing to show.
-      });
-  });
+flushSync(() => {
+  root.render(
+    <React.StrictMode>
+      <ThemeProvider>
+        <HotkeysProvider>
+          <RouterProvider router={router} />
+        </HotkeysProvider>
+      </ThemeProvider>
+    </React.StrictMode>,
+  );
 });

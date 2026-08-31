@@ -17,8 +17,8 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use notify_debouncer_full::notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, RecommendedCache};
+use notify_debouncer_full::notify::{self, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, NoCache};
 use tauri::{AppHandle, Emitter};
 
 /// The event the renderer listens for. Part of the IPC contract.
@@ -106,7 +106,7 @@ struct Active {
     root: PathBuf,
     /// Held only to keep it alive: dropping the debouncer stops its thread and
     /// releases the underlying watch.
-    _debouncer: Debouncer<RecommendedWatcher, RecommendedCache>,
+    _debouncer: Debouncer<RecommendedWatcher, NoCache>,
 }
 
 /// One watch at a time, following whichever repository is open.
@@ -160,7 +160,21 @@ impl RepoWatcher {
             }
         };
 
-        let Ok(mut debouncer) = new_debouncer(DEBOUNCE, None, handler) else {
+        // `NoCache` rather than the default file-id cache, which walks the
+        // entire tree and stats every entry before the watch is live. That is
+        // a six-figure file count in any repository with `node_modules` or a
+        // Rust `target/` beside it, it followed symlinks while doing it, and it
+        // ran on the startup path. The cache exists to correlate renames by
+        // file id; nothing here reads one. This filter asks only whether a
+        // path could show up in the diff, and a rename reported as a delete
+        // and a create answers that question the same way.
+        let Ok(mut debouncer) = new_debouncer_opt::<_, RecommendedWatcher, NoCache>(
+            DEBOUNCE,
+            None,
+            handler,
+            NoCache::new(),
+            notify::Config::default(),
+        ) else {
             return;
         };
         if debouncer.watch(&root, RecursiveMode::Recursive).is_err() {
