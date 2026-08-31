@@ -1,7 +1,7 @@
 {
   "name": "@onlydiffs/desktop",
   "private": true,
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "See what your agent changed. Talk it through.",
   "author": "hosenur",
   "type": "module",
