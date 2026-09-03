@@ -1,0 +1,13 @@
+.decoration:global(.drawably-host) {
+  font-family: inherit;
+}
+
+.strike :global(.drawably-svg) {
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+.highlight :global(.drawably-wash) {
+  stroke-opacity: 0.24;
+  mix-blend-mode: normal;
+}
