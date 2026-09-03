@@ -6,8 +6,8 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::error::AppError;
-use crate::services::diff;
-use crate::services::workspace::Workspace;
+use crate::services::repository::Repository;
+use crate::services::settings::Settings;
 
 const GROQ_CHAT_COMPLETIONS_URL: &str = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL: &str = "openai/gpt-oss-120b";
@@ -50,23 +50,20 @@ struct ErrorDetail {
 }
 
 /// Sends the complete staged, unstaged, and untracked diff to Groq and returns
-/// only the generated message. The API key is read in this process and never
-/// reaches the renderer bundle.
+/// only the generated message. The API key is resolved and held in this process
+/// and never reaches the renderer bundle.
 pub async fn generate(
-    workspace: &Workspace,
+    repo: &Repository,
+    settings: &Settings,
     http: &reqwest::Client,
 ) -> Result<String, AppError> {
     let fail = AppError::CommitMessage;
 
-    let token = std::env::var("GROQ_API_KEY").map_err(|_| {
-        fail("GROQ_API_KEY is not set in the OnlyDiffs process environment.".into())
+    let (token, _) = settings.groq_key().await.ok_or_else(|| {
+        fail("No Groq API key. Add one in Settings, or export GROQ_API_KEY.".into())
     })?;
-    let token = token.trim();
-    if token.is_empty() {
-        return Err(fail("GROQ_API_KEY is empty.".into()));
-    }
 
-    let diff = diff::commit_message_diff(workspace)
+    let diff = repo.commit_message_diff()
         .await
         .map_err(|error| fail(error.message().to_owned()))?;
 

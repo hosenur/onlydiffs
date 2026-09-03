@@ -1,0 +1,60 @@
+.field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, transparent, black 16%, black 84%, transparent);
+}
+
+.particle {
+  position: absolute;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: clamp(0.75rem, 1.2vw, 0.95rem);
+  font-weight: 600;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation-name: float-diff;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.addition {
+  color: rgb(74 222 128);
+}
+
+.deletion {
+  color: rgb(248 113 113);
+}
+
+@keyframes float-diff {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 1.25rem, 0);
+  }
+
+  18% {
+    opacity: 0.28;
+  }
+
+  72% {
+    opacity: 0.2;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -5.5rem, 0);
+  }
+}
+
+@media (max-width: 40rem) {
+  .particle:nth-child(3n) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .particle {
+    animation: none;
+    opacity: 0.14;
+  }
+}

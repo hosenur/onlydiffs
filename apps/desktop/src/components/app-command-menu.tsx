@@ -8,11 +8,17 @@ import {
   ComputerDesktopIcon,
   MoonIcon,
   PlusIcon,
+  ServerStackIcon,
   SparklesIcon,
   SunIcon,
 } from '@heroicons/react/16/solid'
 import { type Theme, useTheme } from '@/components/theme-provider'
 import { useProjectOpener } from '@/hooks/use-project-opener'
+import { useSettingsHotkey } from '@/hooks/use-settings-hotkey'
+import {
+  RemoteProjectsMenu,
+  useRemoteProjectsHotkey,
+} from '@/components/remote-projects-menu'
 import {
   CommandMenu,
   CommandMenuDescription,
@@ -24,7 +30,7 @@ import {
   CommandMenuShortcut,
 } from '@/components/ui/command-menu'
 import { Loader } from '@onlydiffs/ui/loader'
-import { IsometricCubeIcon } from '@/icons'
+import { GearOutline18, IsometricCubeIcon } from '@/icons'
 import { fileIconUrl } from '@/lib/file-icon'
 import { commitAll, generateCommitMessage, stageFile, writeClipboardText } from '@/lib/ipc'
 import { projectInitials, projectTint } from '@/lib/project-identity'
@@ -47,8 +53,8 @@ type Busy = 'generate' | 'commit' | 'stage' | null
  * is a search field, so typing "dark" should land on Dark instead of on a
  * command whose effect depends on a current state you cannot see from here.
  *
- * This is the only way to change the theme — nothing else in the app calls
- * `setTheme`.
+ * The settings page offers the same three; both go through `useTheme`, which
+ * is the only thing in the app that calls `setTheme`.
  */
 const THEMES: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
   { value: 'light', label: 'Light', Icon: SunIcon },
@@ -101,7 +107,7 @@ interface OtherProjectsSectionProps {
   /** The project being opened, if any, so its row can show the spinner. */
   openingPath: string | null
   isDisabled: boolean
-  onOpen: (path: string) => void
+  onOpen: (project: Project) => void
 }
 
 /**
@@ -126,7 +132,7 @@ function OtherProjectsSection({
           key={project.path}
           textValue={`Open project ${project.name} ${project.path}`}
           isDisabled={isDisabled}
-          onAction={() => onOpen(project.path)}
+          onAction={() => onOpen(project)}
         >
           {openingPath === project.path ? (
             <Loader />
@@ -157,6 +163,7 @@ function OtherProjectsSection({
 
 export function AppCommandMenu({ files, projects, currentProjectPath }: AppCommandMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isRemoteOpen, setIsRemoteOpen] = useState(false)
   const [busy, setBusy] = useState<Busy>(null)
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -165,6 +172,13 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
   const { theme, setTheme } = useTheme()
   const update = useUpdate()
   const { openingPath, failure, open } = useProjectOpener()
+  // Registered here rather than in the layout: this component is already the
+  // app shell's keyboard surface, and it renders wherever the palette does.
+  useSettingsHotkey()
+  useRemoteProjectsHotkey(() => {
+    setIsOpen(false)
+    setIsRemoteOpen(true)
+  })
   // SAFETY: `strict: false` lets the palette render on both `/diff` and
   // `/file/$`; only the latter route can contribute the optional splat.
   const params = useParams({ strict: false }) as { _splat?: string }
@@ -250,14 +264,20 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
 
   const status = statusLine([error, failure?.message ?? null, update.error], note)
 
-  async function switchProject(path: string) {
+  async function switchProject(project: Project) {
     setError(null)
     setNote(null)
     // Left open on a failure so the status line below can say what went wrong.
-    if (await open(path)) setIsOpen(false)
+    if (await open(project)) setIsOpen(false)
   }
 
   return (
+    <>
+      <RemoteProjectsMenu
+        isOpen={isRemoteOpen}
+        onOpenChange={setIsRemoteOpen}
+        projects={projects}
+      />
     <CommandMenu isOpen={isOpen} onOpenChange={setIsOpen}>
       <CommandMenuSearch placeholder="Search files, or run a command…" />
       <CommandMenuList>
@@ -317,6 +337,18 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
           </CommandMenuItem>
 
           <CommandMenuItem
+            textValue="Settings Groq API key appearance"
+            onAction={() => {
+              setIsOpen(false)
+              void navigate({ to: '/settings' })
+            }}
+          >
+            <GearOutline18 />
+            <CommandMenuLabel>Settings</CommandMenuLabel>
+            <CommandMenuShortcut>⌘,</CommandMenuShortcut>
+          </CommandMenuItem>
+
+          <CommandMenuItem
             textValue="Switch project Open another repository"
             onAction={() => {
               setIsOpen(false)
@@ -325,6 +357,18 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
           >
             <IsometricCubeIcon />
             <CommandMenuLabel>Switch project</CommandMenuLabel>
+          </CommandMenuItem>
+
+          <CommandMenuItem
+            textValue="Open remote project ssh server another machine host"
+            onAction={() => {
+              setIsOpen(false)
+              setIsRemoteOpen(true)
+            }}
+          >
+            <ServerStackIcon />
+            <CommandMenuLabel>Open remote project</CommandMenuLabel>
+            <CommandMenuShortcut>⌃⌘O</CommandMenuShortcut>
           </CommandMenuItem>
         </CommandMenuSection>
 
@@ -383,7 +427,7 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
           currentPath={currentProjectPath}
           openingPath={openingPath}
           isDisabled={isBusy}
-          onOpen={(path) => void switchProject(path)}
+          onOpen={(project) => void switchProject(project)}
         />
       </CommandMenuList>
 
@@ -398,5 +442,6 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
         </p>
       )}
     </CommandMenu>
+    </>
   )
 }

@@ -2,8 +2,9 @@ import type { Metadata } from "next"
 import { Geist } from "next/font/google"
 import Image from "next/image"
 import "drawably/font.css"
+import { DiffParticles } from "@/components/diff-particles"
 import { HeroGrid } from "@/components/hero-grid"
-import { HomeDocsButton, HomeTagline } from "@/components/home-tagline"
+import { HomeDemoButton, HomeDocsButton, HomeTagline } from "@/components/home-tagline"
 
 const geist = Geist({
   subsets: ["latin"],
@@ -23,13 +24,19 @@ export default function Home() {
       className={`${geist.className} relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-neutral-900 px-6`}
     >
       <HeroGrid />
+      <DiffParticles />
       <section className="relative flex flex-col items-center text-center text-white">
         <Image src="/logo.png" alt="" width={80} height={80} priority className="size-20" />
         <h1 className="mt-8 font-['Drawably_Pen'] text-3xl tracking-tight">onlydiffs</h1>
         <HomeTagline />
-        <form action="/docs" className="mt-10">
-          <HomeDocsButton />
-        </form>
+        <div className="mt-10 flex items-center gap-3">
+          <form action="#">
+            <HomeDemoButton />
+          </form>
+          <form action="/docs">
+            <HomeDocsButton />
+          </form>
+        </div>
       </section>
     </div>
   )

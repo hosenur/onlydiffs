@@ -1,0 +1,36 @@
+---
+title: Send feedback to Claude
+description: Connect a Claude Code session, select a changed line, and send a repository-aware message from the diff.
+---
+
+## Set up the channel
+
+The current channel setup ships with the source repository. You need Bun and the Claude CLI.
+
+```bash
+cd onlydiffs/apps/desktop
+bun run channel:setup
+```
+
+The command registers the bundled `onlydiffs` MCP channel for your user. Restart Claude Code with that channel enabled, then start a session from the repository you plan to review.
+
+The footer checks for a matching session every four seconds. It changes from **No Claude session** to **Claude connected** when the repository paths match.
+
+## Send a line-level message
+
+1. Open a changed file.
+2. Click the line you want Claude to inspect.
+3. Write a request in the composer.
+4. Press Enter or use the send button.
+
+onlydiffs prefixes your message with the repository-relative path and line number. Deleted lines can be selected too. Escape closes the composer without sending.
+
+## Where the message goes
+
+The channel is one-way. Your message appears in the matching Claude Code session, and Claude continues there. Claude's response does not appear inside onlydiffs.
+
+If several sessions match, onlydiffs tries the newest live registration first and stops when one accepts the message. It does not broadcast.
+
+For a remote repository, Claude and the channel must run on that remote host in the same checkout. A local Claude session cannot inspect a path that exists only on the server.
+
+The listener binds to loopback, uses a random bearer token, and limits each message to 64 KiB. Registration files live under `~/.onlydiffs/claude-channels` with owner-only permissions on Unix.

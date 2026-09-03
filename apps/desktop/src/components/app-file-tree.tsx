@@ -10,6 +10,7 @@ import {
   indexChanges,
 } from '@/lib/file-tree'
 import { fileIconUrl, folderIconUrl } from '@/lib/file-icon'
+import { isReviewed } from '@/lib/review'
 import { fileHref } from '@/lib/status'
 import type { FileChange } from '@/types'
 
@@ -28,17 +29,21 @@ interface AppFileTreeProps {
   current: string | undefined
 }
 
-/** `+12 −3` for a changed file, summed across its staged and unstaged halves. */
+/**
+ * `+12 −3` for a changed file, summed across its staged and unstaged halves,
+ * and whether the file is done with. `reviewed` is the same rule the count in
+ * the toolbar uses, so a green name and that count can never disagree — which
+ * they did while this asked only whether *any* half was staged, and painted a
+ * file green that had been staged and then edited again.
+ */
 function changeSummary(changes: FileChange[]) {
   let additions = 0
   let deletions = 0
-  let staged = false
   for (const change of changes) {
     additions += change.additions
     deletions += change.deletions
-    staged ||= change.staged
   }
-  return { additions, deletions, staged }
+  return { additions, deletions, reviewed: isReviewed(changes) }
 }
 
 const Row = memo(function Row({
@@ -96,7 +101,7 @@ const Row = memo(function Row({
       <img src={fileIconUrl(node.path)} alt="" width={14} height={14} className="size-3.5 shrink-0" />
       <span
         className={`truncate text-xs ${
-          summary === null ? 'text-muted-fg' : summary.staged ? 'text-success-subtle-fg' : 'text-fg'
+          summary === null ? 'text-muted-fg' : summary.reviewed ? 'text-success-subtle-fg' : 'text-fg'
         }`}
       >
         {node.name}

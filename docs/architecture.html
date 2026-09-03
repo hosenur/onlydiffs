@@ -282,6 +282,44 @@
   the app reads from its environment.
 </p>
 
+<p>
+  A released bundle has no shell behind it. Finder, Spotlight, and the Dock hand a process
+  launchd's environment &mdash; fifteen variables, no <code>.zshrc</code> &mdash; so a key exported
+  for every terminal on the machine is simply absent, and both Groq features go quiet in exactly
+  the build where nobody is watching a console. <code>services/shell_env.rs</code> closes that gap:
+  the process environment wins where it has the variable, and otherwise a login shell is asked once
+  per launch, on the first Groq call rather than at startup, so a dev build never pays for it.
+</p>
+
+<p>
+  The environment is the fallback, though, not the interface.
+  <code>services/settings.rs</code> owns <code>~/.onlydiffs/config.json</code>, written
+  <code>0600</code> beside the recents file, and a key saved from the settings page beats
+  <code>GROQ_API_KEY</code> &mdash; it is the only one of the two the user can see from inside the
+  app, so a variable exported months ago and forgotten must not silently outrank it. Clearing the
+  field hands the app back to the environment. The key itself never crosses to the renderer: the
+  page is sent a masked hint and the name of the source that won, which is all it needs to say a
+  key is set and all it should hold in a webview that also renders untrusted diff text.
+</p>
+
+<p>
+  Since v0.1.8 that environment is only half the story, because a repository need not be on this
+  machine at all. <code>src-tauri</code> is a workspace of three crates: <code>onlydiffs</code> is
+  the app, <code>onlydiffs-core</code> is everything that runs <em>where the repository is</em>, and
+  <code>onlydiffs-agent</code> is that core running on a host and speaking a framed protocol on
+  stdio. Core carries no <code>tauri</code> dependency and its manifest is what keeps it that way &mdash;
+  the agent is cross-compiled for Linux, where there is no webview to link against.
+</p>
+
+<p>
+  <code>services/repository.rs</code> is the seam. It holds a root and the machine that root is on,
+  and its methods are deliberately coarse: <code>diff()</code> is one question with one answer, not
+  <code>git()</code> called once per changed file, because the local walk costs one invocation per
+  file and running that over a network would be several hundred round trips for one screen. The
+  remote variant holds a channel rather than a connection, which is what keeps SSH out of core
+  entirely.
+</p>
+
 <h2>3. The command bridge</h2>
 
 <p>

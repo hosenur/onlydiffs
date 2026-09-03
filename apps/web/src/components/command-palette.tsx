@@ -1,6 +1,6 @@
 "use client"
 
-import { BookOpenIcon, HashtagIcon, HomeIcon, NewspaperIcon } from "@heroicons/react/24/outline"
+import { BookOpenIcon, HashtagIcon, HomeIcon, ServerStackIcon } from "@heroicons/react/24/outline"
 import {
   CommandMenu,
   CommandMenuItem,
@@ -33,16 +33,20 @@ export function CommandPalette({
             <BookOpenIcon />
             <CommandMenuLabel>Docs</CommandMenuLabel>
           </CommandMenuItem>
-          <CommandMenuItem textValue="Blog" href="/blog" onAction={() => onOpenChange?.(false)}>
-            <NewspaperIcon />
-            <CommandMenuLabel>Blog</CommandMenuLabel>
-          </CommandMenuItem>
           <CommandMenuItem
-            textValue="Changelog"
-            href="/docs/components/changelog"
+            textValue="SSH repositories"
+            href="/docs/remote-repositories/connect-an-ssh-host"
             onAction={() => onOpenChange?.(false)}
           >
-            <CommandMenuLabel>Changelog</CommandMenuLabel>
+            <ServerStackIcon />
+            <CommandMenuLabel>SSH repositories</CommandMenuLabel>
+          </CommandMenuItem>
+          <CommandMenuItem
+            textValue="Agent support"
+            href="/docs/workflows/agent-support"
+            onAction={() => onOpenChange?.(false)}
+          >
+            <CommandMenuLabel>Agent support</CommandMenuLabel>
           </CommandMenuItem>
         </CommandMenuSection>
         <CommandMenuSection label="Docs">

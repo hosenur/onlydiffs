@@ -1,6 +1,9 @@
 "use client"
 
 import { MagnifyingGlassIcon } from "@heroicons/react/24/solid"
+import { Button } from "@onlydiffs/ui/button"
+import { Container } from "@onlydiffs/ui/container"
+import { Keyboard } from "@onlydiffs/ui/keyboard"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
@@ -10,9 +13,6 @@ import { GithubIcon } from "@/components/icons/github-icon"
 import { Logo } from "@/components/logo"
 import { ResponsiveNavigation } from "@/components/responsive-navigation"
 import { ThemeSwitcher } from "@/components/theme-switcher"
-import { Button } from "@onlydiffs/ui/button"
-import { Container } from "@onlydiffs/ui/container"
-import { Keyboard } from "@onlydiffs/ui/keyboard"
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { PageTreeRoot } from "@/types/content"
 
@@ -33,8 +33,10 @@ export function Navigation({ docsTree }: { docsTree?: PageTreeRoot }) {
 
               <div className="hidden items-center gap-x-4 lg:flex">
                 <NavigationLink href="/docs">Docs</NavigationLink>
-                <NavigationLink href="/blog">Blog</NavigationLink>
-                <NavigationLink href="/docs/components/changelog">Changelog</NavigationLink>
+                <NavigationLink href="/docs/remote-repositories/connect-an-ssh-host">
+                  SSH repositories
+                </NavigationLink>
+                <NavigationLink href="/docs/reference/updates">Releases</NavigationLink>
               </div>
             </div>
             <nav className="flex items-center gap-x-2 text-sm">

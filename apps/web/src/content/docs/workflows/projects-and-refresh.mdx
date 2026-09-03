@@ -1,0 +1,20 @@
+---
+title: Switch projects and refresh changes
+description: Move between remembered repositories, understand project icons, and keep the current diff synchronized.
+---
+
+## Remembered projects
+
+onlydiffs records every successfully opened local and remote repository. You can reopen one from the landing page, project rail, repository menu, or command menu.
+
+Each entry stores the display name, repository root, host when remote, and optional artwork. Without artwork, the app uses initials and a stable color derived from the project path.
+
+When a Groq key is available, onlydiffs scans likely app icons, logos, marks, and favicons in the repository. It sends up to three small previews to Groq and asks it to choose the best project icon. The API key and original files stay in the native process. Remote artwork is scanned only while that host is already connected.
+
+## Automatic refresh
+
+The repository watcher responds to working-tree writes, index changes, commits, branch switches, and ref updates. Events are grouped briefly so a save that touches several files triggers one reload instead of several overlapping reloads.
+
+Returning focus to the app also refreshes the repository. Press `r` or choose **Refresh** from the command menu when you need an immediate reread.
+
+If a remote connection drops, onlydiffs removes the stale diff and shows recovery actions. You can reconnect, try again, or open another project.

@@ -1,66 +1,40 @@
 ---
-title: Installation
-description: Set up the template and understand what files you usually edit.
+title: Install onlydiffs
+description: Download the macOS app or run onlydiffs from source, then confirm Git is available.
 ---
 
-After installing dependencies, most day-to-day work happens inside the content folders and a small set of design files.
+## Download the app
 
-## Common commands
+The public release currently targets Apple silicon Macs. Download the latest `.dmg` from [GitHub Releases](https://github.com/hosenur/onlydiffs/releases/latest), drag onlydiffs into Applications, and open it.
 
-Use `PackageCommand` when a command should adapt to npm, pnpm, Yarn, and Bun.
-
-<PackageCommand command="npx shadcn@latest add @intentui/disclosure-group" />
-
-### Development server
-
-Run the local server from your own terminal when you want to preview changes. Keep content edits separate from server restarts so changes are easier to review.
+The release is signed for updates but is not notarized by Apple yet. If macOS reports that the app is damaged or cannot be verified, remove the browser quarantine flag after moving it into Applications:
 
 ```bash
-bun run lint
+xattr -dr com.apple.quarantine /Applications/onlydiffs.app
 ```
 
-## Files you will edit most
+You only need to do this after the first browser download. Updates installed by onlydiffs do not receive the same quarantine flag.
 
-These files are the primary editing surface for normal template customization.
+## Requirements
 
-| Area | Path |
-| --- | --- |
-| Docs pages | `src/content/docs` |
-| Blog posts | `src/content/blog` |
-| Shared MDX components | `src/components/mdx-components.tsx` |
-| Site navigation | `src/components/navigation.tsx` |
-| Theme tokens | `src/app/globals.css` |
+- Git must be installed on the Mac running onlydiffs.
+- A repository must have a `.git` entry in its directory or one of its parents.
+- Bun and Claude Code are optional. They are needed only for the Claude feedback channel.
+- A Groq API key is optional. It enables generated commit messages and project artwork.
 
-### Content first
+Check Git before opening the app:
 
-Most template buyers should start by replacing content before changing layout. This keeps the first customization pass focused and low risk.
+```bash
+git --version
+```
 
-## Setup checklist
+## Run from source
 
-Use this checklist after installation to replace starter content with your own project details.
+```bash
+git clone https://github.com/hosenur/onlydiffs.git
+cd onlydiffs
+bun install
+bun run dev:desktop
+```
 
-- Update the site name and metadata.
-- Replace example docs with your own structure.
-- Replace blog posts and cover images.
-- Review colors, spacing, typography, and navigation.
-- Run static checks before publishing.
-
-### First content pass
-
-Replace the introduction, setup pages, and one blog post before changing every file. This gives you a realistic sample for reviewing the interface.
-
-### First design pass
-
-After content feels representative, adjust typography, colors, and navigation labels. Design decisions are easier when real page titles and descriptions are already in place.
-
-## Verification steps
-
-Use verification as a checklist, not a last-minute task. Small content mistakes are easier to fix before they spread across many pages.
-
-### Static checks
-
-Run linting and type checks after changing shared components, MDX component maps, or route files. Content-only edits usually need a lighter review.
-
-### Browser review
-
-Review at least one docs page, one code-heavy page, and one blog article in the browser before publishing.
+The development command starts Vite and the Tauri shell. For a packaged local build, use `bun run dist` from the repository root.

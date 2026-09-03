@@ -1,10 +1,4 @@
 {
-  "title": "Gridlines",
-  "pages": [
-    "index",
-    "getting-started",
-    "components",
-    "writing-pages",
-    "organizing-content"
-  ]
+  "title": "onlydiffs",
+  "pages": ["index", "getting-started", "workflows", "remote-repositories", "reference"]
 }

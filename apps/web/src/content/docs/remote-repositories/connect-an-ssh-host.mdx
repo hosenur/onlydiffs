@@ -1,0 +1,30 @@
+---
+title: Connect an SSH host
+description: Add the SSH command you already use, approve unknown host keys, and complete password or key prompts inside onlydiffs.
+---
+
+Open Settings or the remote-project menu and choose **Connect SSH server**. Paste the command you already use in a terminal:
+
+```bash
+ssh user@example.com -p 2222
+```
+
+The leading `ssh` is optional. onlydiffs preserves options such as `-p`, `-i`, and `-J`, including options placed before the destination. SSH config aliases work too:
+
+```bash
+build-box
+```
+
+onlydiffs rejects trailing remote commands because it needs to run its own agent command after connecting.
+
+## System SSH, not a replacement
+
+The app runs your installed OpenSSH tools. Your `~/.ssh/config`, `Include`, `Match`, `ProxyJump`, identities, certificates, hardware keys, and existing ControlMaster connections continue to apply.
+
+The local machine needs `ssh`, `ssh-keygen`, and `ssh-keyscan`. The remote host needs Git, `uname`, a valid home directory, and permission to execute files under `~/.onlydiffs/agent`.
+
+## First connection
+
+For an unknown host, onlydiffs displays the offered key fingerprint and asks you to approve it. Approval writes the key to your configured user `known_hosts` file. It affects terminal SSH as well as onlydiffs.
+
+Password and key-passphrase prompts open inside the app. Enter submits the prompt and Escape cancels the connection attempt.

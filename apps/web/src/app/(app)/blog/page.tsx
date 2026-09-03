@@ -1,13 +1,13 @@
+import { Container } from "@onlydiffs/ui/container"
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { Container } from "@onlydiffs/ui/container"
 import { Text } from "@/components/ui/text"
 import { type BlogPost, formatDate, getBlogImage, getBlogPosts, getBlogSlug } from "@/lib/blog"
 
 export const metadata: Metadata = {
   title: "Blog",
-  description: "Articles and notes from the Gridlines documentation system.",
+  description: "Articles and release notes from the onlydiffs project.",
 }
 
 interface PostImageProps {

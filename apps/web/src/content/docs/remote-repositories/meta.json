@@ -1,0 +1,4 @@
+{
+  "title": "Remote repositories",
+  "pages": ["connect-an-ssh-host", "open-a-remote-repository", "ssh-security-and-troubleshooting"]
+}

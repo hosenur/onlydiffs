@@ -34,8 +34,8 @@ async fn complete_file_contents_are_loaded_separately_from_the_startup_diff() {
         &original.replace("original line 1\n", "changed line 1\n"),
     );
 
-    let workspace = fixture.workspace();
-    let repo_diff = diff::get_diff(&workspace).await.expect("diff");
+    let repo = fixture.repository();
+    let repo_diff = diff::get_diff(&repo).await.expect("diff");
     assert_eq!(repo_diff.files.len(), 1);
 
     let file = &repo_diff.files[0];
@@ -46,7 +46,7 @@ async fn complete_file_contents_are_loaded_separately_from_the_startup_diff() {
     assert_eq!(file.deletions, 1);
 
     let contents = diff::get_file_contents(
-        &workspace,
+        &repo,
         &file.path,
         file.old_path.as_deref(),
         file.status,
@@ -64,11 +64,11 @@ async fn complete_file_contents_are_loaded_separately_from_the_startup_diff() {
     assert!(old.contains("original line 1\n"));
     assert!(new.contains("changed line 1\n"));
 
-    diff::stage_file(&workspace, &file.path, file.old_path.as_deref())
+    diff::stage_file(&repo, &file.path, file.old_path.as_deref())
         .await
         .expect("stage");
 
-    let staged = diff::get_diff(&workspace).await.expect("diff after staging");
+    let staged = diff::get_diff(&repo).await.expect("diff after staging");
     assert_eq!(staged.files.len(), 1);
     assert!(staged.files[0].staged);
 }
@@ -84,7 +84,7 @@ async fn a_path_edited_staged_then_edited_again_yields_two_rows() {
     fixture.git(&["add", "both.txt"]);
     fixture.write("both.txt", "three\n");
 
-    let repo_diff = diff::get_diff(&fixture.workspace()).await.expect("diff");
+    let repo_diff = diff::get_diff(&fixture.repository()).await.expect("diff");
     assert_eq!(repo_diff.files.len(), 2);
     // Staged first, per the sort.
     let staged: Vec<bool> = repo_diff.files.iter().map(|file| file.staged).collect();
@@ -106,7 +106,7 @@ async fn the_commit_message_diff_includes_every_worktree_half() {
     fixture.write("unstaged.txt", "after unstaged\n");
     fixture.write("untracked.txt", "new untracked\n");
 
-    let document = diff::commit_message_diff(&fixture.workspace())
+    let document = diff::commit_message_diff(&fixture.repository())
         .await
         .expect("commit message diff");
 
@@ -126,7 +126,7 @@ async fn a_rename_is_reported_with_the_path_it_moved_from() {
     fixture.git(&["commit", "-q", "-m", "fixture"]);
     fixture.git(&["mv", "before.txt", "after.txt"]);
 
-    let repo_diff = diff::get_diff(&fixture.workspace()).await.expect("diff");
+    let repo_diff = diff::get_diff(&fixture.repository()).await.expect("diff");
     let renamed = repo_diff
         .files
         .iter()
@@ -147,7 +147,7 @@ async fn history_returns_commits_newest_first() {
     fixture.write("a.txt", "two\n");
     fixture.git(&["commit", "-q", "-a", "-m", "second commit"]);
 
-    let commits = history::get_history(&fixture.workspace(), Some(10.0))
+    let commits = history::get_history(&fixture.repository(), Some(10.0))
         .await
         .expect("history");
 
@@ -168,7 +168,7 @@ async fn a_path_escaping_the_repository_is_rejected_before_git_sees_it() {
     fixture.git(&["commit", "-q", "-m", "fixture"]);
 
     let result = diff::get_file_contents(
-        &fixture.workspace(),
+        &fixture.repository(),
         "../outside.txt",
         None,
         ChangeStatus::Modified,

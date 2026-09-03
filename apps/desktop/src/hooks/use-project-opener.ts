@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
-import { openProject } from '@/lib/ipc'
+import { openProject, openRemoteProject } from '@/lib/ipc'
+import { useSsh } from '@/lib/ssh'
+import type { Project } from '@shared/contract'
 
 /** Which project failed to open, so a list can mark the row that failed. */
 export interface OpenProjectFailure {
@@ -25,22 +27,41 @@ export interface OpenProjectFailure {
  */
 export function useProjectOpener() {
   const router = useRouter()
+  const ssh = useSsh()
   const [openingPath, setOpeningPath] = useState<string | null>(null)
   const [failure, setFailure] = useState<OpenProjectFailure | null>(null)
 
-  /** Resolves true once the app is showing `path`, false if it never got there. */
-  async function open(path: string): Promise<boolean> {
+  /**
+   * Resolves true once the app is showing `project`, false if it never got
+   * there.
+   *
+   * Takes the project rather than its path: a remote project's `path` is
+   * `host:/root`, which is an identity rather than something either open
+   * command can be handed. Passing it to the local one — which is what this
+   * did until a remote project first failed to open from the rail — reads it
+   * as a folder on this machine and reports that no such folder exists.
+   */
+  async function open(project: Project): Promise<boolean> {
     if (openingPath !== null) return false
-    setOpeningPath(path)
+    setOpeningPath(project.path)
     setFailure(null)
     try {
-      await openProject(path)
+      if (project.host === null) {
+        await openProject(project.root)
+      } else {
+        // A host that is asleep is the ordinary reason this fails, and
+        // connecting may put a passphrase dialog on screen first.
+        if (!ssh.isConnected(project.host) && !(await ssh.connect(project.host))) {
+          return false
+        }
+        await openRemoteProject(project.host, project.root)
+      }
       await router.navigate({ to: '/diff', replace: true })
       await router.invalidate()
       return true
     } catch (cause) {
       setFailure({
-        path,
+        path: project.path,
         message: cause instanceof Error ? cause.message : String(cause),
       })
       return false

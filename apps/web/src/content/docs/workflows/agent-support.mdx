@@ -1,0 +1,25 @@
+---
+title: Agent support
+description: See which coding agents can receive line-level review feedback from onlydiffs today and which integrations are planned.
+---
+
+onlydiffs is designed to send review feedback back to the coding agent that made the change. Claude Code is the first working integration.
+
+| Agent | Status | Current behavior |
+| --- | --- | --- |
+| Claude Code | <Badge intent="success">Available</Badge> | Receives file paths, line numbers, and review messages through the onlydiffs channel. |
+| Codex | <Badge intent="secondary">Coming soon</Badge> | Integration is planned but is not included in the current app. |
+| OpenCode | <Badge intent="secondary">Coming soon</Badge> | Integration is planned but is not included in the current app. |
+| Pi | <Badge intent="secondary">Coming soon</Badge> | Integration is planned but is not included in the current app. |
+
+## Claude Code today
+
+Clicking a diff line opens a composer. onlydiffs sends the repository-relative path, line number, and your message to one matching Claude Code session. Claude responds and continues work in its own session, not inside onlydiffs.
+
+The match is repository-specific. For a local checkout, Claude must run locally in that checkout. For an SSH-hosted checkout, Claude and the channel must run on the remote host.
+
+Follow [Send feedback to Claude](/docs/workflows/claude-feedback) to register the channel and send your first line-level message.
+
+## Planned agents
+
+The Coming soon label is intentional. The current release does not install, detect, or send messages to Codex, OpenCode, or Pi. Their setup and delivery behavior will be documented when those integrations ship.

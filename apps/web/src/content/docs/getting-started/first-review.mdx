@@ -1,0 +1,28 @@
+---
+title: Complete your first review
+description: Read changed files, send line-level feedback, stage approved work, and track review progress.
+---
+
+## Read the change in context
+
+The left sidebar shows the whole repository, not only changed files. Changed paths include their total additions and deletions. Directories that contain changes start expanded.
+
+Select a changed path to open its diff. onlydiffs reconstructs the before and after file, so unchanged sections remain available around each edit. Press `s` to switch between unified and split layouts.
+
+## Send a line back to Claude
+
+Click any line in the diff. A composer opens at the bottom of the window with a reference such as `src/app.tsx:42`. Add your message and press Enter.
+
+The composer works only when the footer says **Claude connected**. See [Send feedback to Claude](/docs/workflows/claude-feedback) for setup and delivery details.
+
+## Mark a file as reviewed
+
+Press Command/Ctrl+Enter to stage the current file, or choose **Add to staging** from the command menu. Staging is the review marker in onlydiffs.
+
+A path counts as reviewed when every change for that path is staged. If you stage a file and it changes again, it returns to the unreviewed state. The footer shows reviewed paths against the total number of changed paths.
+
+<Callout title="Staging changes Git">
+  onlydiffs runs `git add` for the selected path. It does not keep a separate review database. There is currently no unstage or discard command, so use Git outside the app when you need either operation.
+</Callout>
+
+The repository watcher refreshes the tree after file writes, index changes, commits, and branch changes. Press `r` or choose **Refresh** if a tool changes the repository in a way the watcher misses.

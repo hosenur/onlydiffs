@@ -1,6 +1,6 @@
 export const app = {
-  name: "Gridlines",
-  url: "https://gridlines.justui.com",
+  name: "onlydiffs",
+  url: "https://onlydiffs.vercel.app",
   description:
-    "A polished documentation template built with Intent UI for clear, accessible, and developer-friendly docs.",
+    "Review every change your coding agent makes and send line-level feedback back to its session.",
 }

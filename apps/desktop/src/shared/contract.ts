@@ -64,12 +64,62 @@ export interface ProjectIcon {
 
 /** A repository the app can open. */
 export interface Project {
-  /** Absolute path to the repository root. */
+  /**
+   * How the project is written on screen and identified in the recents list:
+   * an absolute path, or `host:/path` for one on another machine.
+   */
   path: string;
   /** Last path segment, for display. */
   name: string;
+  /** The SSH alias this project is on, or null for this machine. */
+  host: string | null;
+  /**
+   * The repository root as *its own machine* writes it. `path` is for showing
+   * and identifying; this is the one to send back to that machine.
+   */
+  root: string;
   /** Resolved in the background; null keeps the cube fallback. */
   icon: ProjectIcon | null;
+}
+
+/** Whether a host is reachable right now. */
+export type HostConnectionState = "connected" | "disconnected";
+
+/** A host with a live connection. */
+export interface ConnectedHost {
+  /** What the user typed, which is how it is labelled everywhere. */
+  alias: string;
+  hostname: string;
+  user: string | null;
+  port: number | null;
+  state: HostConnectionState;
+  /** From the probe, so the user can see what they connected to. */
+  gitVersion: string | null;
+  /** e.g. `Linux x86_64`. */
+  platform: string | null;
+  agentVersion: string | null;
+}
+
+/**
+ * A question ssh is blocked on, on its way to the window. Arrives as the
+ * `ssh:prompt` event and is answered with `answerSshPrompt`.
+ */
+export interface SshPromptRequest {
+  id: number;
+  /** ssh's own words, e.g. `me@host's password:`. */
+  text: string;
+  /** Whether to mask the field. A yes/no question is not a passphrase. */
+  isSecret: boolean;
+}
+
+/** A host key nobody has approved yet, with the fingerprint to compare. */
+export interface UnknownHostKeyPrompt {
+  alias: string;
+  hostname: string;
+  port: number | null;
+  keyType: string;
+  /** `SHA256:…`, which is what the host's operator can confirm. */
+  fingerprint: string;
 }
 
 /**
@@ -115,6 +165,45 @@ export interface SetThemeRequest {
   theme: AppTheme;
 }
 
+export interface HostRequest {
+  /** The SSH destination as the user typed it. */
+  alias: string;
+}
+
+export interface AddSshHostRequest {
+  /**
+   * The command the user already uses — `ssh user@example -p 2222` — or just a
+   * host. The options in it are kept and replayed on every later connection.
+   */
+  command: string;
+}
+
+/** A remembered destination and the options it is dialled with. */
+export interface SshHostEntry {
+  alias: string;
+  args: string[];
+}
+
+export interface OpenRemoteProjectRequest {
+  alias: string;
+  /** A path on the host; resolved to a repository root there. */
+  path: string;
+}
+
+export interface AnswerSshPromptRequest {
+  id: number;
+  /** `null` cancels, which ssh reads as a refusal rather than a retry. */
+  answer: string | null;
+}
+
+export interface SetGroqApiKeyRequest {
+  /**
+   * `null` clears the stored key, handing the app back to `GROQ_API_KEY` where
+   * that is set.
+   */
+  key: string | null;
+}
+
 /** Whether a Claude Code session is listening for the open repository. */
 export interface ClaudeChannelStatus {
   connected: boolean;
@@ -133,6 +222,28 @@ export interface UpdateStatus {
 
 /** The renderer's theme. `system` hands the window back to the OS setting. */
 export type AppTheme = "light" | "dark" | "system";
+
+/**
+ * Where the Groq key in use came from. Worth naming rather than reducing to a
+ * boolean: someone whose key arrives from their shell should not be told they
+ * have none configured, and someone who saved one should be able to see that
+ * it is the one winning.
+ */
+export type GroqKeySource = "config" | "environment" | "none";
+
+/** What the settings page renders. */
+export interface AppSettings {
+  /**
+   * A masked form of the key in use, e.g. `gsk_…WxYz`. The key itself never
+   * crosses to the renderer; `null` here means there is no key at all.
+   */
+  groqApiKeyHint: string | null;
+  groqKeySource: GroqKeySource;
+  /** Absolute path of the file the settings live in, so the page can name it. */
+  configPath: string;
+  /** SSH destinations the user has added, in the order they added them. */
+  sshHosts: SshHostEntry[];
+}
 
 /**
  * Every command the backend exposes. These are the `#[tauri::command]` function
@@ -156,6 +267,17 @@ export const Command = {
   setTheme: "set_theme",
   checkForUpdate: "check_for_update",
   installUpdate: "install_update",
+  getSettings: "get_settings",
+  setGroqApiKey: "set_groq_api_key",
+  listHosts: "list_hosts",
+  connectHost: "connect_host",
+  disconnectHost: "disconnect_host",
+  inspectHostKey: "inspect_host_key",
+  trustHostKey: "trust_host_key",
+  answerSshPrompt: "answer_ssh_prompt",
+  openRemoteProject: "open_remote_project",
+  addSshHost: "add_ssh_host",
+  forgetSshHost: "forget_ssh_host",
 } as const;
 
 export type CommandName = (typeof Command)[keyof typeof Command];
@@ -174,7 +296,13 @@ export type BackendErrorTag =
   | "ClipboardError"
   | "NoProjectOpenError"
   | "InvalidProjectError"
-  | "UpdaterError";
+  | "UpdaterError"
+  | "SettingsError"
+  | "SshError"
+  /** The host has no key in `known_hosts` yet — a question, not a failure. */
+  | "SshUnknownHostError"
+  /** An established connection dropped; the app can offer to reconnect. */
+  | "SshDisconnectedError";
 
 /**
  * What a caller can find on a thrown `IpcError`. `ChannelError` is the one tag

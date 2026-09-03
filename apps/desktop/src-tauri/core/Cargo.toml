@@ -1,0 +1,32 @@
+[package]
+name = "onlydiffs-core"
+version = "0.1.9"
+description = "Everything OnlyDiffs needs from the machine a repository lives on."
+authors = ["hosenur"]
+edition = "2021"
+rust-version = "1.77.2"
+
+# Deliberately no `tauri`, and no dependency that would pull it in. This crate
+# is compiled for the remote host as part of the agent, where there is no
+# window, no webview, and no GTK — and the surest way to keep it that way is for
+# the manifest to make it impossible rather than for a reviewer to notice.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ciborium = "0.2"
+base64 = "0.22"
+image = { version = "0.24.9", default-features = false, features = ["gif", "ico", "jpeg", "png", "webp"] }
+resvg = { version = "0.41", default-features = false }
+tokio = { version = "1", features = ["process", "fs", "sync", "time", "io-util", "net", "macros", "rt-multi-thread"] }
+futures = "0.3"
+notify-debouncer-full = "0.6.0"
+ignore = "0.4.30"
+dirs = "5"
+
+[target."cfg(unix)".dependencies]
+# One call: `kill(pid, 0)`, to tell a live Claude session from a registration
+# file its process left behind.
+libc = "0.2.189"
+
+[dev-dependencies]
+tempfile = "3"

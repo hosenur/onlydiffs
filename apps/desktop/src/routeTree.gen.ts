@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AppDiffRouteImport } from './routes/_app.diff'
 import { Route as AppFileSplatRouteImport } from './routes/_app.file.$'
 
@@ -21,6 +22,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppDiffRoute = AppDiffRouteImport.update({
@@ -36,11 +42,13 @@ const AppFileSplatRoute = AppFileSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRoute
   '/diff': typeof AppDiffRoute
   '/file/$': typeof AppFileSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRoute
   '/diff': typeof AppDiffRoute
   '/file/$': typeof AppFileSplatRoute
 }
@@ -48,20 +56,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/settings': typeof SettingsRoute
   '/_app/diff': typeof AppDiffRoute
   '/_app/file/$': typeof AppFileSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/diff' | '/file/$'
+  fullPaths: '/' | '/settings' | '/diff' | '/file/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/diff' | '/file/$'
-  id: '__root__' | '/' | '/_app' | '/_app/diff' | '/_app/file/$'
+  to: '/' | '/settings' | '/diff' | '/file/$'
+  id: '__root__' | '/' | '/_app' | '/settings' | '/_app/diff' | '/_app/file/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -78,6 +88,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/diff': {
@@ -112,6 +129,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

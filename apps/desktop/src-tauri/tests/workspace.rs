@@ -8,6 +8,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use onlydiffs_lib::contract::ProjectLocation;
 use onlydiffs_lib::services::workspace::Workspace;
 use tempfile::TempDir;
 
@@ -302,7 +303,7 @@ fn a_resolved_icon_reaches_the_project_list_and_survives_a_restart() {
         let workspace = sandbox.workspace();
         workspace.open(&as_str(&repo)).expect("open repo");
         workspace.record_icon_scan(
-            &repo,
+            &ProjectLocation::local(as_str(&repo)),
             "abc123".to_owned(),
             Some(("assets/logo.png".to_owned(), "data:image/png;base64,AA".to_owned())),
         );
@@ -325,7 +326,11 @@ fn a_scan_that_found_nothing_is_remembered_so_it_is_not_re_sent() {
     let repo = sandbox.make_repo("bare");
     let workspace = sandbox.workspace();
     workspace.open(&as_str(&repo)).expect("open repo");
-    workspace.record_icon_scan(&repo, "no-artwork".to_owned(), None);
+    workspace.record_icon_scan(
+        &ProjectLocation::local(as_str(&repo)),
+        "no-artwork".to_owned(),
+        None,
+    );
 
     let restarted = sandbox.workspace();
     let jobs = restarted.project_icon_jobs();
@@ -353,6 +358,6 @@ fn the_open_project_is_the_first_icon_resolved() {
 
     // Whichever project the user is looking at gets its icon first, even though
     // the list itself stays in first-opened order.
-    assert_eq!(jobs[0].path, second);
+    assert_eq!(jobs[0].location, ProjectLocation::local(as_str(&second)));
     assert_eq!(jobs.len(), 3);
 }

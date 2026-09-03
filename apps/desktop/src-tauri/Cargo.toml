@@ -1,6 +1,12 @@
+# The app is also the workspace root: `cargo build` here still builds the app,
+# which is what the Tauri CLI expects, while `-p onlydiffs-agent` builds the
+# binary that gets uploaded to a remote host.
+[workspace]
+members = ["core", "agent"]
+
 [package]
 name = "onlydiffs"
-version = "0.1.8"
+version = "0.1.9"
 description = "See what your agent changed. Talk it through."
 authors = ["hosenur"]
 edition = "2021"
@@ -16,6 +22,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+onlydiffs-core = { path = "core" }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-clipboard-manager = "2"
@@ -30,6 +37,9 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 dirs = "5"
 notify-debouncer-full = "0.6.0"
 ignore = "0.4.30"
+# Not just for tests: the askpass socket lives in a 0700 temp directory whose
+# destructor is what removes it when a connection ends or the app crashes.
+tempfile = "3"
 
 # Desktop-only: there is no updater on mobile, and the target cfg is what
 # keeps the `cdylib` half of `[lib]` building without it.
@@ -39,5 +49,14 @@ tauri-plugin-updater = "2"
 [target."cfg(unix)".dependencies]
 libc = "0.2.189"
 
-[dev-dependencies]
-tempfile = "3"
+
+# LTO and stripping help both binaries; only the agent trades speed for size,
+# because it crosses an SSH connection once per version per host and its own
+# code is not the hot path — git and image decoding are.
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.release.package.onlydiffs-agent]
+opt-level = "z"

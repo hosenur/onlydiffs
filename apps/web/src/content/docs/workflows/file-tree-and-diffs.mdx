@@ -1,0 +1,32 @@
+---
+title: Navigate files and diffs
+description: Find changed paths, understand staged and unstaged rows, and switch between unified and split views.
+---
+
+## The repository tree
+
+The sidebar includes tracked and untracked files. Git-ignored paths stay hidden. Folders appear before files, single-child folder chains collapse into one row, and folders containing changes open automatically.
+
+Type in the filter field to match any part of a repository-relative path. Large trees virtualize their rows, so a repository with thousands of files does not need thousands of mounted elements.
+
+Changed paths show additions and deletions summed across staged and unstaged changes. A green path has been fully staged and therefore counts as reviewed.
+
+## How changes are separated
+
+onlydiffs reads three kinds of work:
+
+| State | Comparison |
+| --- | --- |
+| Staged | Git index against `HEAD` |
+| Unstaged | Working tree against the Git index |
+| Untracked | New working-tree file against an empty file |
+
+A file can have both staged and unstaged changes. onlydiffs keeps those patches separate and places the staged version first.
+
+## Diff display
+
+The default view is unified. Press `s` to switch between unified and split layouts. The choice lasts for the current workspace session.
+
+Diffs include unchanged code instead of collapsing everything outside Git's patch hunks. Word-level highlighting makes small replacements visible, while horizontal scrolling preserves long lines.
+
+Binary files have no preview. Text files larger than 64 MiB are refused. If one file cannot be loaded or rendered, the error stays inside that file view instead of blanking the application.

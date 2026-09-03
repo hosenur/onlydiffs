@@ -1,0 +1,18 @@
+[package]
+name = "onlydiffs-agent"
+version = "0.1.9"
+description = "Answers OnlyDiffs' questions about a repository, on the machine that repository is on."
+authors = ["hosenur"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[[bin]]
+name = "onlydiffs-agent"
+path = "src/main.rs"
+
+# `onlydiffs-core` and the async runtime, and nothing else. This binary is
+# uploaded to someone else's machine, so every dependency here is one more thing
+# they are trusting; the list is short because it can be.
+[dependencies]
+onlydiffs-core = { path = "../core" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "io-util", "sync", "process", "fs", "time"] }

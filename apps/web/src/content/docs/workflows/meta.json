@@ -1,0 +1,4 @@
+{
+  "title": "Core workflows",
+  "pages": ["file-tree-and-diffs", "stage-and-commit", "claude-feedback", "agent-support", "projects-and-refresh"]
+}

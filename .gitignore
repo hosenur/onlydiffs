@@ -29,6 +29,7 @@ dist-ssr
 # Rust / Tauri
 target
 apps/desktop/src-tauri/gen
+apps/desktop/src-tauri/*/Cargo.lock
 
 # TS project build info
 *.tsbuildinfo
@@ -36,3 +37,9 @@ apps/desktop/src-tauri/gen
 # Turborepo / Next
 .turbo
 .next
+
+# Built by scripts/build-agents.sh, and by CI before the bundle step.
+apps/desktop/src-tauri/agents/
+
+# Keys and Dockerfile for the opt-in Linux SSH test host.
+apps/desktop/.linux-test-host/

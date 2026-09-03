@@ -14,11 +14,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use crate::contract::{Project, ProjectIcon};
+use crate::contract::{Project, ProjectIcon, ProjectLocation};
 use crate::error::AppError;
 
-/// Where the recents list is kept, relative to the user's home directory.
-const STORE_DIR: &str = ".onlydiffs";
 const STORE_FILE: &str = "projects.json";
 const STORE_VERSION: u32 = 1;
 
@@ -26,11 +24,30 @@ const STORE_VERSION: u32 = 1;
 #[serde(rename_all = "camelCase")]
 struct StoredProject {
     path: String,
+    /// The SSH alias this project is on. Absent for a project on this machine,
+    /// which is what keeps a store written by an older build readable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    host: Option<String>,
     last_opened_at: u64,
     #[serde(default)]
     icon: Option<StoredProjectIcon>,
     #[serde(default)]
     icon_scan_hash: Option<String>,
+}
+
+impl StoredProject {
+    fn location(&self) -> ProjectLocation {
+        ProjectLocation {
+            host: self.host.clone(),
+            path: self.path.clone(),
+        }
+    }
+
+    /// Whether this entry is the one being asked about. Path alone is not
+    /// enough: the same path on two hosts is two projects.
+    fn is(&self, location: &ProjectLocation) -> bool {
+        self.path == location.path && self.host == location.host
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,7 +59,7 @@ struct StoredProjectIcon {
 
 #[derive(Debug, Clone)]
 pub struct ProjectIconJob {
-    pub path: PathBuf,
+    pub location: ProjectLocation,
     pub previous_scan_hash: Option<String>,
 }
 
@@ -116,16 +133,23 @@ fn find_repo_root(dir: &Path) -> Option<PathBuf> {
     }
 }
 
-fn describe(repo_path: &Path, icon: Option<&StoredProjectIcon>) -> Project {
-    let display = repo_path.to_string_lossy().into_owned();
-    let name = repo_path
-        .file_name()
-        .map(|segment| segment.to_string_lossy().into_owned())
+fn describe(location: &ProjectLocation, icon: Option<&StoredProjectIcon>) -> Project {
+    // Last segment of the *remote* path for a remote project: the host's path
+    // style is what named it, and a Windows-style root is not something this
+    // app produces on either side.
+    let name = location
+        .path
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()
         .filter(|segment| !segment.is_empty())
-        .unwrap_or_else(|| display.clone());
+        .unwrap_or(&location.path)
+        .to_owned();
     Project {
-        path: display,
+        path: location.display(),
         name,
+        host: location.host.clone(),
+        root: location.path.clone(),
         icon: icon.map(|icon| ProjectIcon {
             source_path: icon.source_path.clone(),
             data_url: icon.data_url.clone(),
@@ -135,7 +159,7 @@ fn describe(repo_path: &Path, icon: Option<&StoredProjectIcon>) -> Project {
 
 pub struct Workspace {
     store_path: PathBuf,
-    current: Mutex<Option<PathBuf>>,
+    current: Mutex<Option<ProjectLocation>>,
     recents: Mutex<Vec<StoredProject>>,
 }
 
@@ -168,17 +192,13 @@ impl Workspace {
     /// file, and `ONLYDIFFS_REPO_PATH` pins the repository opened at startup,
     /// overriding the most-recent one that would otherwise be restored.
     pub fn from_env() -> Self {
-        let state_dir = std::env::var("ONLYDIFFS_STATE_DIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| {
-                dirs::home_dir()
-                    .unwrap_or_else(|| PathBuf::from("."))
-                    .join(STORE_DIR)
-            });
-        Self::new(state_dir, std::env::var("ONLYDIFFS_REPO_PATH").ok())
+        Self::new(
+            super::state_dir(),
+            std::env::var("ONLYDIFFS_REPO_PATH").ok(),
+        )
     }
 
-    /// Validates a path and, if it checks out, makes it the current project.
+    /// Validates a path on this machine and, if it checks out, opens it.
     pub fn open(&self, input: &str) -> Result<Project, AppError> {
         if input.trim().is_empty() {
             return Err(AppError::InvalidProject(
@@ -201,8 +221,16 @@ impl Workspace {
             ))
         })?;
 
-        let display = root.to_string_lossy().into_owned();
-        *self.current.lock().expect("workspace lock") = Some(root.clone());
+        self.adopt(ProjectLocation::local(root.to_string_lossy().into_owned()))
+    }
+
+    /// Opens a repository root that has already been resolved — by
+    /// `find_repo_root` here, or by the agent on the machine it is on.
+    ///
+    /// The remote half of `open`. Validation happens where the path is, because
+    /// this side has no way to stat it.
+    pub fn adopt(&self, location: ProjectLocation) -> Result<Project, AppError> {
+        *self.current.lock().expect("workspace lock") = Some(location.clone());
         {
             let mut recents = self.recents.lock().expect("recents lock");
             // The timestamp controls startup restoration, not display order.
@@ -215,11 +243,12 @@ impl Workspace {
                     .unwrap_or(0)
                     .saturating_add(1),
             );
-            if let Some(entry) = recents.iter_mut().find(|entry| entry.path == display) {
+            if let Some(entry) = recents.iter_mut().find(|entry| entry.is(&location)) {
                 entry.last_opened_at = opened_at;
             } else {
                 recents.push(StoredProject {
-                    path: display,
+                    path: location.path.clone(),
+                    host: location.host.clone(),
                     last_opened_at: opened_at,
                     icon: None,
                     icon_scan_hash: None,
@@ -228,11 +257,12 @@ impl Workspace {
         }
         self.write_store();
 
-        Ok(self.describe_path(&root))
+        Ok(self.describe(&location))
     }
 
-    /// The active repository. Everything that shells out to git needs this.
-    pub fn current_path(&self) -> Result<PathBuf, AppError> {
+    /// Where the active repository is. Everything that reaches a repository
+    /// starts here.
+    pub fn current_location(&self) -> Result<ProjectLocation, AppError> {
         self.current
             .lock()
             .expect("workspace lock")
@@ -240,31 +270,44 @@ impl Workspace {
             .ok_or_else(|| AppError::NoProjectOpen("No project is open.".into()))
     }
 
+    /// The active repository's root, when it is on this machine.
+    pub fn current_path(&self) -> Result<PathBuf, AppError> {
+        let location = self.current_location()?;
+        if location.is_remote() {
+            return Err(AppError::NoProjectOpen(
+                "The open project is on another machine.".into(),
+            ));
+        }
+        Ok(PathBuf::from(location.path))
+    }
+
     pub fn current_project(&self) -> Option<Project> {
-        let path = self.current.lock().expect("workspace lock").clone()?;
-        Some(self.describe_path(&path))
+        let location = self.current.lock().expect("workspace lock").clone()?;
+        Some(self.describe(&location))
     }
 
     /// Projects stay in first-opened order so switching one never moves its UI.
-    /// Entries whose folders no longer exist are omitted.
+    ///
+    /// A local entry whose folder is gone is dropped. A remote one never is:
+    /// its host may simply be asleep, and forgetting a project because a laptop
+    /// was on a train would be the wrong answer to a temporary question.
     pub fn list(&self) -> Vec<Project> {
         self.recents
             .lock()
             .expect("recents lock")
             .iter()
-            .filter(|entry| Path::new(&entry.path).exists())
-            .map(|entry| describe(Path::new(&entry.path), entry.icon.as_ref()))
+            .filter(|entry| entry.host.is_some() || Path::new(&entry.path).exists())
+            .map(|entry| describe(&entry.location(), entry.icon.as_ref()))
             .collect()
     }
 
-    fn describe_path(&self, repo_path: &Path) -> Project {
-        let display = repo_path.to_string_lossy();
+    fn describe(&self, location: &ProjectLocation) -> Project {
         let recents = self.recents.lock().expect("recents lock");
         let icon = recents
             .iter()
-            .find(|entry| entry.path == display)
+            .find(|entry| entry.is(location))
             .and_then(|entry| entry.icon.as_ref());
-        describe(repo_path, icon)
+        describe(location, icon)
     }
 
     pub fn project_icon_jobs(&self) -> Vec<ProjectIconJob> {
@@ -274,14 +317,16 @@ impl Workspace {
             .lock()
             .expect("recents lock")
             .iter()
-            .filter(|entry| entry.icon.is_none() && Path::new(&entry.path).exists())
+            .filter(|entry| {
+                entry.icon.is_none() && (entry.host.is_some() || Path::new(&entry.path).exists())
+            })
             .map(|entry| ProjectIconJob {
-                path: PathBuf::from(&entry.path),
+                location: entry.location(),
                 previous_scan_hash: entry.icon_scan_hash.clone(),
             })
             .collect();
         jobs.sort_by_key(|job| match &current {
-            Some(path) => path != &job.path,
+            Some(location) => location != &job.location,
             None => true,
         });
         jobs
@@ -289,13 +334,12 @@ impl Workspace {
 
     pub fn record_icon_scan(
         &self,
-        repo_path: &Path,
+        location: &ProjectLocation,
         scan_hash: String,
         icon: Option<(String, String)>,
     ) {
-        let display = repo_path.to_string_lossy();
         let mut recents = self.recents.lock().expect("recents lock");
-        let Some(entry) = recents.iter_mut().find(|entry| entry.path == display) else {
+        let Some(entry) = recents.iter_mut().find(|entry| entry.is(location)) else {
             return;
         };
         entry.icon_scan_hash = Some(scan_hash);
@@ -309,21 +353,26 @@ impl Workspace {
         self.write_store();
     }
 
+    /// The most recently opened project on *this* machine.
+    ///
+    /// Startup restores a local project only. A remote one would mean dialling
+    /// a host, authenticating, and possibly prompting, before the window has
+    /// drawn anything — which is not what launching an app should do.
     fn most_recent_path(&self) -> Option<String> {
         self.recents
             .lock()
             .expect("recents lock")
             .iter()
-            .filter(|entry| Path::new(&entry.path).exists())
+            .filter(|entry| entry.host.is_none() && Path::new(&entry.path).exists())
             .max_by_key(|entry| entry.last_opened_at)
             .map(|entry| entry.path.clone())
     }
 
-    pub fn forget(&self, repo_path: &str) {
+    pub fn forget(&self, display: &str) {
         self.recents
             .lock()
             .expect("recents lock")
-            .retain(|entry| entry.path != repo_path);
+            .retain(|entry| entry.location().display() != display);
         self.write_store();
     }
 

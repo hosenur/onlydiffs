@@ -1,0 +1,27 @@
+---
+title: Open a repository
+description: Open a local Git checkout by path, return to a recent project, or switch repositories without leaving the review window.
+---
+
+## Open by path
+
+Enter a directory in the landing-page field and press Enter. onlydiffs accepts:
+
+- An absolute path such as `/Users/me/code/project`
+- A home-relative path such as `~/code/project`
+- A relative path such as `code/project`, resolved from your home directory
+- A directory inside a checkout, such as `~/code/project/src`
+
+onlydiffs walks upward until it finds `.git`, then opens that repository root. The path must point to a directory. A file path, missing directory, bare repository, or folder outside a Git checkout is rejected.
+
+## Return to a recent project
+
+Every repository you open appears on the landing page and in the project switcher. Local entries disappear from the list if their directory no longer exists. Remove an old entry with the action at the end of its row.
+
+On launch, onlydiffs restores the most recently used local repository that still exists. It does not restore remote repositories automatically because reconnecting may require a password, hardware key, VPN, or host-key approval.
+
+## Switch while reviewing
+
+Use the project rail, click the repository name above the file tree, or open the command menu with Command/Ctrl+K and choose **Switch project**. The app reloads the tree and diff before showing the new repository.
+
+To open a checkout on another machine, follow [Connect an SSH host](/docs/remote-repositories/connect-an-ssh-host).

@@ -10,7 +10,28 @@ import { cx } from "../lib/primitive"
 export const buttonStyles = tv({
   base: [
     "[--btn-border:var(--color-fg)]/15 [--btn-icon-active:var(--btn-fg)] [--btn-outline:var(--btn-bg)] [--btn-radius:calc(var(--radius-lg)-1px)] [--btn-ring:var(--btn-bg)]/20",
-    "bg-(--btn-bg) text-(--btn-fg) outline-(--btn-outline) ring-(--btn-ring) hover:bg-(--btn-overlay)",
+    /*
+     * The glass treatment, from the design spec and written once so that every
+     * filled intent gets it in its own hue rather than only the blue one: a
+     * white sheen down the face, a hairline of white inside the border, a broad
+     * glow off the top edge, and a drop shadow tinted by the fill rather than
+     * by black.
+     *
+     * `--btn-glass` is the single switch. The transparent intents set it to
+     * `transparent`, which zeroes the sheen, the ring, and the glow at once —
+     * there is nothing under a plain button for them to light. The drop shadow
+     * needs no such switch: it is mixed from `--btn-bg`, which those intents
+     * have already set to `transparent`.
+     */
+    "[--btn-glass:var(--color-white)] [--btn-drop:var(--btn-bg)]/6 [--btn-glow:var(--btn-glass)]/20 [--btn-inner-ring:var(--btn-glass)]/20 [--btn-sheen-end:var(--btn-glass)]/10 [--btn-sheen:var(--btn-glass)]/14",
+    "bg-(--btn-bg) bg-linear-to-b from-(--btn-sheen) via-transparent via-45% to-(--btn-sheen-end) text-(--btn-fg) outline-(--btn-outline) ring-(--btn-ring) hover:bg-(--btn-overlay)",
+    /*
+     * Spec values, in spec order: the inner white stroke, the inner shadow
+     * (y 1, blur 32), and the drop shadow (y 3, blur 3). `shadow-[…]` rather
+     * than a raw `box-shadow`, so the focus ring still composes on top instead
+     * of replacing all three.
+     */
+    "shadow-[inset_0_0_0_1px_var(--btn-inner-ring),inset_0_1px_32px_var(--btn-glow),0_3px_3px_var(--btn-drop)]",
     "relative isolate inline-flex items-center justify-center border border-(--btn-border) font-medium hover:no-underline",
     "focus:outline-0 focus-visible:outline focus-visible:outline-offset-2 focus-visible:ring-2 focus-visible:ring-offset-3 focus-visible:ring-offset-bg",
     "*:[svg]:-mx-0.5 forced-colors:[--btn-icon:ButtonText] forced-colors:hover:[--btn-icon:ButtonText] *:[svg]:shrink-0 *:[svg]:self-center *:[svg]:text-(--btn-icon) hover:*:[svg]:text-(--btn-icon-active)/90 focus-visible:*:[svg]:text-(--btn-icon-active)/80",
@@ -31,9 +52,9 @@ export const buttonStyles = tv({
       success:
         "[--btn-bg:var(--color-success)] [--btn-fg:var(--color-success-fg)] [--btn-icon:color-mix(in_oklab,var(--color-success-fg)_60%,var(--success)_40%)] [--btn-overlay:color-mix(in_oklab,var(--color-white)_10%,var(--color-success)_90%)]",
       outline:
-        "border-border [--btn-bg:transparent] [--btn-icon:var(--color-muted-fg)] [--btn-outline:var(--color-ring)] [--btn-overlay:var(--color-secondary)] [--btn-ring:var(--color-ring)]/20",
+        "border-border [--btn-bg:transparent] [--btn-glass:transparent] [--btn-icon:var(--color-muted-fg)] [--btn-outline:var(--color-ring)] [--btn-overlay:var(--color-secondary)] [--btn-ring:var(--color-ring)]/20",
       plain:
-        "border-transparent [--btn-bg:transparent] [--btn-icon:var(--color-muted-fg)] [--btn-outline:var(--color-ring)] [--btn-overlay:var(--color-secondary)] [--btn-ring:var(--color-ring)]/20",
+        "border-transparent [--btn-bg:transparent] [--btn-glass:transparent] [--btn-icon:var(--color-muted-fg)] [--btn-outline:var(--color-ring)] [--btn-overlay:var(--color-secondary)] [--btn-ring:var(--color-ring)]/20",
     },
     size: {
       xs: [

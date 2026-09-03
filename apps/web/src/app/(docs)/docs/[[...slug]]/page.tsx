@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
       canonical: `${app.url}${page.url}`,
     },
     openGraph: {
-      title: `${page.data.title} / Gridlines`,
+      title: `${page.data.title} / ${app.name}`,
       description: page.data.description,
       type: "article",
       url: `${app.url}${page.url}`,
@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
     },
     twitter: {
       card: "summary_large_image",
-      title: `${page.data.title} / Gridlines`,
+      title: `${page.data.title} / ${app.name}`,
       description: page.data.description,
       images: [
         { url: ogImage({ title: page.data.title, description: page.data.description ?? "" }) },

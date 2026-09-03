@@ -3,6 +3,7 @@
  * is no dependency to track. Re-copy from the local Nucleo library to update.
  */
 export { CodeBranchOutline18 } from './CodeBranchOutline18'
+export { GearOutline18 } from './GearOutline18'
 export { IsometricCubeIcon } from './IsometricCubeIcon'
 export { Plug2Outline18 } from './Plug2Outline18'
 export { PlugOffOutline18 } from './PlugOffOutline18'

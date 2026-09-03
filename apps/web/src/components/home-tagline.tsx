@@ -47,3 +47,20 @@ export function HomeDocsButton() {
     </DrawablyButton>
   )
 }
+
+export function HomeDemoButton() {
+  return (
+    <DrawablyButton
+      seed={43}
+      boil={0.2}
+      stroke="#ffffff"
+      fill="#ffffff"
+      paper="#171717"
+      width={1.5}
+      variant="solid"
+      type="submit"
+    >
+      See demo
+    </DrawablyButton>
+  )
+}

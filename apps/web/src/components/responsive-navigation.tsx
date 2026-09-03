@@ -1,6 +1,7 @@
 "use client"
 
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid"
+import { Button } from "@onlydiffs/ui/button"
 import NextLink from "next/link"
 import { usePathname } from "next/navigation"
 import { Autocomplete, useFilter } from "react-aria-components/Autocomplete"
@@ -8,7 +9,6 @@ import { Menu, MenuTrigger, Popover, MenuItem as PrimitiveMenu } from "react-ari
 import { Input, SearchField } from "react-aria-components/SearchField"
 import { twJoin } from "tailwind-merge"
 import { Logo } from "@/components/logo"
-import { Button } from "@onlydiffs/ui/button"
 import { flattenSidebar, normalizePath } from "@/lib/docs"
 import type { PageTreeRoot } from "@/types/content"
 
@@ -74,11 +74,18 @@ export function ResponsiveNavigation({ tree }: { tree?: PageTreeRoot }) {
             <MenuItem textValue="docs" href="/docs">
               Docs
             </MenuItem>
-            <MenuItem textValue="blog" href="/blog">
-              Blog
+            <MenuItem
+              textValue="ssh remote repositories"
+              href="/docs/remote-repositories/connect-an-ssh-host"
+            >
+              SSH repositories
             </MenuItem>
-            <MenuItem href="#">Guides</MenuItem>
-            <MenuItem href="#">Changelog</MenuItem>
+            <MenuItem textValue="agent support" href="/docs/workflows/agent-support">
+              Agent support
+            </MenuItem>
+            <MenuItem textValue="releases updates" href="/docs/reference/updates">
+              Releases
+            </MenuItem>
             {menus.map((menu) => {
               const active = normalizePath(menu.href) === pathname
 

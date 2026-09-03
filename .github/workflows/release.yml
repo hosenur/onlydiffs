@@ -30,13 +30,18 @@ jobs:
           conf=$(read_json apps/desktop/src-tauri/tauri.conf.json)
           pkg=$(read_json apps/desktop/package.json)
           cargo=$(awk -F'"' '/^version = /{print $2; exit}' apps/desktop/src-tauri/Cargo.toml)
+          core=$(awk -F'"' '/^version = /{print $2; exit}' apps/desktop/src-tauri/core/Cargo.toml)
+          agent=$(awk -F'"' '/^version = /{print $2; exit}' apps/desktop/src-tauri/agent/Cargo.toml)
 
-          if [ "$tag" != "$conf" ] || [ "$tag" != "$pkg" ] || [ "$tag" != "$cargo" ]; then
+          if [ "$tag" != "$conf" ] || [ "$tag" != "$pkg" ] || [ "$tag" != "$cargo" ] || \
+             [ "$tag" != "$core" ] || [ "$tag" != "$agent" ]; then
             echo "::error::Tag v$tag does not match the app version."
             echo "  tauri.conf.json: $conf"
             echo "  Cargo.toml:      $cargo"
+            echo "  core/Cargo.toml: $core"
+            echo "  agent/Cargo.toml: $agent"
             echo "  package.json:    $pkg"
-            echo "Set all three to $tag, commit, then move the tag:"
+            echo "Set all five to $tag, commit, then move the tag:"
             echo "  git tag -f v$tag && git push --force origin v$tag"
             exit 1
           fi
@@ -60,7 +65,11 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin
+          # The app, plus every host the agent is uploaded to. A release missing
+          # one of these still builds and still runs — the probe refuses that
+          # platform politely — but nobody on it can connect, so they are built
+          # together or not at all.
+          targets: aarch64-apple-darwin, x86_64-apple-darwin, x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -77,6 +86,48 @@ jobs:
       - name: Test the renderer
         working-directory: apps/desktop
         run: bun run test:renderer
+
+      # The Rust tests are cheap next to the bundle and they cover the whole
+      # remote path — the protocol, the agent, and the SSH transport against a
+      # real `sshd`. Shipping an agent that cannot answer is not a failure worth
+      # discovering after the draft release exists.
+      - name: Test the backend
+        working-directory: apps/desktop/src-tauri
+        run: cargo test --workspace
+
+      # zig is the linker for the Linux targets, and the reason the glibc
+      # version can be pinned rather than inherited from this runner.
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Install cargo-zigbuild
+        run: cargo install cargo-zigbuild --locked
+
+      - name: Build the remote agents
+        working-directory: apps/desktop
+        run: ./scripts/build-agents.sh
+
+      # `bundle.resources` in tauri.conf.json copies whatever is in `agents/`,
+      # so a missing file would ship silently as a host nobody can connect to.
+      - name: Check every agent made it
+        run: |
+          set -euo pipefail
+          for triple in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu \
+                        aarch64-apple-darwin x86_64-apple-darwin; do
+            agent="apps/desktop/src-tauri/agents/onlydiffs-agent-$triple"
+            test -x "$agent" || { echo "::error::missing agent for $triple"; exit 1; }
+            echo "$triple: $(stat -f%z "$agent") bytes"
+          done
+
+          # The one we can actually run here has to report the version the app
+          # will look for, which is what the upload's match rule compares.
+          version=$(apps/desktop/src-tauri/agents/onlydiffs-agent-aarch64-apple-darwin --version)
+          expected="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$expected" ]; then
+            echo "::error::agent reports $version, expected $expected"
+            exit 1
+          fi
 
       - uses: tauri-apps/tauri-action@v1
         env:
@@ -125,6 +176,13 @@ jobs:
 
           test -f "$app/Contents/_CodeSignature/CodeResources"
           codesign --verify --deep --strict --verbose=2 "$app"
+
+          # The agents are what make a remote host reachable, and a bundle that
+          # signed cleanly without them is a release that quietly cannot connect.
+          for triple in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu \
+                        aarch64-apple-darwin x86_64-apple-darwin; do
+            test -f "$app/Contents/Resources/agents/onlydiffs-agent-$triple"
+          done
 
           extracted=$(mktemp -d)
           trap 'rm -rf "$extracted"' EXIT

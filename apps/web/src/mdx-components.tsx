@@ -1,9 +1,15 @@
+import { Badge } from "@onlydiffs/ui/badge"
+import {
+  Disclosure,
+  DisclosureGroup,
+  DisclosurePanel,
+  DisclosureTrigger,
+} from "@onlydiffs/ui/disclosure-group"
+import { Tab, TabList, TabPanel, Tabs } from "@onlydiffs/ui/tabs"
 import type { MDXComponents } from "mdx/types"
 import Link from "next/link"
 import type { ComponentPropsWithoutRef } from "react"
 import { twMerge } from "tailwind-merge"
-import { Components } from "@/components/docs/components"
-import { Resources } from "@/components/docs/resources"
 import {
   ApiEndpoint,
   ApiParameter,
@@ -29,20 +35,12 @@ import { Heading } from "@/components/mdx/heading"
 import { DocsImage } from "@/components/mdx/image"
 import { PackageCommand } from "@/components/mdx/package-command"
 import { PlainCode, Pre } from "@/components/mdx/plain-code"
-import { Badge } from "@onlydiffs/ui/badge"
-import {
-  Disclosure,
-  DisclosureGroup,
-  DisclosurePanel,
-  DisclosureTrigger,
-} from "@onlydiffs/ui/disclosure-group"
 import {
   SnippetTab,
   SnippetTabPanel,
   SnippetTabPanels,
   SnippetTabsList,
 } from "@/components/ui/snippet"
-import { Tab, TabList, TabPanel, Tabs } from "@onlydiffs/ui/tabs"
 import { textLinkStyles } from "@/components/ui/text"
 
 const linkStyles = textLinkStyles({ className: "no-typeset no-underline" })
@@ -123,8 +121,6 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Callout,
     Changelog,
     ChangelogEntry,
-    Components,
-    Resources,
     SnippetTab,
     SnippetTabPanel,
     SnippetTabPanels,

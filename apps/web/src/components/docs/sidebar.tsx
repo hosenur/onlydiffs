@@ -1,9 +1,9 @@
 "use client"
 
-import { BookOpenIcon, CubeIcon, NewspaperIcon } from "@heroicons/react/24/outline"
+import { BookOpenIcon, ServerStackIcon } from "@heroicons/react/24/outline"
+import { Badge, type BadgeProps } from "@onlydiffs/ui/badge"
 import NextLink from "next/link"
 import { usePathname } from "next/navigation"
-
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { Header } from "react-aria-components/Header"
 import {
@@ -13,9 +13,7 @@ import {
   ListBoxSection,
 } from "react-aria-components/ListBox"
 import { twJoin } from "tailwind-merge"
-import { DiscordIcon } from "@/components/icons/discord-icon"
 import { GithubIcon } from "@/components/icons/github-icon"
-import { Badge, type BadgeProps } from "@onlydiffs/ui/badge"
 import type { PageTreeNode, PageTreeRoot } from "@/types/content"
 
 interface SidebarItem {
@@ -242,30 +240,42 @@ export function DocsSidebar({ tree }: DocsSidebarProps) {
               Introduction
             </SidebarItem>
             <SidebarItem
-              textValue="Components"
-              href="/docs/components/api-reference"
+              textValue="Remote repositories"
+              href="/docs/remote-repositories/connect-an-ssh-host"
               render={(props) => (
-                <NextLink href="/docs/components/api-reference" {...(props as any)} />
+                <NextLink
+                  href="/docs/remote-repositories/connect-an-ssh-host"
+                  {...(props as any)}
+                />
               )}
             >
-              <CubeIcon />
-              Components
+              <ServerStackIcon />
+              Review over SSH
             </SidebarItem>
             <SidebarItem
-              textValue="Components"
-              href="/blog"
-              render={(props) => <NextLink href="/blog" {...(props as any)} />}
+              textValue="Agent support"
+              href="/docs/workflows/agent-support"
+              render={(props) => (
+                <NextLink href="/docs/workflows/agent-support" {...(props as any)} />
+              )}
             >
-              <NewspaperIcon />
-              Blog
+              <BookOpenIcon />
+              Agent support
             </SidebarItem>
-            <SidebarItem textValue="Repositories" href="#">
+            <SidebarItem
+              textValue="GitHub repository"
+              href="https://github.com/hosenur/onlydiffs"
+              render={(props) => (
+                <a
+                  href="https://github.com/hosenur/onlydiffs"
+                  target="_blank"
+                  rel="noreferrer"
+                  {...(props as any)}
+                />
+              )}
+            >
               <GithubIcon />
-              Repositories
-            </SidebarItem>
-            <SidebarItem textValue="Community" href="#">
-              <DiscordIcon />
-              Community
+              GitHub
             </SidebarItem>
           </ListBoxSection>
           {sections.map((section, index) => (

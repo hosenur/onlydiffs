@@ -1,0 +1,16 @@
+---
+title: Updates and releases
+description: See when onlydiffs checks for updates, install a signed release, and find complete release notes.
+---
+
+Release builds check for an update after a repository workspace has been open for five seconds. The check runs once for that mounted workspace.
+
+When a release is available, the footer shows its version and the command menu gains an **Update** section. Choose **Install** to download the exact offered release. onlydiffs verifies the update signature, installs it, and restarts.
+
+A failed check stays silent. A failed installation leaves the update available so you can retry. The landing page and Settings do not check independently.
+
+Updates come from [GitHub Releases](https://github.com/hosenur/onlydiffs/releases). Each release page contains its notes and downloadable artifacts.
+
+<Callout title="macOS first-install warning">
+  The updater verifies onlydiffs releases, but the initial browser download is not Apple-notarized yet. Follow the quarantine step in [Install onlydiffs](/docs/getting-started/installation) if Gatekeeper blocks that first launch.
+</Callout>

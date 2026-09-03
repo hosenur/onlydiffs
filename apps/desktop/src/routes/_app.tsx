@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect, useRouter } from '@tanstack/react-router'
 import { AppCommandMenu } from '@/components/app-command-menu'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AppSidebarNav } from '@/components/app-sidebar-nav'
@@ -11,7 +11,9 @@ import { DiffLayoutProvider } from '@/lib/diff-layout'
 import { LineReferenceProvider } from '@/lib/line-reference'
 import { useRepoWatch } from '@/lib/repo-watch'
 import { UpdateProvider } from '@/lib/update'
-import { currentProject, getDiff, listFiles, listProjects } from '@/lib/ipc'
+import { IpcError, currentProject, getDiff, listFiles, listProjects } from '@/lib/ipc'
+import { useSsh } from '@/lib/ssh'
+import { Button } from '@onlydiffs/ui/button'
 
 /**
  * Pathless layout route: the `_` prefix means this contributes no URL segment,
@@ -44,7 +46,56 @@ export const Route = createFileRoute('/_app')({
     return { diff, paths, projects }
   },
   component: AppLayout,
+  // A repository on another machine can stop answering mid-review — a laptop
+  // sleeps, a VPN drops. Without this the loader's failure escapes to the
+  // router's default and the window goes blank on what is usually a
+  // ten-second problem.
+  errorComponent: RepositoryUnreachable,
 })
+
+/**
+ * What a dropped connection looks like.
+ *
+ * Deliberately not a toast: the diff on screen belongs to a repository this app
+ * can no longer read, and leaving it up would let someone review a file whose
+ * contents it cannot check.
+ */
+function RepositoryUnreachable({ error }: { error: Error }) {
+  const router = useRouter()
+  const ssh = useSsh()
+  const disconnected = error instanceof IpcError && error.tag === 'SshDisconnectedError'
+  const host = ssh.hosts.find((entry) => error.message.includes(entry.alias))
+
+  return (
+    <div className="grid min-h-svh place-items-center p-8">
+      <div className="flex max-w-md flex-col gap-4 text-center">
+        <h1 className="font-medium text-lg tracking-tight">
+          {disconnected ? 'The connection dropped' : 'This repository could not be read'}
+        </h1>
+        <p className="text-muted-fg text-sm">{error.message}</p>
+        <div className="flex justify-center gap-2">
+          {disconnected && host && (
+            <Button
+              onPress={() => {
+                void ssh.connect(host.alias).then((connected) => {
+                  if (connected) void router.invalidate()
+                })
+              }}
+            >
+              Reconnect to {host.alias}
+            </Button>
+          )}
+          <Button intent="outline" onPress={() => void router.invalidate()}>
+            Try again
+          </Button>
+          <Button intent="plain" onPress={() => void router.navigate({ to: '/' })}>
+            Open another project
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function AppLayout() {
   const { diff, paths, projects } = Route.useLoaderData()
@@ -80,7 +131,7 @@ function AppLayout() {
                 <Outlet />
               </div>
 
-              <AppToolbar />
+              <AppToolbar files={diff.files} />
             </SidebarInset>
           </SidebarProvider>
         </UpdateProvider>

@@ -1,0 +1,22 @@
+---
+title: Open a remote repository
+description: Browse remembered projects by host, open a remote checkout by path, and understand what runs on the server.
+---
+
+Open the remote-project menu with Control+Command+O on macOS. Choose a remembered repository or select **Open another path** under a connected host.
+
+Enter a path as the remote user sees it. `~` refers to that user's home directory. A directory anywhere inside a checkout resolves to the repository root.
+
+## What runs remotely
+
+On the first connection, onlydiffs uploads a small matching agent to `~/.onlydiffs/agent`. The agent reads the diff, builds the file tree, watches the repository, stages files, scans icon candidates, and checks for a Claude channel on that machine.
+
+The agent communicates through the existing SSH process over standard input and output. It does not open a port, run as a daemon, or need outbound internet access. onlydiffs reuses it while the version and file contents match the desktop app.
+
+One SSH connection is shared by projects that use the same remembered host alias. If your SSH client already has a ControlMaster connection, onlydiffs adopts it and leaves it running when the app closes.
+
+## Claude on a remote checkout
+
+Claude sessions follow the repository. Run Claude Code and the onlydiffs channel setup on the remote host, from the checkout being reviewed. The local app sends the line message through the remote agent to that host's loopback channel.
+
+Remote projects remain in recents while disconnected, but onlydiffs never reconnects to one automatically at launch.

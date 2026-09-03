@@ -1,6 +1,6 @@
 {
-  "name": "Gridlines",
-  "short_name": "Gridlines",
+  "name": "onlydiffs",
+  "short_name": "onlydiffs",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",

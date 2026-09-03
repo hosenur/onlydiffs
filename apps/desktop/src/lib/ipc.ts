@@ -1,7 +1,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { InvokeArgs } from '@tauri-apps/api/core'
 import type {
+  AddSshHostRequest,
+  AnswerSshPromptRequest,
+  AppSettings,
   AppTheme,
+  ConnectedHost,
   ClaudeChannelStatus,
   Commit,
   CommandName,
@@ -10,14 +14,19 @@ import type {
   FullFileContents,
   GetFileContentsRequest,
   GetHistoryRequest,
+  HostRequest,
   IpcErrorTag,
   IpcResult,
   OpenProjectRequest,
+  OpenRemoteProjectRequest,
   Project,
   RepoDiff,
   SendClaudeMessageRequest,
+  SetGroqApiKeyRequest,
   SetThemeRequest,
+  SshHostEntry,
   StageFileRequest,
+  UnknownHostKeyPrompt,
   UpdateStatus,
 } from '@shared/contract'
 import { Command } from '@shared/contract'
@@ -127,3 +136,62 @@ export const checkForUpdate = (): Promise<UpdateStatus> => call(Command.checkFor
  * only if something went wrong on the way.
  */
 export const installUpdate = (): Promise<void> => call(Command.installUpdate)
+
+/**
+ * The settings page's whole read. Resolving the key can reach for the login
+ * shell, so this is a call rather than something the app holds from startup.
+ */
+export const getSettings = (): Promise<AppSettings> => call(Command.getSettings)
+
+/**
+ * Saves a Groq key, or clears the stored one with `null`. Answers with the
+ * settings as they now stand — including which source ended up winning, which
+ * is not always the one just written.
+ */
+export const setGroqApiKey = (key: string | null): Promise<AppSettings> =>
+  call(Command.setGroqApiKey, { request: { key } satisfies SetGroqApiKeyRequest })
+
+/** Every host with a live connection. */
+export const listHosts = (): Promise<ConnectedHost[]> => call(Command.listHosts)
+
+/**
+ * Opens a connection, authenticating if it has to.
+ *
+ * Rejects with `SshUnknownHostError` when the host has no key in `known_hosts`
+ * yet. That is a question rather than a failure: answer it with
+ * `inspectHostKey`, show the fingerprint, and call `trustHostKey` if the user
+ * recognises it.
+ */
+export const connectHost = (alias: string): Promise<ConnectedHost> =>
+  call(Command.connectHost, { request: { alias } satisfies HostRequest })
+
+export const disconnectHost = (alias: string): Promise<void> =>
+  call(Command.disconnectHost, { request: { alias } satisfies HostRequest })
+
+/** Fetches an unknown host's key so its fingerprint can be shown. */
+export const inspectHostKey = (alias: string): Promise<UnknownHostKeyPrompt> =>
+  call(Command.inspectHostKey, { request: { alias } satisfies HostRequest })
+
+/** Records an approved key in the user's own `known_hosts`. */
+export const trustHostKey = (alias: string): Promise<void> =>
+  call(Command.trustHostKey, { request: { alias } satisfies HostRequest })
+
+/** Answers something ssh asked. `null` cancels. */
+export const answerSshPrompt = (id: number, answer: string | null): Promise<void> =>
+  call(Command.answerSshPrompt, { request: { id, answer } satisfies AnswerSshPromptRequest })
+
+/** Opens a repository on a connected host. The path is resolved there. */
+export const openRemoteProject = (alias: string, path: string): Promise<Project> =>
+  call(Command.openRemoteProject, {
+    request: { alias, path } satisfies OpenRemoteProjectRequest,
+  })
+
+/**
+ * Remembers a host from the command the user already uses, and answers with
+ * what it made of it. Adding is not connecting.
+ */
+export const addSshHost = (command: string): Promise<SshHostEntry> =>
+  call(Command.addSshHost, { request: { command } satisfies AddSshHostRequest })
+
+export const forgetSshHost = (alias: string): Promise<AppSettings> =>
+  call(Command.forgetSshHost, { request: { alias } satisfies HostRequest })

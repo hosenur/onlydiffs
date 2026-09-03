@@ -1,0 +1,36 @@
+---
+title: Settings and local data
+description: Configure Groq, manage SSH hosts and appearance, and see which files onlydiffs stores on your machine.
+---
+
+Open Settings with Command/Ctrl+, or choose **Settings** from the command menu.
+
+## Groq API key
+
+A Groq key enables generated commit messages and automatic project-icon selection. Add one from [console.groq.com/keys](https://console.groq.com/keys).
+
+A key saved in onlydiffs takes priority over `GROQ_API_KEY`. Removing the saved key exposes the environment value again. The renderer receives only a masked hint, never the full key.
+
+On Unix, onlydiffs checks the process environment and then asks your login shell once per launch. This lets an app opened from Finder or the Dock find a key exported by your shell configuration.
+
+## SSH hosts
+
+Settings lists remembered hosts and their connection state. Connected hosts report their platform, Git version, and remote-agent version. You can connect, disconnect, replace a saved command, or forget a host.
+
+Forgetting a host closes its connection. It does not delete remembered project rows for that host.
+
+## Appearance
+
+Choose light, dark, or system appearance. System mode follows later operating-system changes while the app remains open. The command menu exposes the same choices.
+
+## Files on disk
+
+By default, onlydiffs stores configuration under `~/.onlydiffs`:
+
+| Path | Contents |
+| --- | --- |
+| `~/.onlydiffs/config.json` | Saved Groq key and SSH hosts |
+| `~/.onlydiffs/projects.json` | Recent projects, artwork, and icon-selection state |
+| `~/.onlydiffs/claude-channels` | Live Claude channel registrations |
+
+Configuration and channel files use owner-only permissions on Unix. Theme choice lives in the desktop webview's local app storage.

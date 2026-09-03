@@ -1,0 +1,32 @@
+---
+title: Stage and commit changes
+description: Use staging as review progress, generate a commit message, and understand exactly what Commit All includes.
+---
+
+## Stage the current file
+
+Open a changed path and press Command/Ctrl+Enter. You can also open Command/Ctrl+K and choose **Add to staging**.
+
+onlydiffs stages the complete current path. For a rename, it stages both the old and new path. It does not stage individual hunks or selected lines.
+
+If a file has staged work plus newer unstaged edits, staging updates the index to the current working-tree version. The separate rows normally collapse into one staged row.
+
+## Generate a commit message
+
+Open the command menu and choose **Generate commit message**. onlydiffs sends the complete current diff to Groq and copies the returned message to the clipboard.
+
+Generated subjects use imperative present tense, stay under 72 characters, and may include a short body when the change needs explanation. Generation requires a Groq API key in [Settings](/docs/reference/settings-and-local-data).
+
+The diff sent for generation can contain source code and other repository content. Review your organization's data rules before enabling this feature.
+
+## Commit all
+
+**Commit All** generates a fresh message, runs `git add -A`, and commits the result. It includes every staged, unstaged, and untracked change in the repository.
+
+<Callout intent="warning" title="Commit All is literal">
+  This command does not commit only the files marked reviewed. There is no confirmation dialog, message editor, or built-in undo. Inspect the full tree before running it.
+</Callout>
+
+Git hooks, signing rules, and user identity settings still apply. A hook or signing failure appears as an error and leaves the repository for you to resolve with Git.
+
+onlydiffs does not currently provide unstage, discard, amend, push, pull, or branch commands.

@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { ArrowRightIcon, XMarkIcon } from '@heroicons/react/16/solid'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { ArrowRightIcon, ServerStackIcon, XMarkIcon } from '@heroicons/react/16/solid'
 import platypus from '@/assets/platypus.png'
 import { Button } from '@onlydiffs/ui/button'
 import { Loader } from '@onlydiffs/ui/loader'
 import { useProjectIcons } from '@/hooks/use-project-icons'
-import { CodeBranchOutline18 } from '@/icons'
+import { useSettingsHotkey } from '@/hooks/use-settings-hotkey'
+import {
+  RemoteProjectsMenu,
+  useRemoteProjectsHotkey,
+} from '@/components/remote-projects-menu'
+import { CodeBranchOutline18, GearOutline18 } from '@/icons'
 import { projectInitials, projectTint } from '@/lib/project-identity'
-import { forgetProject, listProjects, openProject } from '@/lib/ipc'
+import { forgetProject, listProjects, openProject, openRemoteProject } from '@/lib/ipc'
+import { useSsh } from '@/lib/ssh'
 import type { Project } from '@shared/contract'
 
 /**
@@ -46,7 +52,13 @@ function Welcome() {
   const [busy, setBusy] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const projectButtons = useRef<Array<HTMLButtonElement | null>>([])
+  const ssh = useSsh()
+  const [isRemoteOpen, setIsRemoteOpen] = useState(false)
+  useRemoteProjectsHotkey(() => setIsRemoteOpen(true))
   useProjectIcons()
+  // The palette that carries this shortcut everywhere else lives under `_app`,
+  // and a fresh install with no repository yet never gets there.
+  useSettingsHotkey()
 
   useEffect(() => {
     input.current?.focus()
@@ -76,6 +88,29 @@ function Welcome() {
     }
   }
 
+  /// Reopens a project from the list, on whichever machine it is on.
+  async function reopen(project: Project) {
+    if (project.host === null) {
+      await open(project.root)
+      return
+    }
+    // A remembered remote project carries its host, so nothing has to be
+    // chosen: the project already knows where it lives.
+    setError(null)
+    setBusy(project.path)
+    try {
+      if (!ssh.isConnected(project.host) && !(await ssh.connect(project.host))) {
+        setBusy(null)
+        return
+      }
+      await openRemoteProject(project.host, project.root)
+      await router.navigate({ to: '/diff' })
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+      setBusy(null)
+    }
+  }
+
   async function forget(project: Project) {
     setError(null)
     try {
@@ -87,16 +122,31 @@ function Welcome() {
   }
 
   return (
+    <>
+      <RemoteProjectsMenu
+        isOpen={isRemoteOpen}
+        onOpenChange={setIsRemoteOpen}
+        projects={projects}
+      />
     <div className="flex min-h-svh flex-col items-center justify-center p-8">
       <div className="flex w-full max-w-xl flex-col gap-8">
         <header className="flex items-center gap-3.5">
           <img src={platypus} alt="" width={44} height={44} className="size-11 rounded-lg" />
-          <div className="flex flex-col">
+          <div className="flex flex-1 flex-col">
             <h1 className="font-medium text-lg tracking-tight">onlydiffs</h1>
             <p className="text-muted-fg text-sm">
               See what your agent changed. Talk it through.
             </p>
           </div>
+          {/* The one way into settings before a repository is open, which is
+              exactly when the Groq key is most likely to be missing. */}
+          <Link
+            to="/settings"
+            aria-label="Settings"
+            className="grid size-9 place-items-center rounded-lg text-muted-fg outline-hidden hover:bg-secondary hover:text-fg focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <GearOutline18 aria-hidden className="size-5" />
+          </Link>
         </header>
 
         <form
@@ -106,9 +156,23 @@ function Welcome() {
             void open(path)
           }}
         >
-          <label htmlFor="repo-path" className="font-medium text-sm">
-            Open a repository
-          </label>
+          <div className="flex items-baseline justify-between gap-2">
+            <label htmlFor="repo-path" className="font-medium text-sm">
+              Open a repository
+            </label>
+            {/* One door to the remote flow rather than two. The palette holds
+                adding a host and opening a path on one, which is the same
+                errand a minute apart. */}
+            <button
+              type="button"
+              onClick={() => setIsRemoteOpen(true)}
+              className="flex items-center gap-1 text-muted-fg text-xs hover:text-fg"
+            >
+              <ServerStackIcon aria-hidden className="size-3" />
+              On another machine
+              <kbd className="font-mono">⌃⌘O</kbd>
+            </button>
+          </div>
           <div className="flex gap-2">
             <input
               id="repo-path"
@@ -168,7 +232,7 @@ function Welcome() {
                       projectButtons.current[index] = element
                     }}
                     type="button"
-                    onClick={() => void open(project.path)}
+                    onClick={() => void reopen(project)}
                     onKeyDown={(event) => {
                       if (event.key === 'ArrowDown') {
                         event.preventDefault()
@@ -199,9 +263,16 @@ function Welcome() {
                       </span>
                     )}
                     <span className="flex min-w-0 flex-col">
-                      <span className="truncate font-medium text-sm">{project.name}</span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-medium text-sm">{project.name}</span>
+                        {project.host && (
+                          <span className="shrink-0 rounded border border-border px-1 font-mono text-[10px] text-muted-fg">
+                            {project.host}
+                          </span>
+                        )}
+                      </span>
                       <span className="truncate font-mono text-muted-fg text-xs">
-                        {project.path}
+                        {project.root}
                       </span>
                     </span>
                   </button>
@@ -226,5 +297,6 @@ function Welcome() {
         </p>
       </div>
     </div>
+    </>
   )
 }

@@ -6,8 +6,9 @@ import { TextField } from '@onlydiffs/ui/text-field'
 import { Plug2Outline18, PlugOffOutline18 } from '@/icons'
 import { useLineReference } from '@/lib/line-reference'
 import { claudeStatus, sendClaudeMessage } from '@/lib/ipc'
+import { reviewProgress } from '@/lib/review'
 import { useUpdate } from '@/lib/update'
-import type { ClaudeChannelStatus } from '@shared/contract'
+import type { ClaudeChannelStatus, FileChange } from '@shared/contract'
 
 /**
  * How often to re-ask. A session can start or stop at any moment and nothing
@@ -31,7 +32,22 @@ function useRetained<T>(value: T | null): T | null {
   return value ?? retained
 }
 
-export function AppToolbar() {
+/**
+ * `null` is "not asked yet", worth keeping apart from a known-absent session so
+ * the bar does not claim disconnection before it has looked.
+ */
+function channelLabel(status: ClaudeChannelStatus | null) {
+  if (status === null) return 'Checking for Claude…'
+  if (!status.connected) return 'No Claude session'
+  return status.sessions > 1 ? `Claude connected · ${status.sessions} sessions` : 'Claude connected'
+}
+
+interface AppToolbarProps {
+  /** The current diff, for the review count at the right end. */
+  files: FileChange[]
+}
+
+export function AppToolbar({ files }: AppToolbarProps) {
   const [status, setStatus] = useState<ClaudeChannelStatus | null>(null)
   const { reference, clear } = useLineReference()
   // The composer animates out, so it outlives the reference that opened it.
@@ -95,18 +111,11 @@ export function AppToolbar() {
     }
   }
 
-  // `null` is "not asked yet", worth keeping apart from a known-absent session
-  // so the bar does not claim disconnection before it has looked.
-  const label =
-    status === null
-      ? 'Checking for Claude…'
-      : connected
-        ? status.sessions > 1
-          ? `Claude connected · ${status.sessions} sessions`
-          : 'Claude connected'
-        : 'No Claude session'
-
+  const label = channelLabel(status)
   const Plug = connected ? Plug2Outline18 : PlugOffOutline18
+
+  const progress = reviewProgress(files)
+  const isSwept = progress.reviewed === progress.total
 
   return (
     <>
@@ -190,16 +199,27 @@ export function AppToolbar() {
           {label}
         </span>
 
-        {/* A mention, not a prompt: the install lives in the command menu, so
-            nothing here interrupts what the window is already showing. */}
-        {offer && (
-          <span
-            title="Install it from the command menu (⌘K)"
-            className="ms-auto text-primary-subtle-fg"
-          >
-            Update available · v{offer.version}
-          </span>
-        )}
+        <span className="ms-auto flex items-center gap-3">
+          {/* A mention, not a prompt: the install lives in the command menu, so
+              nothing here interrupts what the window is already showing. */}
+          {offer && (
+            <span title="Install it from the command menu (⌘K)" className="text-primary-subtle-fg">
+              Update available · v{offer.version}
+            </span>
+          )}
+
+          {/* Nothing to review reads as nothing to say. The main pane already
+              tells anyone with a clean tree that it is clean. */}
+          {progress.total > 0 && (
+            <span
+              aria-live="polite"
+              title="A file counts as reviewed once all of its changes are staged"
+              className={isSwept ? 'text-success-subtle-fg' : 'text-muted-fg'}
+            >
+              {progress.reviewed}/{progress.total} files reviewed
+            </span>
+          )}
+        </span>
       </footer>
     </>
   )

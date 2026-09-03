@@ -11,7 +11,7 @@ import {
 import { TileImage, TileInitials } from '@/components/project-tile'
 import { Tooltip, TooltipContent } from '@/components/ui/tooltip'
 import { useProjectOpener } from '@/hooks/use-project-opener'
-import { IsometricCubeIcon } from '@/icons'
+import { GearOutline18 } from '@/icons'
 import type { Project } from '@shared/contract'
 
 interface ProjectSidebarProps {
@@ -26,7 +26,7 @@ export function ProjectSidebar({ projects, currentPath }: ProjectSidebarProps) {
     // Reopening the project already on screen would blank it and reload it for
     // no change; the rail is the one place a current row can still be pressed.
     if (project.path === currentPath) return
-    void open(project.path)
+    void open(project)
   }
 
   return (
@@ -96,23 +96,30 @@ export function ProjectSidebar({ projects, currentPath }: ProjectSidebarProps) {
                 <span className={projectFailure ? 'block text-danger-subtle-fg' : 'block text-bg/60'}>
                   {projectFailure ?? project.path}
                 </span>
+                {project.host && (
+                  <span className="block text-bg/60">on {project.host}</span>
+                )}
               </TooltipContent>
             </Tooltip>
           )
         })}
       </SidebarContent>
 
+      {/* Settings alone down here. The cube that used to sit in this slot led
+          back to the picker, which is what the platypus at the top of the rail
+          already does — two links to one page, and the one people were looking
+          for was missing. */}
       <SidebarFooter className="p-2.5">
         <Tooltip delay={0}>
           <Link
-            to="/"
-            aria-label="Open another project"
+            to="/settings"
+            aria-label="Settings"
             className="grid size-8 place-items-center rounded-lg text-muted-fg outline-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-fg focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
-            <IsometricCubeIcon aria-hidden className="size-5" />
+            <GearOutline18 aria-hidden className="size-5" />
           </Link>
           <TooltipContent inverse placement="right">
-            Open another project
+            Settings
           </TooltipContent>
         </Tooltip>
       </SidebarFooter>

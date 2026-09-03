@@ -6,17 +6,21 @@
 //! takes effect immediately.
 
 mod commands;
-// Public so the integration tests in `tests/` can drive the services directly,
-// the way the Effect build's tests drove the layers.
-pub mod contract;
-pub mod error;
+// Re-exported rather than defined here: both live in `onlydiffs-core` so the
+// agent speaks the same types, and keeping the paths means nothing above had to
+// learn where they moved to.
+pub use onlydiffs_core::{contract, error, protocol};
 pub mod services;
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 
 use services::project_icon;
-use services::watcher::{self, RepoWatcher};
+use services::repository::Repository;
+use services::settings::Settings;
+use services::ssh::SshHosts;
+use services::repo_watch;
+use services::watcher::RepoWatcher;
 use services::workspace::Workspace;
 
 /// How long the renderer gets to paint before the window is shown regardless.
@@ -25,6 +29,12 @@ const FIRST_PAINT_GRACE: std::time::Duration = std::time::Duration::from_secs(3)
 /// Everything the commands share. Built once, at startup.
 pub struct AppState {
     pub workspace: Workspace,
+    /// The hosts with a live connection. One per host, shared by every project
+    /// on it, so two repositories on one build box cost one authentication.
+    pub hosts: SshHosts,
+    /// Everything the user set deliberately, including the Groq key both Groq
+    /// features resolve through.
+    pub settings: Settings,
     /// Follows the open repository and tells the renderer when it changes, so
     /// the diff on screen is the diff on disk without anyone asking.
     pub watcher: RepoWatcher,
@@ -41,9 +51,23 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// The open repository, resolved per call rather than held, so opening a
+    /// different project takes effect immediately — and so that a project on
+    /// another machine answers through a different transport without anything
+    /// above here noticing which.
+    pub async fn repository(&self) -> Result<Repository, crate::error::AppError> {
+        let location = self.workspace.current_location()?;
+        match &location.host {
+            None => Ok(Repository::local(location.path.into())),
+            Some(alias) => self.hosts.repository(alias, &location.path).await,
+        }
+    }
+
     fn new() -> Self {
         Self {
             workspace: Workspace::from_env(),
+            hosts: SshHosts::new(),
+            settings: Settings::from_env(),
             watcher: RepoWatcher::new(),
             http: reqwest::Client::new(),
             icon_resolution: tokio::sync::Mutex::new(()),
@@ -57,7 +81,14 @@ pub(crate) fn resolve_project_icons_in_background(app: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
         let state = app.state::<AppState>();
         let _guard = state.icon_resolution.lock().await;
-        project_icon::resolve_missing(&app, &state.workspace, &state.http).await;
+        project_icon::resolve_missing(
+            &app,
+            &state.hosts,
+            &state.workspace,
+            &state.settings,
+            &state.http,
+        )
+        .await;
     });
 }
 
@@ -103,6 +134,17 @@ pub fn run() {
             commands::write_clipboard_text,
             commands::check_for_update,
             commands::install_update,
+            commands::get_settings,
+            commands::set_groq_api_key,
+            commands::list_hosts,
+            commands::connect_host,
+            commands::disconnect_host,
+            commands::inspect_host_key,
+            commands::trust_host_key,
+            commands::answer_ssh_prompt,
+            commands::open_remote_project,
+            commands::add_ssh_host,
+            commands::forget_ssh_host,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -111,7 +153,7 @@ pub fn run() {
             // the repository restored at startup starts being watched here.
             let state = app.state::<AppState>();
             if let Ok(root) = state.workspace.current_path() {
-                watcher::watch_repo(app.handle(), &state.watcher, root);
+                repo_watch::watch_repo(app.handle(), &state.watcher, root);
             }
 
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -152,6 +194,16 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running onlydiffs");
+        .build(tauri::generate_context!())
+        .expect("error while building onlydiffs")
+        .run(|app, event| {
+            // Masters this app started are `ssh -N` processes with no terminal
+            // and no parent to reap them, so quitting without this leaves one
+            // per host running until the machine reboots. `kill_on_drop` does
+            // not help: nothing unwinds on the way out of a GUI app.
+            if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event {
+                let state = app.state::<AppState>();
+                tauri::async_runtime::block_on(state.hosts.disconnect_all());
+            }
+        });
 }

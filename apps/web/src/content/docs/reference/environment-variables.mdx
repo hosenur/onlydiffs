@@ -1,0 +1,32 @@
+---
+title: Environment variables
+description: Choose the startup repository, relocate onlydiffs state, or provide a Groq key without saving it in the app.
+---
+
+| Variable | Effect |
+| --- | --- |
+| `ONLYDIFFS_REPO_PATH` | Opens this local repository at launch instead of restoring a recent project. |
+| `ONLYDIFFS_STATE_DIR` | Moves configuration and recent-project files out of `~/.onlydiffs`. |
+| `GROQ_API_KEY` | Supplies a Groq key when Settings does not contain one. |
+
+## Startup repository
+
+`ONLYDIFFS_REPO_PATH` accepts the same local paths as the landing page. If the value is invalid, onlydiffs opens the landing page. It does not fall back to another recent repository.
+
+```bash
+ONLYDIFFS_REPO_PATH=~/code/project bun run dev:desktop
+```
+
+## State directory
+
+Use `ONLYDIFFS_STATE_DIR` for tests, portable development environments, or separate app profiles:
+
+```bash
+ONLYDIFFS_STATE_DIR=/tmp/onlydiffs-test bun run dev:desktop
+```
+
+The directory contains `config.json` and `projects.json`. Claude channel registrations use the selected state directory only when the channel process receives the same variable.
+
+## Groq precedence
+
+The key saved in Settings wins over `GROQ_API_KEY`. Clear the saved key to return to the environment value. On macOS and Linux, onlydiffs may read the value from your login shell when the GUI process did not inherit it.

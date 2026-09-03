@@ -1,0 +1,39 @@
+---
+title: Limits and supported platforms
+description: Check desktop and remote-host support, file and request limits, and workflows that onlydiffs does not provide yet.
+---
+
+## Platform support
+
+The published desktop release currently targets Apple silicon macOS. The source tree can build macOS, Windows, AppImage, and Debian packages, but those additional public artifacts are not part of the current release workflow.
+
+Remote repositories can run on Linux x86_64, Linux aarch64, macOS Apple silicon, or macOS Intel. Linux agents target glibc 2.17.
+
+## Limits
+
+| Area | Limit |
+| --- | --- |
+| Working-tree text file | 64 MiB |
+| Diff sent for commit-message generation | 240,000 characters |
+| Claude channel message | 64 KiB |
+| Claude channel send attempt | 10 seconds |
+| SSH authentication | 120 seconds |
+| Normal remote command | 60 seconds |
+| Remote agent upload | 10 minutes |
+
+Text decoding uses lossy UTF-8 so an invalid byte does not blank the view. Binary changes are listed but have no inline preview.
+
+## Deliberate boundaries
+
+onlydiffs is a review client. It does not currently provide:
+
+- File editing
+- Per-line or per-hunk staging
+- Unstage, discard, or restore commands
+- A manual commit-message editor
+- Commit staged changes only
+- Amend, branch, fetch, pull, push, or remote synchronization
+- Claude responses inside the app
+- Automatic reconnect to a remote repository at launch
+
+Use Git, your editor, and Claude Code for those operations. onlydiffs refreshes after external changes and keeps the review view current.

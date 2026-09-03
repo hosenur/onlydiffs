@@ -1,0 +1,34 @@
+---
+title: SSH security and troubleshooting
+description: Understand host-key storage, remote-agent permissions, supported hosts, timeouts, and common connection failures.
+---
+
+## Security model
+
+Strict host-key checking stays enabled. onlydiffs reads system and user `known_hosts` files but writes approvals only to a writable user file. It prefers Ed25519 keys, followed by ECDSA and RSA.
+
+The remote agent directory and executable use owner-only `0700` permissions. Uploads use a temporary name and an atomic move, so an interrupted transfer does not replace a working agent with a partial file.
+
+The agent has the same repository access as your SSH account. It opens no listening socket and keeps no remote state after the SSH process ends.
+
+## Supported remote hosts
+
+- Linux on x86_64
+- Linux on aarch64 or arm64
+- macOS on Apple silicon
+- macOS on Intel
+
+Packaged Linux agents target glibc 2.17. Other operating systems and architectures are rejected by name.
+
+## Common failures
+
+| Message or behavior | What to check |
+| --- | --- |
+| SSH executable not found | Install OpenSSH and confirm the GUI process can find it. |
+| Unknown host cannot be approved | Check that SSH config provides a writable user `known_hosts` file. |
+| Authentication keeps failing | Run the same saved SSH command in a terminal and resolve key, agent, or VPN problems there. |
+| Git not found on the host | Put Git in the non-interactive remote shell's `PATH`. |
+| Agent upload fails | Confirm the remote home directory is writable and allows execution. |
+| Claude stays disconnected | Start Claude and the channel on the remote host in the exact repository checkout. |
+
+Authentication can wait up to 120 seconds for a prompt. Normal remote commands time out after 60 seconds. Agent upload allows up to 10 minutes for slow links.
