@@ -87,14 +87,6 @@ jobs:
         working-directory: apps/desktop
         run: bun run test:renderer
 
-      # The Rust tests are cheap next to the bundle and they cover the whole
-      # remote path — the protocol, the agent, and the SSH transport against a
-      # real `sshd`. Shipping an agent that cannot answer is not a failure worth
-      # discovering after the draft release exists.
-      - name: Test the backend
-        working-directory: apps/desktop/src-tauri
-        run: cargo test --workspace
-
       # zig is the linker for the Linux targets, and the reason the glibc
       # version can be pinned rather than inherited from this runner.
       - uses: mlugg/setup-zig@v2
@@ -128,6 +120,13 @@ jobs:
             echo "::error::agent reports $version, expected $expected"
             exit 1
           fi
+
+      # Tauri validates bundle.resources while compiling the app, so the
+      # agents must exist before the backend tests build it. These tests cover
+      # the protocol, the agent, and the SSH transport against a real `sshd`.
+      - name: Test the backend
+        working-directory: apps/desktop/src-tauri
+        run: cargo test --workspace
 
       - uses: tauri-apps/tauri-action@v1
         env:
