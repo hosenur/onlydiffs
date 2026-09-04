@@ -9,8 +9,8 @@ import {
 
 const live = (sessions = 1): AgentStatus => ({ connected: true, sessions, delivering: true })
 const absent: AgentStatus = { connected: false, sessions: 0, delivering: false }
-/** A repository with threads, but nothing running to drain the queue. */
-const undelivered: AgentStatus = { connected: true, sessions: 1, delivering: false }
+/** A session is running, but not attached to the daemon, so unreachable. */
+const undelivered: AgentStatus = { connected: false, sessions: 1, delivering: false }
 
 describe('statusLabel', () => {
   test('keeps "not asked yet" apart from "nothing there"', () => {
@@ -25,16 +25,20 @@ describe('statusLabel', () => {
     expect(statusLabel('codex', absent)).toBe('No Codex session')
   })
 
-  test('does not call Codex connected, because nothing is listening', () => {
-    // Codex is a queue, not a live channel. "Ready" is the strongest honest
-    // word: a message can be left, not delivered on the spot.
-    expect(statusLabel('codex', live())).toBe('Codex ready')
+  test('reports a reachable session as connected', () => {
+    expect(statusLabel('codex', live())).toBe('Codex connected')
     expect(statusLabel('claude', live())).toBe('Claude connected')
   })
 
   test('counts sessions only when there is more than one', () => {
     expect(statusLabel('claude', live(3))).toBe('Claude connected · 3 sessions')
-    expect(statusLabel('codex', live(2))).toBe('Codex ready · 2 threads')
+    expect(statusLabel('codex', live(2))).toBe('Codex connected · 2 sessions')
+  })
+
+  test('a running but unreachable Codex session is not called absent', () => {
+    // The user can see their own session; claiming there is none would be a
+    // claim they can immediately disprove.
+    expect(statusLabel('codex', undelivered)).toBe('Codex session not connected')
   })
 })
 
@@ -74,22 +78,21 @@ describe('composerPlaceholder', () => {
 })
 
 describe('deliveryNote', () => {
-  test('warns that Codex delivery is deferred', () => {
-    expect(deliveryNote('codex', live())).toContain('when the session next runs')
+  test('tells the user how to make an unreachable session reachable', () => {
+    expect(deliveryNote('codex', undelivered)).toContain('--remote unix://')
   })
 
-  test('says so when nothing is running to drain the queue', () => {
-    // The message is kept either way; what changes is whether waiting for a
-    // reply is reasonable.
-    expect(deliveryNote('codex', undelivered)).toContain('not running')
+  test('says nothing once the session can be reached', () => {
+    // Delivery is immediate now; there is nothing left to explain.
+    expect(deliveryNote('codex', live())).toBeNull()
   })
 
   test('says nothing for Claude, where the send is the delivery', () => {
     expect(deliveryNote('claude', live())).toBeNull()
   })
 
-  test('says nothing when there is no session to send to at all', () => {
-    // The placeholder already explains that; a second sentence would be noise.
+  test('says nothing when no session is running at all', () => {
+    // The placeholder already says that; a second sentence would be noise.
     expect(deliveryNote('codex', absent)).toBeNull()
   })
 })

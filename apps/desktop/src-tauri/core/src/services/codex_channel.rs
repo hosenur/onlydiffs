@@ -21,25 +21,21 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
-use tokio::process::Command;
 
 use crate::contract::CodexChannelStatus;
 use crate::error::AppError;
+use crate::services::codex_app_server::AppServer;
+use crate::services::codex_session;
 
 /// Matches the Claude bridge rather than any limit Codex documents. The message
 /// crosses as one argument to a child process, and while the OS would take far
 /// more, a review comment that runs to tens of kilobytes is a bug upstream of
 /// here.
 const MAX_MESSAGE_BYTES: usize = 64 * 1024;
-
-/// How long to wait for `codex queue` to accept the message. The queue is a
-/// local database write, so this only ever expires when something is wrong.
-const SEND_TIMEOUT: Duration = Duration::from_secs(10);
-const SEND_TIMEOUT_LABEL: &str = "10 seconds";
 
 /// Where Codex keeps one JSONL transcript per thread, partitioned by date.
 const SESSIONS_DIR: &str = ".codex/sessions";
@@ -58,16 +54,19 @@ const LOOKBACK_DAYS: i64 = 14;
 /// would suggest.
 const MAX_HEADER_BYTES: u64 = 1024 * 1024;
 
-/// The socket Codex's shared app-server daemon listens on.
-///
-/// This is the piece that actually drains the queue. Without it a message is
-/// accepted, written down, and delivered to nobody until the daemon next runs —
-/// so whether it is up is part of the answer to "can this repository be sent
-/// to", not a detail.
-const CONTROL_SOCKET: &str = ".codex/app-server-control/app-server-control.sock";
 
 const NO_SESSION_MESSAGE: &str =
-    "No Codex session has worked in this repository. Open one with `codex` in this repository.";
+    "No Codex session is running in this repository. Open one with `codex` there.";
+
+/// A session is running but cannot be reached.
+///
+/// Only a session attached to Codex's shared daemon can be sent to, and a plain
+/// `codex` never attaches to one. Saying "no session" here would be a lie the
+/// user can see through — their session is right in front of them.
+const NOT_CONNECTED_MESSAGE: &str = concat!(
+    "A Codex session is running here but is not connected to Codex's shared daemon. ",
+    "Start it with `codex --remote unix://` so OnlyDiffs can reach it."
+);
 
 /// The header Codex writes as the first line of every transcript.
 #[derive(Deserialize)]
@@ -240,62 +239,7 @@ async fn threads(root: &Path) -> Result<Vec<Thread>, AppError> {
     Ok(found)
 }
 
-/// Where the `codex` executable is.
-///
-/// `PATH` is searched by hand rather than left to the spawn, because the app is
-/// usually launched from Finder and inherits the short `PATH` a GUI process
-/// gets — `/usr/bin:/bin:/usr/sbin:/sbin`, which is not where anybody installs
-/// Codex. The known install locations are the fallback, and bare `codex` is the
-/// last resort so a host with it somewhere unusual still reports the spawn
-/// failure rather than a path this function invented.
-fn codex_binary() -> PathBuf {
-    static RESOLVED: OnceLock<PathBuf> = OnceLock::new();
-    RESOLVED
-        .get_or_init(|| {
-            if let Some(found) = std::env::var_os("PATH")
-                .map(|path| std::env::split_paths(&path).collect::<Vec<_>>())
-                .unwrap_or_default()
-                .into_iter()
-                .map(|directory| directory.join("codex"))
-                .find(|candidate| candidate.is_file())
-            {
-                return found;
-            }
 
-            let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-            let fallbacks = [
-                home.join(".local/bin/codex"),
-                home.join(".codex/packages/standalone/current/codex"),
-                PathBuf::from("/opt/homebrew/bin/codex"),
-                PathBuf::from("/usr/local/bin/codex"),
-            ];
-            fallbacks
-                .into_iter()
-                .find(|candidate| candidate.is_file())
-                .unwrap_or_else(|| PathBuf::from("codex"))
-        })
-        .clone()
-}
-
-/// The id out of `Queued message <id> for thread <id>.`
-///
-/// Parsed positionally because that is all the CLI offers — there is no
-/// machine-readable form of this output. A shape that stops matching is
-/// reported as a send that worked without an id rather than as a failure,
-/// because by then the message really is queued and saying otherwise would
-/// invite the user to send it twice.
-fn queued_message_id(stdout: &str) -> Option<String> {
-    let mut words = stdout.split_whitespace();
-    if words.next()? != "Queued" || words.next()? != "message" {
-        return None;
-    }
-    let id = words.next()?;
-    let valid = !id.is_empty()
-        && id
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
-    valid.then(|| id.to_owned())
-}
 
 /// Queues a user-authored message for the Codex session working in this
 /// repository.
@@ -321,74 +265,31 @@ pub async fn send(root: &Path, raw_message: &str) -> Result<String, AppError> {
         )));
     }
 
-    let thread = threads(root)
-        .await?
-        .into_iter()
-        .next()
-        .ok_or_else(|| fail(NO_SESSION_MESSAGE.into()))?;
-
-    let run = Command::new(codex_binary())
-        .arg("queue")
-        .arg("--thread")
-        .arg(&thread.id)
-        .arg("--message")
-        .arg(message)
-        .output();
-
-    let output = match tokio::time::timeout(SEND_TIMEOUT, run).await {
-        Err(_) => {
-            return Err(fail(format!(
-                "Codex did not accept the message within {SEND_TIMEOUT_LABEL}."
-            )))
-        }
-        Ok(Err(error)) => {
-            return Err(fail(format!(
-                "failed to run codex: {error}. Is the Codex CLI installed?"
-            )))
-        }
-        Ok(Ok(output)) => output,
-    };
-
-    if !output.status.success() {
-        // The CLI reports its failures on stderr, prefixed with `Error:`, and
-        // the part after that prefix is the sentence worth showing.
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let detail = stderr
-            .lines()
-            .find(|line| !line.trim().is_empty())
-            .unwrap_or_default()
-            .trim()
-            .trim_start_matches("Error:")
-            .trim();
-        return Err(fail(if detail.is_empty() {
-            "Codex refused the message.".to_owned()
-        } else {
-            detail.to_owned()
-        }));
+    if codex_session::running_in(root).await == 0 {
+        return Err(fail(NO_SESSION_MESSAGE.into()));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(queued_message_id(&stdout).unwrap_or_else(|| thread.id.clone()))
+    let thread = deliverable_thread(root)
+        .await
+        .ok_or_else(|| fail(NOT_CONNECTED_MESSAGE.into()))?;
+
+    let mut server = AppServer::connect().await?;
+    server.start_turn(&thread, message).await
 }
 
-/// Whether Codex's shared daemon is up to deliver what is queued.
+/// The thread a message for this repository should be started on: one the
+/// repository owns, that the daemon has open.
 ///
-/// Connecting is the check rather than looking for the socket file: a daemon
-/// killed rather than stopped leaves the file behind, and a queue nobody is
-/// draining is exactly the state worth catching.
-#[cfg(unix)]
-async fn is_delivering() -> bool {
-    let socket = dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(CONTROL_SOCKET);
-    tokio::net::UnixStream::connect(&socket).await.is_ok()
-}
-
-/// Nothing equivalent to probe on Windows, so the optimistic answer: better a
-/// missing warning than one shown to everybody.
-#[cfg(not(unix))]
-async fn is_delivering() -> bool {
-    true
+/// The daemon is the only route to a running session, so a thread it has not
+/// loaded cannot be reached at all — which is the case for a session started as
+/// plain `codex`, since that never registers with it.
+async fn deliverable_thread(root: &Path) -> Option<String> {
+    let mine = threads(root).await.ok()?;
+    let mut server = AppServer::connect().await.ok()?;
+    let loaded = server.loaded_threads().await.ok()?;
+    mine.into_iter()
+        .find(|thread| loaded.iter().any(|id| id == &thread.id))
+        .map(|thread| thread.id)
 }
 
 /// Whether any Codex thread has worked in this repository.
@@ -402,17 +303,22 @@ async fn is_delivering() -> bool {
 /// which is the honest reading, because a queued message is delivered whether
 /// or not anything is running when it is sent.
 pub async fn status(root: &Path) -> CodexChannelStatus {
-    match threads(root).await {
-        Ok(found) => CodexChannelStatus {
-            connected: !found.is_empty(),
-            sessions: found.len(),
-            delivering: is_delivering().await,
-        },
-        Err(_) => CodexChannelStatus {
+    let sessions = codex_session::running_in(root).await;
+    if sessions == 0 {
+        return CodexChannelStatus {
             connected: false,
             sessions: 0,
             delivering: false,
-        },
+        };
+    }
+    // A session is running. Whether it can be *spoken to* is a second question:
+    // only a session started against the shared daemon is reachable, and saying
+    // so is more use than reporting a session that cannot be sent to.
+    let reachable = deliverable_thread(root).await.is_some();
+    CodexChannelStatus {
+        connected: reachable,
+        sessions,
+        delivering: reachable,
     }
 }
 
@@ -452,29 +358,31 @@ mod tests {
         }
     }
 
-    #[test]
-    fn the_queued_id_is_taken_out_of_what_the_cli_prints() {
-        assert_eq!(
-            queued_message_id("Queued message 01a06b04-77b6-7823 for thread 01a06afb-9106.\n")
-                .as_deref(),
-            Some("01a06b04-77b6-7823")
-        );
-    }
 
-    #[test]
-    fn a_line_that_is_not_the_queue_confirmation_yields_no_id() {
-        // The caller falls back to the thread id rather than failing, because
-        // by this point the message is queued.
-        assert_eq!(queued_message_id(""), None);
-        assert_eq!(queued_message_id("Error: No active session found."), None);
-        assert_eq!(queued_message_id("Queued message"), None);
-    }
 
     #[test]
     fn a_path_is_folded_before_it_is_compared() {
         assert_eq!(
             normalize(Path::new("/a/b/../c/./d")),
             PathBuf::from("/a/c/d")
+        );
+    }
+
+    /// The rule the whole module now turns on: a repository with no Codex
+    /// process running in it has no session, whatever its history says. A
+    /// transcript is the record of a session, not a session.
+    #[tokio::test]
+    async fn a_repository_with_no_running_session_refuses_to_send() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+
+        let refused = send(dir.path(), "about this line").await;
+
+        let error = refused.expect_err("refused");
+        assert_eq!(error.tag(), "CodexChannelError");
+        assert!(
+            error.message().contains("No Codex session is running"),
+            "got: {}",
+            error.message()
         );
     }
 

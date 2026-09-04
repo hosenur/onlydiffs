@@ -57,12 +57,16 @@ export function deliver(agent: Agent, message: string): Promise<string> {
 export function statusLabel(agent: Agent, status: AgentStatus | null): string {
   const name = AGENT_NAMES[agent]
   if (status === null) return `Checking for ${name}…`
-  if (!status.connected) return `No ${name} session`
+  if (!status.connected) {
+    // A Codex session that is running but not attached to the shared daemon
+    // cannot be reached, and "no session" would be a claim the user can see is
+    // false — theirs is open in front of them.
+    if (agent === 'codex' && status.sessions > 0) return 'Codex session not connected'
+    return `No ${name} session`
+  }
 
-  // "Connected" would be a claim Codex cannot support: nothing is listening,
-  // there is only a thread the message will be waiting in.
   if (agent === 'codex') {
-    return status.sessions > 1 ? `Codex ready · ${status.sessions} threads` : 'Codex ready'
+    return status.sessions > 1 ? `Codex connected · ${status.sessions} sessions` : 'Codex connected'
   }
   return status.sessions > 1 ? `Claude connected · ${status.sessions} sessions` : 'Claude connected'
 }
@@ -81,14 +85,13 @@ export function composerPlaceholder(agent: Agent, connected: boolean): string {
  * to tell that from the interface rather than from waiting.
  */
 export function deliveryNote(agent: Agent, status: AgentStatus | null): string | null {
-  if (agent !== 'codex' || !status?.connected) return null
-  if (status.delivering === false) {
-    // The message would still be written down and still be delivered
-    // eventually. Saying nothing would leave the user watching for a reply
-    // that cannot come until they start the daemon.
-    return "Codex's shared daemon is not running — this will wait in the queue until it is."
+  if (agent !== 'codex') return null
+  // A session that is open but unreachable is the one case worth explaining:
+  // the fix is a flag on the command they already run.
+  if (!status?.connected && (status?.sessions ?? 0) > 0) {
+    return 'Start the session with `codex --remote unix://` so OnlyDiffs can reach it.'
   }
-  return 'Queued for Codex — it arrives when the session next runs.'
+  return null
 }
 
 /**
