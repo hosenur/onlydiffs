@@ -74,6 +74,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
+          # Shared with the `main` job in ci.yml, which is what fills it. A tag
+          # can only restore from its own ref or the default branch, so without
+          # that job — and without this key matching the one it saves under —
+          # every release starts from nothing.
+          shared-key: desktop-macos-arm64
+          # Restore only. A cache saved here is written under this tag's ref,
+          # where the next tag is not allowed to read it: a gigabyte uploaded
+          # for nobody.
+          save-if: false
 
       - run: bun install --frozen-lockfile
 
@@ -93,8 +102,11 @@ jobs:
         with:
           version: 0.13.0
 
-      - name: Install cargo-zigbuild
-        run: cargo install cargo-zigbuild --locked
+      # The prebuilt binary rather than `cargo install`, which compiled it from
+      # source on every release for the best part of a minute.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
 
       - name: Build the remote agents
         working-directory: apps/desktop

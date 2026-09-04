@@ -1,0 +1,89 @@
+name: CI
+
+# Two jobs in one: it checks `main`, and it is what keeps the release fast.
+#
+# A workflow run can only restore caches from its own ref or from the default
+# branch. The release workflow runs on tags and nothing else, and every release
+# is a different tag — so a cache written by `v0.1.11` is one that `v0.1.12` is
+# not allowed to read. Left alone, every release starts cold and writes a
+# gigabyte nothing will ever read again.
+#
+# So the cache has to be populated on `main`, which is the one ref every tag run
+# can inherit from. That is this. It builds the same agents and runs the same
+# backend tests the release does, under the same `shared-key`, and the release
+# restores what it leaves behind.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A second push while the first is still building only needs the newer one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, tests, agents
+    # The same runner the release uses. A cache saved on one runner image is of
+    # no use to another, and this exists to be read by the release.
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          # Keep in step with `packageManager` in the root package.json.
+          bun-version: 1.3.11
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          # Every target the release builds, because a target this job does not
+          # build is one the release still pays full price for.
+          targets: aarch64-apple-darwin, x86_64-apple-darwin, x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+          # The whole point. `shared-key` replaces the automatic per-job key, so
+          # this job and the release job address the same cache; without it they
+          # would each have their own and the release would still start cold.
+          shared-key: desktop-macos-arm64
+          # Only `main` writes. A pull request can no more be read from than a
+          # tag can, so saving from one would just be more garbage.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx turbo run typecheck --filter=@onlydiffs/desktop
+
+      - name: Test the renderer
+        working-directory: apps/desktop
+        run: bun run test:renderer
+
+      # zig is the linker for the Linux targets, and the reason the glibc
+      # version can be pinned rather than inherited from this runner.
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
+
+      # The expensive one, and the reason this job exists: four cross-compiled
+      # binaries whose dependencies are what the release would otherwise build
+      # from nothing every time.
+      - name: Build the remote agents
+        working-directory: apps/desktop
+        run: ./scripts/build-agents.sh
+
+      # Tauri validates `bundle.resources` while compiling the app, so the
+      # agents have to exist before this builds it. Covers the protocol, the
+      # agent, and the SSH transport against a real `sshd`.
+      - name: Test the backend
+        working-directory: apps/desktop/src-tauri
+        run: cargo test --workspace
