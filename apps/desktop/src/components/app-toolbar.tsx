@@ -1,11 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { PaperAirplaneIcon, XMarkIcon } from '@heroicons/react/16/solid'
-import { Button } from '@onlydiffs/ui/button'
-import { Input, InputGroup } from '@onlydiffs/ui/input'
-import { TextField } from '@onlydiffs/ui/text-field'
+import { useEffect, useState } from 'react'
+import { AppComposer } from '@/components/app-composer'
 import { Plug2Outline18, PlugOffOutline18 } from '@/icons'
 import { useLineReference } from '@/lib/line-reference'
-import { claudeStatus, sendClaudeMessage } from '@/lib/ipc'
+import { claudeStatus } from '@/lib/ipc'
 import { reviewProgress } from '@/lib/review'
 import { useUpdate } from '@/lib/update'
 import type { ClaudeChannelStatus, FileChange } from '@shared/contract'
@@ -53,10 +50,6 @@ export function AppToolbar({ files }: AppToolbarProps) {
   // The composer animates out, so it outlives the reference that opened it.
   const shown = useRetained(reference)
   const { offer } = useUpdate()
-  const [message, setMessage] = useState('')
-  const [isSending, setIsSending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let active = true
@@ -81,36 +74,7 @@ export function AppToolbar({ files }: AppToolbarProps) {
     }
   }, [])
 
-  // A fresh line means a fresh message; carrying the old draft across would
-  // silently attach it to a line the user did not mean. Dismissal deliberately
-  // leaves the draft alone: the bar is still on screen fading out, and watching
-  // the text blank out first reads as a glitch.
-  useEffect(() => {
-    if (!reference) return
-    setMessage('')
-    setError(null)
-    input.current?.focus()
-  }, [reference])
-
   const connected = status?.connected ?? false
-
-  async function send() {
-    const text = message.trim()
-    if (!text || !reference || isSending) return
-    setIsSending(true)
-    setError(null)
-    try {
-      // The full path, not the shortened label on screen — Claude has to be
-      // able to open the file.
-      await sendClaudeMessage(`${reference.label} ${text}`)
-      clear()
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
-    } finally {
-      setIsSending(false)
-    }
-  }
-
   const label = channelLabel(status)
   const Plug = connected ? Plug2Outline18 : PlugOffOutline18
 
@@ -123,73 +87,9 @@ export function AppToolbar({ files }: AppToolbarProps) {
         // Fixed to the window rather than the content pane, so hiding the
         // sidebar does not slide the composer sideways underneath the cursor.
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-12">
-          {/* Mounted from the first reference onwards; `data-open` is what
-              opens and closes it, so dismissal has something to animate. */}
-          <div
-            data-open={reference !== null}
-            className="composer pointer-events-auto w-full max-w-xl rounded-xl border bg-overlay p-2 shadow-lg"
-          >
-            <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
-              <span
-                title={shown.label}
-                className="flex min-w-0 font-mono text-[11px] text-primary-subtle-fg"
-              >
-                {/* The number sits outside the truncation: a clipped name is
-                    still recognisable, a clipped line number is not. */}
-                <span className="truncate">{shown.name}</span>
-                <span>:{shown.lineNumber}</span>
-              </span>
-              <button
-                type="button"
-                onClick={clear}
-                aria-label="Dismiss"
-                className="shrink-0 text-muted-fg hover:text-fg"
-              >
-                <XMarkIcon className="size-3.5" />
-              </button>
-            </div>
-
-            <TextField
-              aria-label={`Message Claude about ${shown.label}`}
-              value={message}
-              onChange={setMessage}
-              isDisabled={isSending || !connected}
-              autoComplete="off"
-              spellCheck="false"
-            >
-              <InputGroup>
-                <Input
-                  ref={input}
-                  placeholder={connected ? 'What about this line?' : 'No Claude session'}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault()
-                      void send()
-                    }
-                    if (event.key === 'Escape') {
-                      event.preventDefault()
-                      clear()
-                    }
-                  }}
-                />
-                <Button
-                  intent="plain"
-                  size="sm"
-                  onPress={() => void send()}
-                  isDisabled={isSending || !connected || message.trim().length === 0}
-                  aria-label="Send to Claude"
-                >
-                  <PaperAirplaneIcon />
-                </Button>
-              </InputGroup>
-            </TextField>
-
-            {error && (
-              <p role="alert" className="px-1 pt-1.5 text-danger-subtle-fg text-xs">
-                {error}
-              </p>
-            )}
-          </div>
+          {/* Mounted from the first reference onwards and kept mounted after
+              it clears, so dismissal has something to animate. */}
+          <AppComposer reference={reference} shown={shown} connected={connected} onClose={clear} />
         </div>
       )}
 

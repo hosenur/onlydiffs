@@ -527,6 +527,58 @@ async fn the_file_list_and_history_come_from_the_host() {
     remote.close().await;
 }
 
+/// A pasted image, for a repository on the far side of a connection.
+///
+/// The bytes have to end up on the *host*: the session that will be told about
+/// them is a process there, and a path to a file on this Mac would be a path to
+/// nothing as far as it is concerned. So what comes back is a path in the
+/// host's filesystem, the file is there, and it is byte-for-byte the image that
+/// was pasted.
+#[tokio::test]
+async fn a_pasted_image_is_written_on_the_host_and_named_by_its_path_there() {
+    let daemon = sshd_or_skip!();
+    let remote = remote_or_skip!(&daemon);
+    let project = RemoteRepo::new();
+    project.write("seed.txt", "one\n");
+    project.git(&["add", "-A"]);
+    project.git(&["commit", "-q", "-m", "seed"]);
+    let repo = remote.repository(&project);
+
+    let mut pasted = std::io::Cursor::new(Vec::new());
+    image::RgbImage::from_pixel(8, 8, image::Rgb([200, 40, 90]))
+        .write_to(&mut pasted, image::ImageOutputFormat::Png)
+        .expect("encode a screenshot");
+    let pasted = pasted.into_inner();
+
+    let path = repo.write_attachment(&pasted).await.expect("write");
+
+    let written = PathBuf::from(&path);
+    assert!(written.is_absolute(), "the session is given a path, not a name: {path}");
+    assert_eq!(std::fs::read(&written).expect("read it back"), pasted);
+    // Inside the repository's own git directory, which is what keeps a pasted
+    // screenshot out of the diff the user is reading.
+    assert!(written.starts_with(project.path().join(".git")), "{path}");
+    assert_eq!(
+        String::from_utf8_lossy(
+            &Command::new("git")
+                .arg("-C")
+                .arg(project.path())
+                .args(["status", "--porcelain"])
+                .output()
+                .expect("git runs")
+                .stdout
+        )
+        .trim(),
+        ""
+    );
+
+    // And the refusal happens on the host too, rather than being trusted here.
+    let refused = repo.write_attachment(b"not an image").await;
+    assert_eq!(refused.expect_err("refused").tag(), "AttachmentError");
+
+    remote.close().await;
+}
+
 #[tokio::test]
 async fn reading_a_remote_file_refuses_to_exceed_the_limit_it_was_given() {
     let daemon = sshd_or_skip!();

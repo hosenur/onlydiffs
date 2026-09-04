@@ -15,6 +15,8 @@ pub enum AppError {
     InvalidPath(String),
     CommitMessage(String),
     ClaudeChannel(String),
+    /// A pasted image could not be read or written down.
+    Attachment(String),
     Clipboard(String),
     /// No repository is open yet — the renderer should show the landing page.
     NoProjectOpen(String),
@@ -45,6 +47,7 @@ impl AppError {
             Self::InvalidPath(_) => "InvalidPathError",
             Self::CommitMessage(_) => "CommitMessageError",
             Self::ClaudeChannel(_) => "ClaudeChannelError",
+            Self::Attachment(_) => "AttachmentError",
             Self::Clipboard(_) => "ClipboardError",
             Self::NoProjectOpen(_) => "NoProjectOpenError",
             Self::InvalidProject(_) => "InvalidProjectError",
@@ -63,6 +66,7 @@ impl AppError {
             | Self::InvalidPath(m)
             | Self::CommitMessage(m)
             | Self::ClaudeChannel(m)
+            | Self::Attachment(m)
             | Self::Clipboard(m)
             | Self::NoProjectOpen(m)
             | Self::InvalidProject(m)
@@ -147,6 +151,7 @@ mod tests {
             AppError::InvalidPath(_) => "InvalidPathError",
             AppError::CommitMessage(_) => "CommitMessageError",
             AppError::ClaudeChannel(_) => "ClaudeChannelError",
+            AppError::Attachment(_) => "AttachmentError",
             AppError::Clipboard(_) => "ClipboardError",
             AppError::NoProjectOpen(_) => "NoProjectOpenError",
             AppError::InvalidProject(_) => "InvalidProjectError",
@@ -167,6 +172,7 @@ mod tests {
             AppError::InvalidPath(message()),
             AppError::CommitMessage(message()),
             AppError::ClaudeChannel(message()),
+            AppError::Attachment(message()),
             AppError::Clipboard(message()),
             AppError::NoProjectOpen(message()),
             AppError::InvalidProject(message()),

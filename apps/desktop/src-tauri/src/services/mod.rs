@@ -13,7 +13,7 @@
 use std::path::PathBuf;
 
 pub use onlydiffs_core::services::{
-    claude_channel, diff, file_tree, history, icon_scan, repository, watcher,
+    attachment, claude_channel, diff, file_tree, history, icon_scan, repository, watcher,
 };
 
 pub mod commit_message;

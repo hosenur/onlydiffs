@@ -125,9 +125,10 @@ export interface UnknownHostKeyPrompt {
 /**
  * The request payloads, one per command that takes arguments. Each is the
  * mirror of a struct in `src-tauri/src/commands.rs`, and every one of them
- * travels under a `request` key — except `writeClipboardText`, whose command
- * takes a bare `text: String`. That one exception is why these are types
- * rather than a single generic envelope.
+ * travels under a `request` key — except two. `writeClipboardText` takes a
+ * bare `text: String`, and `attachImage` takes no JSON at all: its payload is
+ * an `ArrayBuffer` sent as a raw body, which is why it has no type here. Those
+ * exceptions are why these are types rather than a single generic envelope.
  */
 export interface GetFileContentsRequest {
   path: string;
@@ -204,6 +205,14 @@ export interface SetGroqApiKeyRequest {
   key: string | null;
 }
 
+/**
+ * The largest image that can be pasted into the composer. The mirror of
+ * `MAX_IMAGE_BYTES` in `src-tauri/core/src/services/attachment.rs`, which is
+ * the side that enforces it; this copy is what lets an oversized paste be
+ * refused before megabytes are copied to be rejected.
+ */
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
 /** Whether a Claude Code session is listening for the open repository. */
 export interface ClaudeChannelStatus {
   connected: boolean;
@@ -256,6 +265,7 @@ export const Command = {
   stageFile: "stage_file",
   generateCommitMessage: "generate_commit_message",
   sendClaudeMessage: "send_claude_message",
+  attachImage: "attach_image",
   writeClipboardText: "write_clipboard_text",
   listProjects: "list_projects",
   openProject: "open_project",
@@ -293,6 +303,8 @@ export type BackendErrorTag =
   | "InvalidPathError"
   | "CommitMessageError"
   | "ClaudeChannelError"
+  /** A pasted image could not be read or written down. */
+  | "AttachmentError"
   | "ClipboardError"
   | "NoProjectOpenError"
   | "InvalidProjectError"

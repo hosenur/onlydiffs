@@ -5,6 +5,7 @@
 //! remote host runs exactly this code, so there is no second diff walk, no
 //! second porcelain parser, and no second answer to what `.gitignore` covers.
 
+pub mod attachment;
 pub mod claude_channel;
 pub mod diff;
 pub mod file_tree;

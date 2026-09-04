@@ -29,7 +29,7 @@ use crate::contract::{ChangeStatus, ClaudeChannelStatus, Commit, FullFileContent
 use crate::error::AppError;
 use crate::protocol::{Request, Response};
 use crate::services::icon_scan::Candidate;
-use crate::services::{claude_channel, diff, file_tree, git, history, icon_scan};
+use crate::services::{attachment, claude_channel, diff, file_tree, git, history, icon_scan};
 
 /// A file's stat, reduced to the three things the app actually reads. Enough
 /// for the icon scanner's size and mtime checks, and small enough to cross a
@@ -145,6 +145,7 @@ impl Repository {
             "InvalidPathError" => AppError::InvalidPath(message),
             "CommitMessageError" => AppError::CommitMessage(message),
             "ClaudeChannelError" => AppError::ClaudeChannel(message),
+            "AttachmentError" => AppError::Attachment(message),
             "NoProjectOpenError" => AppError::NoProjectOpen(message),
             "InvalidProjectError" => AppError::InvalidProject(message),
             "SshDisconnectedError" => AppError::SshDisconnected(message),
@@ -355,6 +356,28 @@ impl Repository {
                 };
                 match self.call(request).await? {
                     Response::ClaudeSent(id) => Ok(id),
+                    other => Err(unexpected(other)),
+                }
+            }
+        }
+    }
+
+    /// Writes a pasted image where the Claude session for this repository can
+    /// open it, and answers with the path it landed at.
+    ///
+    /// The path is in the host's own filesystem, which is the point: the
+    /// message that follows names it, and the session that reads that message
+    /// is a process on the same machine as the file.
+    pub async fn write_attachment(&self, bytes: &[u8]) -> Result<String, AppError> {
+        match &self.host {
+            Host::Local => attachment::write(self, bytes).await,
+            Host::Remote { .. } => {
+                let request = Request::WriteAttachment {
+                    root: self.root_string(),
+                    bytes: bytes.to_vec(),
+                };
+                match self.call(request).await? {
+                    Response::Attachment(path) => Ok(path),
                     other => Err(unexpected(other)),
                 }
             }

@@ -98,8 +98,20 @@ export const generateCommitMessage = (): Promise<string> =>
 export const sendClaudeMessage = (message: string): Promise<string> =>
   call(Command.sendClaudeMessage, { request: { message } satisfies SendClaudeMessageRequest })
 
-/** The one command with no `request` envelope — `write_clipboard_text` takes
- *  the string itself. See the note on the request types in the contract. */
+/**
+ * Writes a pasted image where the Claude session for the open repository can
+ * open it, and resolves with the path it landed at — a path on *that*
+ * repository's machine, which is what makes this work for a project on a host.
+ *
+ * The bytes go over as a raw body rather than in a JSON envelope: a screenshot
+ * is megabytes, and JSON has no way to spell them that is not several times
+ * their size. See the note on the request types in the contract.
+ */
+export const attachImage = (bytes: ArrayBuffer): Promise<string> =>
+  call(Command.attachImage, bytes)
+
+/** The other command with no `request` envelope — `write_clipboard_text` takes
+ *  the string itself. */
 export const writeClipboardText = (text: string): Promise<void> =>
   call(Command.writeClipboardText, { text })
 

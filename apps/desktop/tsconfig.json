@@ -3,5 +3,16 @@
   "references": [
     { "path": "./tsconfig.node.json" },
     { "path": "./tsconfig.web.json" }
-  ]
+  ],
+  // The same aliases `tsconfig.web.json` and `vite.config.ts` declare, repeated
+  // here because this is the file the test runner reads: without them a test
+  // that imports a *value* from `@shared/contract` cannot resolve it, while one
+  // that imports only types passes by never resolving anything.
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["./src/shared/*"]
+    }
+  }
 }

@@ -97,6 +97,12 @@ Which means the channel has to be set up on the host, in that checkout — the
 same `channel:setup` this repo documents, run over there. Nothing about the
 setup changes; it just has to be on the machine the code is on.
 
+Images pasted into the composer follow the repository for the same reason. The
+bytes cross the connection once, the agent writes them into the repository's git
+directory *there*, and what the message carries is the path they landed at —
+which is a path the session can open, and which a path on your Mac would not
+be.
+
 Supported hosts are Linux on x86_64 or aarch64 and macOS on either
 architecture. Anything else is refused by name rather than guessed at.
 

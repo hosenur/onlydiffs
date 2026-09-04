@@ -82,6 +82,15 @@ pub enum Request {
     ClaudeStatus { root: String },
     /// Hand a message to that session. One direction only.
     ClaudeSend { root: String, message: String },
+    /// Put a pasted image where that session can open it. The bytes cross
+    /// once, here; the message that follows carries only the path they landed
+    /// at, because a path is the only form of an image that means anything on
+    /// the far side of a connection.
+    WriteAttachment {
+        root: String,
+        #[serde(with = "serde_bytes_vec")]
+        bytes: Vec<u8>,
+    },
     /// One `git` invocation, for the handful of things the app asks that have
     /// no richer request. Kept narrow on purpose.
     Git { root: String, args: Vec<String> },
@@ -121,6 +130,8 @@ pub enum Response {
     ClaudeStatus(ClaudeChannelStatus),
     /// The channel's message id, useful only for correlating logs.
     ClaudeSent(String),
+    /// Where a pasted image was written, in the host's own path style.
+    Attachment(String),
     Git(String),
     Bytes(#[serde(with = "serde_bytes_vec")] Vec<u8>),
     Metadata(Option<FileMeta>),

@@ -53,9 +53,21 @@ repository-relative source path stay in `~/.onlydiffs/projects.json`, keyed by a
 hash of the shortlist so an unchanged repository is never re-sent. Projects with
 no artwork, or none the model would use, keep the cube fallback.
 
-The Claude Code channel and the Groq commit-message generator are implemented
-end to end, but the review UI does not call either yet. `bun run channel:setup`
-still registers the channel.
+### Talking to a session
+
+Clicking a line in a diff opens a composer for it. What it sends is the line
+reference and what you typed, over the channel `bun run channel:setup`
+registers, to the Claude Code session running in that repository.
+
+Images can be pasted into it. They do not travel in the message — the channel
+carries 64 KB of text and a screenshot is megabytes of binary — so the image is
+written to the repository's git directory and the message names the path
+instead. That is the only form that works for a project on a host, where the
+session is a process on the far side of an SSH connection: the bytes cross once,
+the agent writes them down there, and the path it hands back is one that machine
+can open. `.git` rather than the working tree, so a pasted screenshot is never
+mistaken for a change to review; pastes older than a week are dropped the next
+time one is written.
 
 ## Keys
 

@@ -123,6 +123,7 @@ pub fn run() {
             commands::stage_file,
             commands::generate_commit_message,
             commands::send_claude_message,
+            commands::attach_image,
             commands::claude_status,
             commands::commit_all,
             commands::list_files,

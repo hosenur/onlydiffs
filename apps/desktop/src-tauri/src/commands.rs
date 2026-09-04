@@ -152,6 +152,28 @@ pub async fn send_claude_message(
     Ok(repo.claude_send(&request.message).await.into())
 }
 
+/// Writes a pasted image where the Claude session for the open repository can
+/// open it, and answers with the path it landed at — on that repository's
+/// machine, which is the only machine the path is good on.
+///
+/// The one command whose payload is not JSON. A screenshot is megabytes of
+/// binary: base64 would cost a third again on top of a copy the renderer has
+/// already made, and JSON's array-of-numbers encoding several times that. Tauri
+/// carries an `ArrayBuffer` over as a raw body, so the bytes arrive as bytes.
+#[tauri::command]
+pub async fn attach_image(
+    state: State<'_, AppState>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<IpcResult<String>, ()> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Ok(IpcResult::Err(AppError::Attachment(
+            "The pasted image did not arrive as bytes.".into(),
+        )));
+    };
+    let repo = repository!(state);
+    Ok(repo.write_attachment(bytes).await.into())
+}
+
 #[tauri::command]
 pub async fn claude_status(state: State<'_, AppState>) -> Result<IpcResult<ClaudeChannelStatus>, ()> {
     // A status poll on a project that is not open, or on a host that is not
