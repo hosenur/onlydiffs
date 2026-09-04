@@ -190,7 +190,19 @@ export function FileDiffCard({ file, bare = false }: FileDiffCardProps) {
     [options, onLineClick, bare]
   )
 
-  const contents = loaded?.file === file ? loaded.contents : null
+  /*
+   * Keep what is already on screen while an equivalent row reloads.
+   *
+   * The layout loader hands out fresh `FileChange` objects every time the diff
+   * is re-read, so identity alone means the file blanks back to "Loading
+   * complete file…" on every refresh — however ordinary the reason for that
+   * refresh was. `id` is `staged:path`, which is the row rather than its
+   * contents, so this shows the previous contents for the moment it takes the
+   * new ones to arrive and replace them. Never longer: the effect above is
+   * still fetching, and its result still wins.
+   */
+  const contents =
+    loaded && (loaded.file === file || loaded.file.id === file.id) ? loaded.contents : null
 
   return (
     <section

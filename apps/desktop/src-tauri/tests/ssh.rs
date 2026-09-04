@@ -753,3 +753,46 @@ async fn losing_the_connection_fails_outstanding_calls_rather_than_hanging_them(
     let failed = after.expect_err("the repository is unreachable");
     assert_eq!(failed.tag(), "SshDisconnectedError", "{failed:?}");
 }
+
+/// The remote half of the refresh loop.
+///
+/// The agent watches the repository on the host and streams changes back, and
+/// the window reloads the diff whenever one arrives. So if reading the
+/// repository *is* a change to it, the app reads, hears about its own read,
+/// and reads again — which over a connection is a visible reload every round
+/// trip. Reading must stay silent on the host too, not just here.
+#[tokio::test]
+async fn reading_a_remote_repository_sends_back_no_change_events() {
+    let daemon = sshd_or_skip!();
+    let mut remote = remote_or_skip!(&daemon);
+    let project = RemoteRepo::new();
+    project.write("a.txt", "one\n");
+    project.git(&["add", "-A"]);
+    project.git(&["commit", "-q", "-m", "seed"]);
+    project.write("a.txt", "two\n");
+    project.write("untracked.txt", "new\n");
+
+    let repo = remote.repository(&project);
+    repo.set_watched(true).await.expect("watch");
+    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+
+    // Drain anything the fixture's own writes produced.
+    while remote.events.try_recv().is_ok() {}
+
+    // Exactly what the layout loader asks for, several times over.
+    for _ in 0..4 {
+        let _ = repo.diff().await.expect("diff");
+        let _ = repo.list_files().await.expect("files");
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+
+    let stray = remote.events.try_recv();
+    assert!(
+        stray.is_err(),
+        "reading the repository was reported back as a change to it: {stray:?}"
+    );
+
+    repo.set_watched(false).await.expect("unwatch");
+    remote.close().await;
+}

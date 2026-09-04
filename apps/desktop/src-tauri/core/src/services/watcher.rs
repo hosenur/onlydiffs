@@ -17,7 +17,8 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use notify_debouncer_full::notify::{self, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::notify::event::{AccessKind, AccessMode};
+use notify_debouncer_full::notify::{self, EventKind, RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, NoCache};
 
 /// Trailing debounce. Long enough that saving thirty files is one refresh,
@@ -33,6 +34,28 @@ fn is_git_signal(entry: Option<&OsStr>) -> bool {
         entry.and_then(|name| name.to_str()),
         Some("index" | "HEAD" | "refs")
     )
+}
+
+/// Whether an event says the repository changed, as opposed to being read.
+///
+/// Linux reports opens. inotify is asked for `IN_OPEN` among the rest, and
+/// `git diff` opens every file it produces a patch for — so a filter that
+/// looked only at paths reported the app's own read of the repository as a
+/// change to it, and the refresh that followed read it again. Measured on a
+/// quiet checkout, two read-only git commands produced three `OPEN` events.
+///
+/// macOS never showed this. FSEvents reports what changed, not what was read,
+/// which is why the same code was well behaved locally and looped over SSH.
+///
+/// A close-after-write is kept. It is an `Access` by name only — some editors
+/// save by writing and closing, and dropping it could cost a real change.
+fn is_change(kind: &EventKind) -> bool {
+    match kind {
+        EventKind::Access(AccessKind::Close(AccessMode::Write)) => true,
+        // Opens, reads, and closes-after-read. Somebody looked; nothing moved.
+        EventKind::Access(_) => false,
+        _ => true,
+    }
 }
 
 /// Decides which filesystem events could change what the diff shows.
@@ -149,7 +172,9 @@ impl RepoWatcher {
                 // A dropped-event rescan carries no paths: the kernel queue
                 // overflowed and the truth is unknown. Refreshing on a maybe
                 // beats missing the change that prompted it.
-                event.need_rescan() || event.paths.iter().any(|path| filter.is_interesting(path))
+                event.need_rescan()
+                    || (is_change(&event.kind)
+                        && event.paths.iter().any(|path| filter.is_interesting(path)))
             });
             if worth_it {
                 notify();
@@ -186,5 +211,98 @@ impl RepoWatcher {
 impl Default for RepoWatcher {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod reading_is_not_writing {
+    use crate::services::repository::Repository;
+    use crate::services::watcher::RepoWatcher;
+    use crate::services::{diff, file_tree};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use notify_debouncer_full::notify::event::{AccessKind, AccessMode, ModifyKind};
+    use notify_debouncer_full::notify::EventKind;
+
+    /// The Linux loop, as a unit test that runs everywhere.
+    ///
+    /// `git diff` opens the files it patches, inotify reports those opens, and
+    /// a filter that asked only "is this path interesting" said yes — so the
+    /// app's own read came back as a change and it read again.
+    #[test]
+    fn a_file_being_opened_is_not_a_change() {
+        // `AccessMode::Any` is precisely what notify's inotify backend emits
+        // for `IN_OPEN`; a lookalike variant would not pin the real behaviour.
+        assert!(!super::is_change(&EventKind::Access(AccessKind::Open(AccessMode::Any))));
+        assert!(!super::is_change(&EventKind::Access(AccessKind::Open(AccessMode::Read))));
+        assert!(!super::is_change(&EventKind::Access(AccessKind::Read)));
+        assert!(!super::is_change(&EventKind::Access(AccessKind::Close(AccessMode::Read))));
+    }
+
+    /// The other half. Suppressing too much would trade a view that never
+    /// settles for one that never updates.
+    #[test]
+    fn writing_creating_renaming_and_deleting_all_still_count() {
+        assert!(super::is_change(&EventKind::Modify(ModifyKind::Any)));
+        assert!(super::is_change(&EventKind::Create(
+            notify_debouncer_full::notify::event::CreateKind::File
+        )));
+        assert!(super::is_change(&EventKind::Remove(
+            notify_debouncer_full::notify::event::RemoveKind::File
+        )));
+        assert!(super::is_change(&EventKind::Any));
+        // An editor that saves by writing and closing, with no modify event.
+        assert!(super::is_change(&EventKind::Access(AccessKind::Close(
+            AccessMode::Write
+        ))));
+    }
+
+    fn git(root: &std::path::Path, args: &[&str]) {
+        let ok = std::process::Command::new("git")
+            .arg("-C").arg(root).args(args)
+            .status().expect("git runs").success();
+        assert!(ok, "git {args:?} failed");
+    }
+
+    /// The whole bug in one assertion: reading the repository must not look
+    /// like a change to it, or the app refreshes forever.
+    #[tokio::test]
+    async fn a_full_read_wakes_no_watcher() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        let root = dir.path().to_path_buf();
+        git(&root, &["init", "-q"]);
+        std::fs::write(root.join("a.txt"), "one\n").expect("write");
+        git(&root, &["add", "-A"]);
+        git(&root, &["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed"]);
+        std::fs::write(root.join("a.txt"), "two\n").expect("write");
+        std::fs::write(root.join("untracked.txt"), "new\n").expect("write");
+
+        let repo = Repository::local(root.clone());
+        let hits = Arc::new(AtomicUsize::new(0));
+        let counter = hits.clone();
+        let watcher = RepoWatcher::new();
+        watcher.watch(root.clone(), move || {
+            counter.fetch_add(1, Ordering::SeqCst);
+        });
+
+        // Let the watch settle and drain anything the fixture caused.
+        tokio::time::sleep(Duration::from_millis(1200)).await;
+        hits.store(0, Ordering::SeqCst);
+
+        // Exactly what the layout loader does, several times over.
+        for _ in 0..4 {
+            let _ = diff::get_diff(&repo).await.expect("diff");
+            let _ = file_tree::list_files(&repo).await.expect("files");
+            tokio::time::sleep(Duration::from_millis(150)).await;
+        }
+        tokio::time::sleep(Duration::from_millis(1500)).await;
+
+        assert_eq!(
+            hits.load(Ordering::SeqCst),
+            0,
+            "reading the repository woke the watcher, which invalidates the router, which reads again"
+        );
     }
 }
