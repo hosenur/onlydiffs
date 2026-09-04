@@ -24,8 +24,8 @@ case "${1:-up}" in
     cat > "$dir/Dockerfile" <<'DOCKER'
 FROM debian:bookworm-slim
 # python3 is for the fake Claude channel the tests stand up on the host: it has
-# to be a real process listening on real loopback, because that is the thing
-# being proven.
+# to be a real process listening on a real unix socket there, because that is
+# the thing being proven.
 RUN apt-get update && apt-get install -y --no-install-recommends openssh-server git ca-certificates python3 \
  && rm -rf /var/lib/apt/lists/* && mkdir -p /run/sshd /root/.ssh && chmod 700 /root/.ssh
 COPY client.pub /root/.ssh/authorized_keys

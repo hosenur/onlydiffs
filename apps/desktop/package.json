@@ -13,7 +13,7 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "bun run typecheck:node && bun run typecheck:web",
     "test:renderer": "bun test src",
-    "test:native": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "test:native": "cargo build --manifest-path src-tauri/Cargo.toml -p onlydiffs-agent && cargo test --manifest-path src-tauri/Cargo.toml --workspace",
     "test": "bun run test:renderer && bun run test:native",
     "build": "bun run typecheck && bun run test && bun run build:vite",
     "dist": "tauri build",
@@ -21,9 +21,10 @@
     "dist:win": "tauri build --bundles nsis",
     "dist:linux": "tauri build --bundles appimage,deb",
     "tauri": "tauri",
-    "channel:setup": "claude mcp remove --scope user onlydiffs >/dev/null 2>&1 || true; claude mcp add --scope user onlydiffs -- bun \"$PWD/scripts/claude-channel.ts\"",
+    "channel:setup": "bash scripts/channel-setup.sh",
     "sync:icons": "bun scripts/sync-file-icons.mjs",
-    "social": "bun scripts/social-preview.mjs"
+    "social": "bun scripts/social-preview.mjs",
+    "claude": "bash scripts/claude.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2"
@@ -31,7 +32,6 @@
   "devDependencies": {
     "@heroicons/react": "^2.2.0",
     "@lisse/react": "^0.7.2",
-    "@modelcontextprotocol/sdk": "^1.30.0",
     "@onlydiffs/ui": "workspace:*",
     "@pierre/diffs": "^1.3.6",
     "@tailwindcss/vite": "^4.3.3",

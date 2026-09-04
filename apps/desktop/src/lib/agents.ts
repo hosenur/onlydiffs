@@ -5,15 +5,10 @@ import { claudeStatus, codexStatus, sendClaudeMessage, sendCodexMessage } from '
  * them.
  *
  * Both are reached the same way from here — ask whether there is a session,
- * hand over a message — but they do not mean the same thing by either answer,
- * and the wording is where that shows. Claude Code registers a live listener,
- * so "connected" means a process is waiting and a send reaches it now. Codex
- * keeps a durable per-thread queue, so there is nothing to be connected *to*:
- * what exists is a thread, and a message sent to one whose session is closed
- * waits until it opens again.
- *
- * That difference is worth saying out loud rather than flattening, because it
- * changes what a user should expect after pressing Enter.
+ * hand over a message — and both refuse when nothing is running. Where they
+ * differ is in how a session becomes reachable, which is what the hints below
+ * spell out: Claude Code has to be started with its channel flag, and Codex
+ * has to be started against its shared daemon with the repository named.
  */
 
 export type Agent = 'claude' | 'codex'
@@ -26,23 +21,26 @@ export const AGENT_NAMES: Record<Agent, string> = {
   codex: 'Codex',
 }
 
-/** What a status probe answers. Only Codex has a delivery step to report on;
- *  for Claude the send *is* the delivery, so it is always true. */
+/** What a status probe answers, for either agent. */
 export interface AgentStatus {
+  /** A session is running and a message would reach it now. */
   connected: boolean
+  /** How many sessions are running in the repository, reachable or not. */
   sessions: number
-  delivering?: boolean
-  /** Codex only: the thread a stranded session would be resumed from. */
-  thread?: string | null
+  /** Claude only: sessions whose channel Claude Code did not register, because
+   *  they were started without the channel flag. */
+  unregistered?: number
 }
+
+/** What a user runs to make a Claude Code session reachable. */
+export const CLAUDE_START_COMMAND = 'claude --dangerously-load-development-channels server:onlydiffs'
+
+/** What a user runs to reattach a running Codex session so it can be reached. */
+export const CODEX_RESUME_COMMAND = 'codex resume --last --remote unix:// -C "$PWD"'
 
 /** Whether a session for the open repository can be sent to. */
 export function readStatus(agent: Agent): Promise<AgentStatus> {
-  // Claude has no separate delivery step — a send either reaches the listening
-  // session or fails — so it reports as always delivering.
-  return agent === 'claude'
-    ? claudeStatus().then((status) => ({ ...status, delivering: true }))
-    : codexStatus()
+  return agent === 'claude' ? claudeStatus() : codexStatus()
 }
 
 /** Hands the message over, resolving with the agent's own id for it. */
@@ -60,10 +58,10 @@ export function statusLabel(agent: Agent, status: AgentStatus | null): string {
   const name = AGENT_NAMES[agent]
   if (status === null) return `Checking for ${name}…`
   if (!status.connected) {
-    // A Codex session that is running but not attached to the shared daemon
-    // cannot be reached, and "no session" would be a claim the user can see is
-    // false — theirs is open in front of them.
-    if (agent === 'codex' && status.sessions > 0) return 'Codex session not connected'
+    // A session that is running but cannot be reached — Codex not attached to
+    // the shared daemon, Claude started without its channel flag — must not be
+    // called absent: the user can see it open in front of them.
+    if (status.sessions > 0) return `${name} session not connected`
     return `No ${name} session`
   }
 
@@ -80,23 +78,19 @@ export function composerPlaceholder(agent: Agent, connected: boolean): string {
 }
 
 /**
- * What happens after the send, for the agent it was sent to.
+ * How to make an unreachable session reachable, for the agent it would go to.
  *
- * Only Codex has anything to add: its message may sit in the queue for a while,
- * and a user who expects an immediate reply and does not get one should be able
- * to tell that from the interface rather than from waiting.
+ * Shown only when a session is running and cannot be sent to, which is the one
+ * moment the user needs a command rather than a status. Both commands are the
+ * whole fix: for Codex the session has to be attached to the shared daemon with
+ * the repository named, and for Claude the session has to be started with the
+ * channel flag, without which Claude Code drops every message silently.
  */
 export function deliveryNote(agent: Agent, status: AgentStatus | null): string | null {
-  if (agent !== 'codex') return null
   if (status?.connected || (status?.sessions ?? 0) === 0) return null
-
-  // A session is open but was not started against the daemon, so nothing can
-  // reach it. The fix is to close it and resume the same thread attached — so
-  // give the command with the thread already in it rather than a description
-  // of the command.
-  return status?.thread
-    ? `Not reachable. Close it, then: codex resume ${status.thread} --remote unix://`
-    : 'Not reachable. Restart the session with: codex --remote unix://'
+  return agent === 'codex'
+    ? `Not reachable. Close it, then: ${CODEX_RESUME_COMMAND}`
+    : `Not reachable. Close it, then: ${CLAUDE_START_COMMAND}`
 }
 
 /**

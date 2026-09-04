@@ -98,6 +98,9 @@ export interface ConnectedHost {
   /** e.g. `Linux x86_64`. */
   platform: string | null;
   agentVersion: string | null;
+  /** Whether the Claude channel was registered with Claude Code on the host
+   *  when it was connected. `null` for a host that is not connected. */
+  channelRegistered: boolean | null;
 }
 
 /**
@@ -217,37 +220,35 @@ export interface SetGroqApiKeyRequest {
  */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
-/** Whether a Claude Code session is listening for the open repository. */
+/**
+ * Whether a Claude Code session for the open repository can be sent to.
+ *
+ * `sessions` counts every live channel, and `unregistered` the ones Claude
+ * Code is ignoring because the session was started without the channel flag.
+ * `connected` is the stricter claim: at least one session would act on a
+ * message now.
+ */
 export interface ClaudeChannelStatus {
   connected: boolean;
-  /** How many live channels are registered; more than one is possible. */
+  /** How many live channels there are; more than one is possible. */
   sessions: number;
+  /** How many of those Claude Code did not register, so a message to them
+   *  would be dropped silently. */
+  unregistered: number;
 }
 
 /**
- * Whether a Codex session has worked in the open repository.
+ * Whether a Codex session for the open repository can be sent to.
  *
- * A softer claim than the Claude one. Codex is reached through a durable
- * per-thread queue rather than a live listener, so this says a thread exists
- * that a message can be queued against — not that anything is running. A
- * message sent to a closed session is delivered when it next opens.
+ * `sessions` counts every Codex process working in the repository, attached to
+ * the shared daemon or not, so the bar can say "running but not connected"
+ * about a session the user can see. `connected` is the stricter claim: the
+ * daemon holds a thread for this repository and a message would reach it now.
  */
 export interface CodexChannelStatus {
   connected: boolean;
   /** How many Codex sessions are running in this repository. */
   sessions: number;
-  /**
-   * The thread a running-but-unreachable session would be resumed from, so the
-   * command that fixes it can name one. `null` before that session's first
-   * turn, when no thread exists yet.
-   */
-  thread: string | null;
-  /**
-   * Whether Codex's shared daemon is up to deliver what is queued. A message
-   * sent while this is false is kept rather than lost, but nothing acts on it
-   * until the daemon runs again.
-   */
-  delivering: boolean;
 }
 
 /** Whether a newer release is waiting to be installed. */

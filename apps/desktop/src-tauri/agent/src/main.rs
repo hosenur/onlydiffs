@@ -6,6 +6,11 @@
 //! its stdin closes. Everything it could hold is something a reconnect rebuilds
 //! with one `git status`.
 //!
+//! It has one other job, `channel`: the MCP server a Claude Code session runs
+//! so the app can push a line into it. Same binary, so a host that has the
+//! agent has the channel, and the same rule about stdio — there it is MCP on
+//! stdin and stdout, with the socket the app writes to beside it.
+//!
 //! stderr is left alone deliberately. A login shell that prints a banner writes
 //! there, `ssh` shows it to the user, and nothing on this side ever parses it —
 //! which is what stops a message-of-the-day from corrupting a frame.
@@ -22,7 +27,8 @@ use onlydiffs_core::protocol::{
 use onlydiffs_core::services::repository::Repository;
 use onlydiffs_core::services::watcher::RepoWatcher;
 use onlydiffs_core::services::{
-    attachment, claude_channel, codex_channel, diff, file_tree, history, icon_scan,
+    attachment, claude_channel, claude_channel_server, codex_channel, diff, file_tree, history,
+    icon_scan,
 };
 use tokio::io::{stdin, stdout, AsyncWriteExt, BufReader};
 use tokio::sync::{mpsc, Mutex};
@@ -47,8 +53,17 @@ async fn main() {
             return;
         }
         Some("serve") | None => serve().await,
+        // The Claude Code channel. Runs until Claude Code closes its stdin.
+        Some("channel") => {
+            if let Err(error) = claude_channel_server::run().await {
+                eprintln!("onlydiffs-agent channel: {error}");
+                std::process::exit(1);
+            }
+        }
         Some(other) => {
-            eprintln!("onlydiffs-agent: unknown argument {other:?}; expected `serve` or `--version`");
+            eprintln!(
+                "onlydiffs-agent: unknown argument {other:?}; expected `serve`, `channel`, or `--version`"
+            );
             std::process::exit(2);
         }
     }

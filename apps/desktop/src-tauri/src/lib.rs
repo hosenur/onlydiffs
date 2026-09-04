@@ -15,6 +15,7 @@ pub mod services;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 
+use services::local_agent;
 use services::project_icon;
 use services::repository::Repository;
 use services::settings::Settings;
@@ -38,8 +39,8 @@ pub struct AppState {
     /// Follows the open repository and tells the renderer when it changes, so
     /// the diff on screen is the diff on disk without anyone asking.
     pub watcher: RepoWatcher,
-    /// One pooled client for both outbound callers — Groq and the loopback
-    /// Claude channel.
+    /// One pooled client for the app's only outbound HTTP caller, Groq. The
+    /// agent channels speak unix sockets and never come through here.
     pub http: reqwest::Client,
     /// Stops startup and newly opened projects from launching overlapping
     /// Groq image-selection requests.
@@ -184,6 +185,29 @@ pub fn run() {
                 tokio::time::sleep(FIRST_PAINT_GRACE).await;
                 if matches!(fallback.is_visible(), Ok(false)) {
                     let _ = fallback.show();
+                }
+            });
+
+            // The agent's channel mode is what Claude Code runs for this app,
+            // reached through `~/.onlydiffs/agent/current`. Keeping that link
+            // pointed at this build, and Claude Code pointed at the link, is a
+            // launch-time job, off the first frame. A downloaded app has no
+            // checkout and no `bun`, so this is the only setup there is.
+            if let Ok(resources) = app.path().resource_dir() {
+                services::ssh::agent::set_bundled_agents_dir(resources.join("agents"));
+            }
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = local_agent::install().await {
+                    eprintln!("agent install: {}", error.message());
+                    return;
+                }
+                match local_agent::register_with_claude().await {
+                    Ok(local_agent::Registered::Now) => eprintln!("claude channel: registered"),
+                    Ok(local_agent::Registered::Already) => {}
+                    Ok(local_agent::Registered::NoClaude) => {
+                        eprintln!("claude channel: no `claude` found on this machine")
+                    }
+                    Err(error) => eprintln!("claude channel: {}", error.message()),
                 }
             });
 

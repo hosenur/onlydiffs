@@ -18,6 +18,7 @@ pub mod file_tree;
 mod git;
 pub mod history;
 pub mod icon_scan;
-pub mod loopback_http;
+pub mod claude_channel_server;
+pub mod paths;
 pub mod repository;
 pub mod watcher;

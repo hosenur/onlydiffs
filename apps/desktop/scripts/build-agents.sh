@@ -8,8 +8,10 @@
 # to start on anything older, and "anything older" is most build servers. 2.17
 # is CentOS 7, which is about as far back as anyone still runs.
 #
-# Not musl. A static musl binary would be simpler and would break `getaddrinfo`
-# and NSS, which the agent needs for the Claude channel's loopback lookups.
+# Not musl. The agent is also the Claude channel on a host and resolves the
+# user's home through NSS; a static musl binary would answer that differently
+# from every other program on the machine, and glibc 2.17 is on every host
+# anyone has.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

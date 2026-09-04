@@ -58,25 +58,56 @@ no artwork, or none the model would use, keep the cube fallback.
 Clicking a line in a diff opens a composer for it. What it sends is the line
 reference and what you typed, to a coding agent working in that repository.
 Claude Code and Codex are both offered; the status bar says which of them has a
-session, and the composer shows a picker when both do.
+session, and the composer shows a picker when both do. Both are one-way, and
+both refuse when nothing is running: a message goes to a session that is there
+now, or it does not go.
 
-**Claude Code** is reached over the channel `bun run channel:setup` registers: a
-loopback server per session, so a send reaches a process that is listening right
-now, and fails when none is.
+**Claude Code** is reached through a
+[channel](https://code.claude.com/docs/en/channels): an MCP server that pushes
+messages into a running session. The server is the agent binary in its
+`channel` mode, reached through the stable path `~/.onlydiffs/agent/current`.
+The app sets all of this up itself on launch — it installs the agent it ships,
+points the link at it, finds `claude` even from a Finder-launched bundle, and
+registers the channel with `claude mcp add` if that has not been done — so a
+downloaded app needs nothing but Claude Code. `bun run channel:setup` does the
+same from a checkout without launching the app. Each session's server listens
+on a socket under `~/.onlydiffs/claude-channels`; a send connects, writes, and
+is done.
 
-**Codex** is reached through its own durable queue. There is nothing listening —
-`codex queue` writes the message to `~/.codex/queue_1.sqlite` against the thread
-whose working directory is this repository, and Codex delivers it the next time
-that thread takes a turn. So a message can be left for a session that is closed,
-which the Claude side cannot do. Threads are found by reading the headers of
-Codex's own transcripts under `~/.codex/sessions`, looking back a fortnight.
+Registering is not enough. Channels are a research preview, and Claude Code
+delivers channel messages only to a session started with the server named:
 
-Two things follow from the queue being drained by Codex rather than by us. The
-shared app-server daemon has to be running, or the message waits indefinitely —
-`codex app-server daemon start`, and the composer says so when it is not. And a
-session started as plain `codex` will not *show* the message: the daemon runs
-that turn headlessly, so the work happens but the terminal stays quiet. Start
-the session with `codex --remote unix://` to watch it arrive.
+```sh
+claude --dangerously-load-development-channels server:onlydiffs
+```
+
+`bun run claude` runs exactly that from a checkout; the composer shows the same
+command whenever a session needs it. A session started as plain `claude` still
+runs the server and silently drops everything it receives, so the app reads
+Claude Code's own MCP log, the status bar says "session not connected" for
+such a session, and the composer refuses to send to it.
+
+**Codex** is reached through its shared app-server daemon, which is the only
+process that can put a message in front of a running session. Start the daemon
+once with `codex app-server daemon start`, and start sessions attached to it,
+with the repository named:
+
+```sh
+codex --remote unix:// -C "$PWD"
+```
+
+`-C` is not optional: a `--remote` session started without it is filed under
+the daemon's own working directory, and no repository matches that. A session
+started as plain `codex` never registers with the daemon and cannot be reached.
+In either case the status bar says "session not connected" and the composer
+gives the command that reattaches it. A send asks the daemon which of its
+loaded threads belong to the repository and queues the message on the newest,
+the same way typing into the TUI does: an idle session starts on it at once, a
+busy one takes it up when its turn ends.
+
+On a host, the agent does all of this on the host: the socket, the daemon, and
+the process table it checks first are all there, and connecting to a host
+registers the channel with the Claude Code installed on it.
 
 Images can be pasted into it. They do not travel in the message — the transport
 carries text and a screenshot is megabytes of binary — so the image is

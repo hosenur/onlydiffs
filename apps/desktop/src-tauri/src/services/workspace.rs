@@ -8,7 +8,7 @@
 //! Every method is synchronous. The work is a stat or a small file rewrite, and
 //! keeping it sync means the mutexes are never held across an await point.
 
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::{Project, ProjectIcon, ProjectLocation};
 use crate::error::AppError;
+use onlydiffs_core::services::paths::normalize;
 
 const STORE_FILE: &str = "projects.json";
 const STORE_VERSION: u32 = 1;
@@ -86,25 +87,6 @@ fn expand_home(value: &str) -> PathBuf {
         Some(rest) => home.join(rest),
         None => PathBuf::from(value),
     }
-}
-
-/// Lexical `.`/`..` folding, the equivalent of Node's `path.normalize`.
-/// Deliberately not `canonicalize`: symlinks stay unresolved, so the path the
-/// user typed is the path they get back.
-pub(crate) fn normalize(path: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::ParentDir => {
-                if !out.pop() {
-                    out.push("..");
-                }
-            }
-            Component::CurDir => {}
-            other => out.push(other.as_os_str()),
-        }
-    }
-    out
 }
 
 /// Turns whatever the user typed into an absolute path. A relative path is

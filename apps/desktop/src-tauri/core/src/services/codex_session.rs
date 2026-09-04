@@ -17,6 +17,8 @@ use std::path::{Path, PathBuf};
 
 use tokio::process::Command;
 
+use crate::services::paths;
+
 /// The helper processes Codex runs beside a session.
 ///
 /// They inherit the working directory of whatever started them, so the daemon
@@ -44,7 +46,7 @@ fn is_session(command: &str) -> bool {
 /// Inside counts: opening Codex in a subdirectory is opening it on the
 /// repository, and refusing that would be a distinction the user never drew.
 fn belongs_to(cwd: &Path, root: &Path) -> bool {
-    cwd == root || cwd.starts_with(root)
+    paths::is_within(cwd, root)
 }
 
 /// How many Codex sessions are running in this repository.

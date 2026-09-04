@@ -120,17 +120,17 @@ async fn a_linux_host_is_probed_uploaded_to_and_reviewed_from_macos() {
 ///
 /// This is the question the whole remoting raises and the one a status
 /// indicator cannot answer for you: a Claude Code session reviewing a checkout
-/// on a build box is a process on that build box, listening on that machine's
-/// loopback, with a registration naming a path in that machine's filesystem.
-/// Reading the registry from this Mac would find nothing — and, worse, finding
-/// something would mean sending a message about the wrong repository to a
-/// session that has never seen it.
+/// on a build box is a process on that build box, with its channel socket in
+/// that machine's home directory and a registration naming a path in that
+/// machine's filesystem. Reading the registry from this Mac would find nothing
+/// — and, worse, finding something would mean sending a message about the
+/// wrong repository to a session that has never seen it.
 ///
 /// So the agent does it: reads the host's `~/.onlydiffs/claude-channels`,
-/// matches the registration's `cwd` against the repository root *there*, checks
-/// the pid is alive *there*, and POSTs to `127.0.0.1` *there*. What this test
-/// stands up is a stand-in for Claude Code's side of that contract — a real
-/// process, on a real loopback port, writing down what it received.
+/// matches the registration's `cwd` against the repository root *there*,
+/// connects to the socket *there*, and writes. What this test stands up is a
+/// stand-in for the channel server's side of that contract — a real process on
+/// a real unix socket, writing down what it received.
 #[tokio::test]
 async fn a_claude_session_on_the_host_receives_a_message_sent_from_here() {
     let Some(dir) = host_dir() else {
@@ -147,44 +147,41 @@ async fn a_claude_session_on_the_host_receives_a_message_sent_from_here() {
         .expect("connect");
 
     let root = "/tmp/onlydiffs-claude";
-    let token = "test-token-8f2c";
 
-    // A repository, and a process standing in for a Claude Code session in it:
-    // the same registration file Claude Code writes, and the same loopback
-    // endpoint it serves.
+    // A repository, and a process standing in for the channel server a Claude
+    // Code session runs in it: the same registration the server writes, and
+    // the same one-message-per-connection socket it serves.
     connection
         .run_script(&format!(
             r#"set -e
 rm -rf {root} ~/.onlydiffs/claude-channels
 mkdir -p {root} ~/.onlydiffs/claude-channels
-cd {root} && git init -q . && printf 'one\n' > a.txt && git add -A && git commit -q -m seed
+cd {root} && git init -q . && printf 'one
+' > a.txt && git add -A && git commit -q -m seed
 cat > /tmp/fake-claude.py <<'PY'
-import http.server, json, os, socket, sys
+import json, os, socket, time
 
-received = []
-
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_POST(self):
-        auth = self.headers.get("Authorization", "")
-        body = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()
-        if auth != "Bearer {token}":
-            self.send_response(401); self.end_headers(); self.wfile.write(b"bad token"); return
+directory = os.path.expanduser("~/.onlydiffs/claude-channels")
+path = os.path.join(directory, "session.sock")
+server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+server.bind(path)
+server.listen(4)
+with open(os.path.join(directory, "session.json"), "w") as f:
+    json.dump({{"schemaVersion": 2, "pid": os.getpid(), "cwd": "{root}",
+               "socket": path, "startedAt": int(time.time() * 1000)}}, f)
+while True:
+    conn, _ = server.accept()
+    body = b""
+    while True:
+        chunk = conn.recv(4096)
+        if not chunk:
+            break
+        body += chunk
+    if body.strip():
         with open("/tmp/claude-received.txt", "a") as f:
-            f.write(body + "\n")
-        payload = json.dumps({{"messageId": "msg-from-the-host"}}).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(payload)))
-        self.end_headers()
-        self.wfile.write(payload)
-    def log_message(self, *_): pass
-
-sock = socket.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
-reg = {{"schemaVersion": 1, "pid": os.getpid(), "cwd": "{root}",
-       "port": port, "token": "{token}", "startedAt": 1}}
-with open(os.path.expanduser("~/.onlydiffs/claude-channels/session.json"), "w") as f:
-    json.dump(reg, f)
-http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+            f.write(body.decode() + "\n")
+        conn.sendall(b'{{"messageId": "msg-from-the-host"}}\n')
+    conn.close()
 PY
 nohup python3 /tmp/fake-claude.py >/tmp/fake-claude.log 2>&1 &
 for _ in $(seq 1 40); do
@@ -202,8 +199,8 @@ echo "the stand-in never registered" >&2; exit 1"#
         .expect("agent");
     let repo = Repository::remote("linux-box".into(), root.into(), transport.calls());
 
-    // The registry it read is the host's, and the pid it checked is a process
-    // on the host — neither exists on this machine.
+    // The registry it read is the host's, and the socket it connected to is a
+    // process on the host — neither exists on this machine.
     let status = repo.claude_status().await;
     assert!(status.connected, "the session on the host should be found");
     assert_eq!(status.sessions, 1);

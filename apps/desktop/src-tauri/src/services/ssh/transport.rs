@@ -122,12 +122,20 @@ impl AgentTransport {
         };
 
         // Reader: matches answers to their questions, forwards events.
+        //
+        // When it stops, the writer stops with it. A reader that has given up
+        // — the stream closed, or a frame it could not decode — leaves a
+        // writer that would go on accepting requests nobody will ever answer,
+        // and a call made after that would wait forever. Aborting the writer
+        // drops its receiver, so the next `send` on the channel fails at once
+        // and the caller hears "disconnected" instead of nothing.
         let reader = {
             let pending = pending.clone();
             let events = events.clone();
+            let writer = writer.abort_handle();
             tokio::spawn(async move {
                 let mut stream = BufReader::new(stdout);
-                loop {
+                let reason = loop {
                     match read_frame(&mut stream).await {
                         Ok(Message::Response(Envelope { id, body })) => {
                             let waiting = pending.lock().await.remove(&id);
@@ -139,25 +147,18 @@ impl AgentTransport {
                         }
                         Ok(Message::Event(event)) => {
                             if events.send(event).is_err() {
-                                return;
+                                break "the window went away".to_owned();
                             }
                         }
-                        Ok(Message::Request(_)) => {
-                            // The agent never asks questions. A stream that
-                            // does is not the agent.
-                            fail_all(&pending, "the agent sent a request").await;
-                            return;
-                        }
-                        Err(FrameError::Closed) => {
-                            fail_all(&pending, "the connection closed").await;
-                            return;
-                        }
-                        Err(error) => {
-                            fail_all(&pending, &format!("{error}")).await;
-                            return;
-                        }
+                        // The agent never asks questions. A stream that does is
+                        // not the agent.
+                        Ok(Message::Request(_)) => break "the agent sent a request".to_owned(),
+                        Err(FrameError::Closed) => break "the connection closed".to_owned(),
+                        Err(error) => break format!("{error}"),
                     }
-                }
+                };
+                writer.abort();
+                fail_all(&pending, &reason).await;
             })
         };
 

@@ -7,17 +7,11 @@ import {
   statusLabel,
 } from './agents'
 
-const live = (sessions = 1): AgentStatus => ({ connected: true, sessions, delivering: true })
-/** A stranded session whose thread is known, so the fix can name it. */
-const stranded: AgentStatus = {
-  connected: false,
-  sessions: 1,
-  delivering: false,
-  thread: '01a06c34-0a13-7fa2-bda5-08b36460d602',
-}
-const absent: AgentStatus = { connected: false, sessions: 0, delivering: false }
-/** A session is running, but not attached to the daemon, so unreachable. */
-const undelivered: AgentStatus = { connected: false, sessions: 1, delivering: false }
+const live = (sessions = 1): AgentStatus => ({ connected: true, sessions })
+const absent: AgentStatus = { connected: false, sessions: 0 }
+/** A session is running but cannot be reached: Codex not attached to the
+ *  daemon, or Claude started without its channel flag. */
+const undelivered: AgentStatus = { connected: false, sessions: 1 }
 
 describe('statusLabel', () => {
   test('keeps "not asked yet" apart from "nothing there"', () => {
@@ -42,10 +36,11 @@ describe('statusLabel', () => {
     expect(statusLabel('codex', live(2))).toBe('Codex connected · 2 sessions')
   })
 
-  test('a running but unreachable Codex session is not called absent', () => {
+  test('a running but unreachable session is not called absent', () => {
     // The user can see their own session; claiming there is none would be a
     // claim they can immediately disprove.
     expect(statusLabel('codex', undelivered)).toBe('Codex session not connected')
+    expect(statusLabel('claude', undelivered)).toBe('Claude session not connected')
   })
 })
 
@@ -85,29 +80,31 @@ describe('composerPlaceholder', () => {
 })
 
 describe('deliveryNote', () => {
-  test('names the thread in the command that fixes a stranded session', () => {
-    // A command they can paste beats a description of a command.
-    expect(deliveryNote('codex', stranded)).toBe(
-      'Not reachable. Close it, then: codex resume 01a06c34-0a13-7fa2-bda5-08b36460d602 --remote unix://'
+  test('gives the command that reattaches a stranded Codex session', () => {
+    // A command they can paste beats a description of a command, and `-C` is
+    // part of it: a `--remote` session started without it is filed under the
+    // daemon's directory, not the repository's.
+    expect(deliveryNote('codex', undelivered)).toBe(
+      'Not reachable. Close it, then: codex resume --last --remote unix:// -C "$PWD"'
     )
   })
 
-  test('falls back to a plain instruction when no thread exists yet', () => {
-    // Before its first turn a session has no thread to name.
-    expect(deliveryNote('codex', undelivered)).toContain('codex --remote unix://')
+  test('gives the channel flag for a Claude session started without it', () => {
+    // Without the flag Claude Code drops every channel message silently, so
+    // the only useful thing to say is the launch command.
+    expect(deliveryNote('claude', undelivered)).toBe(
+      'Not reachable. Close it, then: claude --dangerously-load-development-channels server:onlydiffs'
+    )
   })
 
   test('says nothing once the session can be reached', () => {
-    // Delivery is immediate now; there is nothing left to explain.
     expect(deliveryNote('codex', live())).toBeNull()
-  })
-
-  test('says nothing for Claude, where the send is the delivery', () => {
     expect(deliveryNote('claude', live())).toBeNull()
   })
 
   test('says nothing when no session is running at all', () => {
     // The placeholder already says that; a second sentence would be noise.
     expect(deliveryNote('codex', absent)).toBeNull()
+    expect(deliveryNote('claude', absent)).toBeNull()
   })
 })

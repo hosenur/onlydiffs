@@ -20,6 +20,7 @@
 
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use tokio::process::Command;
@@ -40,12 +41,21 @@ static UPLOAD_SEQUENCE: std::sync::atomic::AtomicU32 = std::sync::atomic::Atomic
 /// Where agents live on a host, relative to the remote home directory. The same
 /// `.onlydiffs` the app uses locally, so a host that is also somebody's
 /// workstation has one directory rather than two.
-const AGENT_DIR: &str = ".onlydiffs/agent";
+pub const AGENT_DIR: &str = ".onlydiffs/agent";
+
+/// The stable name the newest agent is reachable by, relative to the home
+/// directory. `claude mcp add` is pointed at this once, and every install
+/// afterwards moves it, so the registration never goes stale.
+pub const CURRENT_LINK: &str = ".onlydiffs/agent/current";
+
+/// The name the channel is registered under with Claude Code, on hosts and
+/// locally alike.
+pub const MCP_SERVER_NAME: &str = "onlydiffs";
 
 /// FNV-1a over the binary. Not a security boundary — the file crosses an
 /// authenticated connection and is verified by being run — just a cheap,
 /// dependency-free way to tell one build from another.
-fn digest(bytes: &[u8]) -> String {
+pub(crate) fn digest(bytes: &[u8]) -> String {
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x100000001b3;
     let hash = bytes
@@ -72,16 +82,29 @@ pub fn agent_path(home: &str, triple: &str, digest: &str) -> String {
     )
 }
 
+/// The bundle's `agents/` directory, as Tauri resolves it for this platform:
+/// `Contents/Resources` on macOS, `/usr/lib/<app>` in a deb or AppImage, next
+/// to the executable on Windows. Set once at startup, because only Tauri knows
+/// the answer and only the app has Tauri.
+static BUNDLED_AGENTS: OnceLock<PathBuf> = OnceLock::new();
+
+pub fn set_bundled_agents_dir(dir: PathBuf) {
+    let _ = BUNDLED_AGENTS.set(dir);
+}
+
 /// Where the bundled agents live on this machine.
 ///
-/// Beside the executable in a packaged app, and in the workspace's target
-/// directory in a dev build — so `tauri dev` can connect to a host without a
-/// release build first.
-fn local_agent(triple: &str) -> Result<PathBuf, AppError> {
+/// The bundle's resource directory first, then beside the executable, then the
+/// workspace's target directory in a dev build — so `tauri dev` can connect to
+/// a host without a release build first.
+pub(crate) fn local_agent(triple: &str) -> Result<PathBuf, AppError> {
     let name = format!("onlydiffs-agent-{triple}");
     let exe = std::env::current_exe()
         .map_err(|error| AppError::Ssh(format!("could not locate this binary: {error}")))?;
     let mut candidates = Vec::new();
+    if let Some(dir) = BUNDLED_AGENTS.get() {
+        candidates.push(dir.join(&name));
+    }
     if let Some(dir) = exe.parent() {
         // macOS: Contents/MacOS/onlydiffs, agents in Contents/Resources/agents.
         candidates.push(dir.join("agents").join(&name));
@@ -97,9 +120,19 @@ fn local_agent(triple: &str) -> Result<PathBuf, AppError> {
         candidates.push(root.join("target/debug/onlydiffs-agent"));
     }
 
+    // The newest of them. A dev checkout accumulates builds — a release
+    // cross-compile from last week beside a debug build from a minute ago —
+    // and they all pass the version check while speaking whatever protocol
+    // they were built with. The one built last is the one that matches the
+    // code running here.
     candidates
         .into_iter()
-        .find(|path| path.is_file())
+        .filter(|path| path.is_file())
+        .max_by_key(|path| {
+            std::fs::metadata(path)
+                .and_then(|meta| meta.modified())
+                .unwrap_or(std::time::UNIX_EPOCH)
+        })
         .ok_or_else(|| {
             AppError::Ssh(format!(
                 "this build carries no agent for {triple}. A release built by CI does; a local `tauri dev` needs `cargo build -p onlydiffs-agent --release` first."
@@ -136,6 +169,7 @@ pub async fn ensure(connection: &SshConnection) -> Result<String, AppError> {
     })?;
     let destination = agent_path(&probe.home, triple, &digest(&bytes));
     if already_installed(connection, &destination).await {
+        settle(connection, &probe.home, triple, &destination).await?;
         return Ok(destination);
     }
 
@@ -178,7 +212,78 @@ pub async fn ensure(connection: &SshConnection) -> Result<String, AppError> {
             connection.target().alias
         )));
     }
+    settle(connection, &probe.home, triple, &destination).await?;
     Ok(destination)
+}
+
+/// What follows a verified install: `current` moves to it, and every other
+/// build for this platform goes.
+///
+/// The link is replaced by a rename, so there is never a moment with no
+/// `current`. The prune keeps only the file just verified; older versions have
+/// nothing pointing at them any more and were four megabytes each — a host
+/// this app had been used against for a day was holding six.
+async fn settle(
+    connection: &SshConnection,
+    home: &str,
+    triple: &str,
+    destination: &str,
+) -> Result<(), AppError> {
+    let home = home.trim_end_matches('/');
+    let directory = format!("{home}/{AGENT_DIR}");
+    let link = format!("{home}/{CURRENT_LINK}");
+    // Unique per call, not per process: two projects on one host connect at
+    // the same moment from one app, and a shared staging name had one `mv`
+    // taking the other's link out from under it.
+    let staging = format!(
+        "{link}.{}.{}",
+        std::process::id(),
+        UPLOAD_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    );
+    let keep = destination.rsplit('/').next().unwrap_or(destination).to_owned();
+    connection
+        .run_script(&format!(
+            "ln -sfn {destination} {staging} && mv -f {staging} {link} && \
+             find {directory} -maxdepth 1 -type f -name {pattern} ! -name {keep} -delete",
+            destination = shell_join(&[destination]),
+            staging = shell_join(&[&staging]),
+            link = shell_join(&[&link]),
+            directory = shell_join(&[&directory]),
+            pattern = shell_join(&[&format!("onlydiffs-agent-*-{triple}-*")]),
+            keep = shell_join(&[&keep]),
+        ))
+        .await?;
+    Ok(())
+}
+
+/// Registers the agent's channel mode with Claude Code on the host, so a
+/// session opened there can be sent to. Answers whether it managed to.
+///
+/// `claude` is routinely somewhere only a login shell can find — `~/.bun/bin`,
+/// `~/.local/bin` — so the usual places are tried by name before a login shell
+/// is asked. Not registering is not a failure of the connection: the host is
+/// still reviewable, it just cannot be talked to until someone registers by
+/// hand, and the host list says so.
+pub async fn register_claude_channel(connection: &SshConnection) -> bool {
+    let script = format!(
+        r#"c=$(command -v claude 2>/dev/null)
+if [ -z "$c" ]; then
+  for p in "$HOME/.bun/bin/claude" "$HOME/.local/bin/claude" "$HOME/.claude/local/claude" /usr/local/bin/claude /opt/homebrew/bin/claude; do
+    if [ -x "$p" ]; then c="$p"; break; fi
+  done
+fi
+if [ -z "$c" ] && [ -n "$SHELL" ]; then c=$("$SHELL" -lc 'command -v claude' 2>/dev/null </dev/null | tail -1); fi
+if [ -z "$c" ]; then echo onlydiffs-no-claude; exit 0; fi
+if "$c" mcp get {name} 2>/dev/null | grep -q "{link}"; then echo onlydiffs-registered; exit 0; fi
+"$c" mcp remove --scope user {name} >/dev/null 2>&1 || true
+if "$c" mcp add --scope user {name} -- "$HOME/{link}" channel >/dev/null 2>&1; then echo onlydiffs-registered; else echo onlydiffs-register-failed; fi"#,
+        name = MCP_SERVER_NAME,
+        link = CURRENT_LINK,
+    );
+    match connection.run_script(&script).await {
+        Ok(output) => output.contains("onlydiffs-registered"),
+        Err(_) => false,
+    }
 }
 
 /// Sends the binary over the connection that is already open.

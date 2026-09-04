@@ -2969,7 +2969,6 @@ dependencies = [
  "futures",
  "ignore",
  "image 0.24.9",
- "libc",
  "notify-debouncer-full",
  "resvg",
  "serde",

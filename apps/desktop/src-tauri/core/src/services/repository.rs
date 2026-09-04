@@ -342,6 +342,7 @@ impl Repository {
                     _ => ClaudeChannelStatus {
                         connected: false,
                         sessions: 0,
+                        unregistered: 0,
                     },
                 }
             }
@@ -365,7 +366,7 @@ impl Repository {
         }
     }
 
-    /// Whether a Codex session has worked in this repository.
+    /// Whether a Codex session for this repository can be sent to.
     pub async fn codex_status(&self) -> CodexChannelStatus {
         match &self.host {
             Host::Local => codex_channel::status(&self.root).await,
@@ -380,18 +381,13 @@ impl Repository {
                     _ => CodexChannelStatus {
                         connected: false,
                         sessions: 0,
-                        thread: None,
-                        delivering: false,
                     },
                 }
             }
         }
     }
 
-    /// Queues a message for the Codex session working in this repository.
-    ///
-    /// Unlike the Claude bridge this does not need the session to be up: Codex
-    /// keeps the message until that thread next runs.
+    /// Hands a message to the Codex session working in this repository.
     pub async fn codex_send(&self, message: &str) -> Result<String, AppError> {
         match &self.host {
             Host::Local => codex_channel::send(&self.root, message).await,

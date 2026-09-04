@@ -98,35 +98,34 @@ pub struct Project {
     pub icon: Option<ProjectIcon>,
 }
 
-/// Whether a Claude Code session is listening for the open repository.
+/// Whether a Claude Code session for the open repository can be sent to.
+///
+/// `sessions` counts every live channel, and `unregistered` the ones Claude
+/// Code is ignoring because the session was started without the channel flag.
+/// `connected` is the stricter claim: at least one session would act on a
+/// message now.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClaudeChannelStatus {
     pub connected: bool,
-    /// How many live channels are registered; more than one is possible.
+    /// How many live channels there are; more than one is possible.
     pub sessions: usize,
+    /// How many of those Claude Code did not register, so a message to them
+    /// would be dropped silently.
+    pub unregistered: usize,
 }
 
-/// Whether a Codex session has worked in the open repository.
+/// Whether a Codex session for the open repository can be sent to.
 ///
-/// A softer claim than the Claude one: it says a thread exists that a message
-/// can be queued against, not that anything is running. Codex delivers a queued
-/// message the next time that thread takes a turn, so a session that is closed
-/// is still one worth sending to.
+/// `sessions` counts every Codex process working in the repository, attached to
+/// the shared daemon or not, so the bar can say "running but not connected"
+/// about a session the user can see. `connected` is the stricter claim: the
+/// daemon holds a thread for this repository and a message would reach it now.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexChannelStatus {
     pub connected: bool,
     /// How many Codex sessions are running in this repository.
     pub sessions: usize,
-    /// The thread a running-but-unreachable session would be resumed from, so
-    /// the app can name it in the command that fixes the problem. `None` before
-    /// that session has taken its first turn, when no thread exists yet.
-    pub thread: Option<String>,
-    /// Whether Codex's shared daemon is up to deliver what is queued. A
-    /// message sent while this is false is kept, not lost, but nothing acts on
-    /// it until the daemon runs again — which is worth saying rather than
-    /// leaving the user to wonder why nothing happened.
-    pub delivering: bool,
 }
 
 /// Whether a newer release is waiting to be installed.
@@ -274,6 +273,9 @@ pub struct ConnectedHost {
     /// e.g. `Linux x86_64`.
     pub platform: Option<String>,
     pub agent_version: Option<String>,
+    /// Whether the Claude channel was registered with Claude Code on the host
+    /// when it was connected. `None` for a host that is not connected.
+    pub channel_registered: Option<bool>,
 }
 
 /// A question ssh is blocked on, on its way to the window.

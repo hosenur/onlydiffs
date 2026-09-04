@@ -19,6 +19,7 @@ use tokio::sync::{mpsc, Mutex};
 use crate::contract::{ConnectedHost, HostConnectionState};
 use crate::error::AppError;
 use crate::services::repo_watch;
+use crate::services::ssh::agent;
 use crate::services::ssh::askpass::Prompt;
 use crate::services::ssh::connection::SshConnection;
 use crate::services::ssh::target::{self, SshTarget};
@@ -37,6 +38,9 @@ struct Connected {
     transport: AgentTransport,
     /// The alias as the user typed it, which is what every path is shown with.
     label: String,
+    /// Whether the Claude channel was registered with Claude Code on the host
+    /// when this connection was made.
+    channel_registered: bool,
 }
 
 /// Prompts waiting for the user, by id. Held so an answer arriving from the
@@ -76,6 +80,7 @@ impl SshHosts {
                     host.connection.probe().arch
                 )),
                 agent_version: Some(host.transport.agent_version().to_owned()),
+                channel_registered: Some(host.channel_registered),
             })
             .collect();
         hosts.sort_by(|a, b| a.alias.cmp(&b.alias));
@@ -138,6 +143,10 @@ impl SshHosts {
         });
 
         let transport = AgentTransport::start(&connection, events).await?;
+        // The agent is on the host now, so Claude Code there can be pointed at
+        // its channel mode. Best effort: a host without `claude` is still a
+        // host worth reviewing on.
+        let channel_registered = agent::register_claude_channel(&connection).await;
 
         self.connected.lock().await.insert(
             alias.clone(),
@@ -146,6 +155,7 @@ impl SshHosts {
                 connection,
                 transport,
                 label: alias.clone(),
+                channel_registered,
             },
         );
         let _ = app.emit(HOST_CHANGED, ());

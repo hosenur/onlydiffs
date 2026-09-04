@@ -158,11 +158,8 @@ pub async fn send_claude_message(
     Ok(repo.claude_send(&request.message).await.into())
 }
 
-/// Queues a message for the Codex session working in the open repository.
-///
-/// The Codex counterpart to `send_claude_message`, and the one difference worth
-/// knowing is that this one works when nothing is running: Codex keeps the
-/// message until that thread next takes a turn.
+/// Hands a message to the Codex session working in the open repository. Like
+/// its Claude counterpart it refuses when no session is running there.
 #[tauri::command]
 pub async fn send_codex_message(
     state: State<'_, AppState>,
@@ -181,8 +178,6 @@ pub async fn codex_status(state: State<'_, AppState>) -> Result<IpcResult<CodexC
         return Ok(IpcResult::Ok(CodexChannelStatus {
             connected: false,
             sessions: 0,
-            thread: None,
-            delivering: false,
         }));
     };
     Ok(IpcResult::Ok(repo.codex_status().await))
@@ -219,6 +214,7 @@ pub async fn claude_status(state: State<'_, AppState>) -> Result<IpcResult<Claud
         return Ok(IpcResult::Ok(ClaudeChannelStatus {
             connected: false,
             sessions: 0,
+            unregistered: 0,
         }));
     };
     Ok(IpcResult::Ok(repo.claude_status().await))
@@ -409,6 +405,7 @@ pub async fn list_hosts(state: State<'_, AppState>) -> Result<IpcResult<Vec<Conn
             git_version: None,
             platform: None,
             agent_version: None,
+            channel_registered: None,
         });
     }
     hosts.sort_by(|a, b| a.alias.cmp(&b.alias));

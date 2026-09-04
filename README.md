@@ -85,24 +85,29 @@ The Groq key never crosses the connection. Commit messages and icon choices are
 decided here, from inputs collected there.
 
 **Agent sessions follow the repository.** A session reviewing a checkout on a
-build box is a process on that build box, listening on that machine's loopback,
-with a registration naming a path in that machine's filesystem — so the agent
-reads the host's `~/.onlydiffs/claude-channels`, matches the registration
-against the repository root *there*, and posts to loopback *there*. Reading the
-registry from your Mac would find nothing, and finding something would be
-worse: it would mean sending a line reference to a session that has never seen
-that repository.
+build box is a process on that build box, with its channel socket in that
+machine's home directory — so the agent reads the host's
+`~/.onlydiffs/claude-channels`, matches the registration against the repository
+root *there*, and writes to the socket *there*. Reading the registry from your
+Mac would find nothing, and finding something would be worse: it would mean
+sending a line reference to a session that has never seen that repository.
 
-Which means the channel has to be set up on the host, in that checkout — the
-same `channel:setup` this repo documents, run over there. Nothing about the
-setup changes; it just has to be on the machine the code is on.
+The channel itself is the agent binary in its `channel` mode, so a host that
+has the agent has the channel. Connecting to a host registers it with the
+Claude Code installed there, through the stable path
+`~/.onlydiffs/agent/current` that every upload keeps current. What still has to
+happen on the host is the same thing as on your Mac: the session has to be
+started with `claude --dangerously-load-development-channels server:onlydiffs`,
+or Claude Code drops what the channel delivers.
 
-Codex works the same way for the same reason, by a different route. It has no
-listener; it has a queue, and the thread to queue against is found by reading
-the transcripts under `~/.codex/sessions` — an index of what has run on *that*
-machine. So the agent reads it there, matches on the repository root there, and
-runs `codex queue` there. The message is kept until the session next takes a
-turn, so unlike the Claude channel it does not need one to be open.
+Codex works the same way for the same reason, by a different route. Only its
+shared app-server daemon can put a message in front of a running session, and
+the daemon's socket, the threads it holds, and the process table that says a
+session is actually running are all on *that* machine. So the agent asks the
+daemon there, matches the thread's working directory against the repository
+root there, and queues the message there. The session has to have been started
+against the daemon with the repository named, `codex --remote unix:// -C "$PWD"`,
+which is what the composer tells you when it has not.
 
 Images pasted into the composer follow the repository for the same reason. The
 bytes cross the connection once, the agent writes them into the repository's git
