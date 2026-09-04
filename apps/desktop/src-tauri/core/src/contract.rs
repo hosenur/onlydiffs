@@ -116,8 +116,12 @@ pub struct ClaudeChannelStatus {
 #[serde(rename_all = "camelCase")]
 pub struct CodexChannelStatus {
     pub connected: bool,
-    /// How many threads have worked in this repository recently.
+    /// How many Codex sessions are running in this repository.
     pub sessions: usize,
+    /// The thread a running-but-unreachable session would be resumed from, so
+    /// the app can name it in the command that fixes the problem. `None` before
+    /// that session has taken its first turn, when no thread exists yet.
+    pub thread: Option<String>,
     /// Whether Codex's shared daemon is up to deliver what is queued. A
     /// message sent while this is false is kept, not lost, but nothing acts on
     /// it until the daemon runs again — which is worth saying rather than

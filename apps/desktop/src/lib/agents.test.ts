@@ -8,6 +8,13 @@ import {
 } from './agents'
 
 const live = (sessions = 1): AgentStatus => ({ connected: true, sessions, delivering: true })
+/** A stranded session whose thread is known, so the fix can name it. */
+const stranded: AgentStatus = {
+  connected: false,
+  sessions: 1,
+  delivering: false,
+  thread: '01a06c34-0a13-7fa2-bda5-08b36460d602',
+}
 const absent: AgentStatus = { connected: false, sessions: 0, delivering: false }
 /** A session is running, but not attached to the daemon, so unreachable. */
 const undelivered: AgentStatus = { connected: false, sessions: 1, delivering: false }
@@ -78,8 +85,16 @@ describe('composerPlaceholder', () => {
 })
 
 describe('deliveryNote', () => {
-  test('tells the user how to make an unreachable session reachable', () => {
-    expect(deliveryNote('codex', undelivered)).toContain('--remote unix://')
+  test('names the thread in the command that fixes a stranded session', () => {
+    // A command they can paste beats a description of a command.
+    expect(deliveryNote('codex', stranded)).toBe(
+      'Not reachable. Close it, then: codex resume 01a06c34-0a13-7fa2-bda5-08b36460d602 --remote unix://'
+    )
+  })
+
+  test('falls back to a plain instruction when no thread exists yet', () => {
+    // Before its first turn a session has no thread to name.
+    expect(deliveryNote('codex', undelivered)).toContain('codex --remote unix://')
   })
 
   test('says nothing once the session can be reached', () => {

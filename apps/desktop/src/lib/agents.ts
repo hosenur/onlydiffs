@@ -32,6 +32,8 @@ export interface AgentStatus {
   connected: boolean
   sessions: number
   delivering?: boolean
+  /** Codex only: the thread a stranded session would be resumed from. */
+  thread?: string | null
 }
 
 /** Whether a session for the open repository can be sent to. */
@@ -86,12 +88,15 @@ export function composerPlaceholder(agent: Agent, connected: boolean): string {
  */
 export function deliveryNote(agent: Agent, status: AgentStatus | null): string | null {
   if (agent !== 'codex') return null
-  // A session that is open but unreachable is the one case worth explaining:
-  // the fix is a flag on the command they already run.
-  if (!status?.connected && (status?.sessions ?? 0) > 0) {
-    return 'Start the session with `codex --remote unix://` so OnlyDiffs can reach it.'
-  }
-  return null
+  if (status?.connected || (status?.sessions ?? 0) === 0) return null
+
+  // A session is open but was not started against the daemon, so nothing can
+  // reach it. The fix is to close it and resume the same thread attached — so
+  // give the command with the thread already in it rather than a description
+  // of the command.
+  return status?.thread
+    ? `Not reachable. Close it, then: codex resume ${status.thread} --remote unix://`
+    : 'Not reachable. Restart the session with: codex --remote unix://'
 }
 
 /**

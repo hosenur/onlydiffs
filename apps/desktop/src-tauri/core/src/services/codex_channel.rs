@@ -308,6 +308,7 @@ pub async fn status(root: &Path) -> CodexChannelStatus {
         return CodexChannelStatus {
             connected: false,
             sessions: 0,
+            thread: None,
             delivering: false,
         };
     }
@@ -315,9 +316,22 @@ pub async fn status(root: &Path) -> CodexChannelStatus {
     // only a session started against the shared daemon is reachable, and saying
     // so is more use than reporting a session that cannot be sent to.
     let reachable = deliverable_thread(root).await.is_some();
+    // The newest thread for the repository, which is the one a session that is
+    // running here would be resumed from. Only useful when it cannot be
+    // reached, which is exactly when the app needs to name it.
+    let thread = if reachable {
+        None
+    } else {
+        threads(root)
+            .await
+            .ok()
+            .and_then(|found| found.into_iter().next())
+            .map(|thread| thread.id)
+    };
     CodexChannelStatus {
         connected: reachable,
         sessions,
+        thread,
         delivering: reachable,
     }
 }

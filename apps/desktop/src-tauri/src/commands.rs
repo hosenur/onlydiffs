@@ -181,6 +181,7 @@ pub async fn codex_status(state: State<'_, AppState>) -> Result<IpcResult<CodexC
         return Ok(IpcResult::Ok(CodexChannelStatus {
             connected: false,
             sessions: 0,
+            thread: None,
             delivering: false,
         }));
     };

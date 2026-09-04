@@ -234,8 +234,14 @@ export interface ClaudeChannelStatus {
  */
 export interface CodexChannelStatus {
   connected: boolean;
-  /** How many threads have worked in this repository recently. */
+  /** How many Codex sessions are running in this repository. */
   sessions: number;
+  /**
+   * The thread a running-but-unreachable session would be resumed from, so the
+   * command that fixes it can name one. `null` before that session's first
+   * turn, when no thread exists yet.
+   */
+  thread: string | null;
   /**
    * Whether Codex's shared daemon is up to deliver what is queued. A message
    * sent while this is false is kept rather than lost, but nothing acts on it

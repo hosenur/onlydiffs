@@ -380,6 +380,7 @@ impl Repository {
                     _ => CodexChannelStatus {
                         connected: false,
                         sessions: 0,
+                        thread: None,
                         delivering: false,
                     },
                 }
