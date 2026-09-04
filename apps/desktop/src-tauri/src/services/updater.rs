@@ -16,10 +16,28 @@ use tauri::AppHandle;
 #[cfg(all(desktop, not(debug_assertions)))]
 use tauri_plugin_updater::UpdaterExt;
 
+/// How long one address gets to answer before the next is tried. Well past a
+/// working connection, which is tens of milliseconds, and far short of the
+/// twenty seconds the kernel would otherwise spend on an address that is
+/// simply not there.
+#[cfg(all(desktop, not(debug_assertions)))]
+const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+
 #[cfg(all(desktop, not(debug_assertions)))]
 pub async fn check(app: &AppHandle, state: &AppState) -> Result<UpdateStatus, AppError> {
     let found = app
-        .updater()
+        .updater_builder()
+        // A connect timeout, which is not the same as giving up sooner.
+        //
+        // `release-assets.githubusercontent.com` resolves to four addresses,
+        // and a network where one of them black-holes SYNs — a stale route, a
+        // filtering rule — leaves the client working through the OS retransmit
+        // schedule before it tries the next: measured at twenty seconds for a
+        // file that takes a quarter of a second to serve. The timeout applies
+        // per address, so a dead one costs three seconds instead of twenty and
+        // the next one answers. Measured on such a network: 20.5s to 2.1s.
+        .configure_client(|client| client.connect_timeout(CONNECT_TIMEOUT))
+        .build()
         .map_err(|error| AppError::Updater(format!("the updater is unavailable: {error}")))?
         .check()
         .await
