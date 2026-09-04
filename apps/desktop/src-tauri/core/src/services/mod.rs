@@ -7,6 +7,7 @@
 
 pub mod attachment;
 pub mod claude_channel;
+pub mod codex_channel;
 pub mod diff;
 pub mod file_tree;
 // Private on purpose: `repository` is the only caller, and that is what stops a

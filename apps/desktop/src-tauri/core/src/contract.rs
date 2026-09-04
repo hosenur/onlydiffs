@@ -106,6 +106,25 @@ pub struct ClaudeChannelStatus {
     pub sessions: usize,
 }
 
+/// Whether a Codex session has worked in the open repository.
+///
+/// A softer claim than the Claude one: it says a thread exists that a message
+/// can be queued against, not that anything is running. Codex delivers a queued
+/// message the next time that thread takes a turn, so a session that is closed
+/// is still one worth sending to.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexChannelStatus {
+    pub connected: bool,
+    /// How many threads have worked in this repository recently.
+    pub sessions: usize,
+    /// Whether Codex's shared daemon is up to deliver what is queued. A
+    /// message sent while this is false is kept, not lost, but nothing acts on
+    /// it until the daemon runs again — which is worth saying rather than
+    /// leaving the user to wonder why nothing happened.
+    pub delivering: bool,
+}
+
 /// Whether a newer release is waiting to be installed.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

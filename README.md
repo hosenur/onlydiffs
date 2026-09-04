@@ -84,7 +84,7 @@ bundle does not have.
 The Groq key never crosses the connection. Commit messages and icon choices are
 decided here, from inputs collected there.
 
-**Claude sessions follow the repository.** A session reviewing a checkout on a
+**Agent sessions follow the repository.** A session reviewing a checkout on a
 build box is a process on that build box, listening on that machine's loopback,
 with a registration naming a path in that machine's filesystem — so the agent
 reads the host's `~/.onlydiffs/claude-channels`, matches the registration
@@ -96,6 +96,13 @@ that repository.
 Which means the channel has to be set up on the host, in that checkout — the
 same `channel:setup` this repo documents, run over there. Nothing about the
 setup changes; it just has to be on the machine the code is on.
+
+Codex works the same way for the same reason, by a different route. It has no
+listener; it has a queue, and the thread to queue against is found by reading
+the transcripts under `~/.codex/sessions` — an index of what has run on *that*
+machine. So the agent reads it there, matches on the repository root there, and
+runs `codex queue` there. The message is kept until the session next takes a
+turn, so unlike the Claude channel it does not need one to be open.
 
 Images pasted into the composer follow the repository for the same reason. The
 bytes cross the connection once, the agent writes them into the repository's git

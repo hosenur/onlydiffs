@@ -579,6 +579,35 @@ async fn a_pasted_image_is_written_on_the_host_and_named_by_its_path_there() {
     remote.close().await;
 }
 
+/// The Codex bridge, for a repository on the far side of a connection.
+///
+/// Codex is addressed by reading an index of threads on the machine the
+/// repository is on, so the answer has to come from the *host* — a laptop's
+/// index would describe the wrong machine's sessions. Nothing has run Codex in
+/// this checkout, so the honest answer is "no session", and the point of the
+/// test is that the answer travelled rather than being decided locally.
+#[tokio::test]
+async fn the_codex_bridge_answers_for_the_host_rather_than_this_machine() {
+    let daemon = sshd_or_skip!();
+    let remote = remote_or_skip!(&daemon);
+    let project = RemoteRepo::new();
+    project.write("seed.txt", "one\n");
+    project.git(&["add", "-A"]);
+    project.git(&["commit", "-q", "-m", "seed"]);
+    let repo = remote.repository(&project);
+
+    let status = repo.codex_status().await;
+    assert!(!status.connected, "no Codex thread has worked in this checkout");
+    assert_eq!(status.sessions, 0);
+
+    // And a send refuses over the wire with the tag it refused with there,
+    // rather than arriving as some generic remote failure.
+    let refused = repo.codex_send("about this line").await;
+    assert_eq!(refused.expect_err("refused").tag(), "CodexChannelError");
+
+    remote.close().await;
+}
+
 #[tokio::test]
 async fn reading_a_remote_file_refuses_to_exceed_the_limit_it_was_given() {
     let daemon = sshd_or_skip!();

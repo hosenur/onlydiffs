@@ -11,7 +11,8 @@ use tauri::{AppHandle, Manager, State};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
 use crate::contract::{
-    AppSettings, AppTheme, ChangeStatus, ClaudeChannelStatus, Commit, ConnectedHost,
+    AppSettings, AppTheme, ChangeStatus, ClaudeChannelStatus, CodexChannelStatus, Commit,
+    ConnectedHost,
     FullFileContents, HostConnectionState, Project, ProjectLocation, RepoDiff, SshHostEntry,
     UnknownHostKeyPrompt, UpdateStatus,
 };
@@ -46,6 +47,11 @@ pub struct GetHistoryRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct SendClaudeMessageRequest {
+    message: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SendCodexMessageRequest {
     message: String,
 }
 
@@ -150,6 +156,35 @@ pub async fn send_claude_message(
 ) -> Result<IpcResult<String>, ()> {
     let repo = repository!(state);
     Ok(repo.claude_send(&request.message).await.into())
+}
+
+/// Queues a message for the Codex session working in the open repository.
+///
+/// The Codex counterpart to `send_claude_message`, and the one difference worth
+/// knowing is that this one works when nothing is running: Codex keeps the
+/// message until that thread next takes a turn.
+#[tauri::command]
+pub async fn send_codex_message(
+    state: State<'_, AppState>,
+    request: SendCodexMessageRequest,
+) -> Result<IpcResult<String>, ()> {
+    let repo = repository!(state);
+    Ok(repo.codex_send(&request.message).await.into())
+}
+
+#[tauri::command]
+pub async fn codex_status(state: State<'_, AppState>) -> Result<IpcResult<CodexChannelStatus>, ()> {
+    // Polled beside the Claude indicator and on the same terms: a project that
+    // is not open, or a host that is not reachable, is "no session" rather than
+    // a failure worth surfacing four times a minute.
+    let Ok(repo) = state.repository().await else {
+        return Ok(IpcResult::Ok(CodexChannelStatus {
+            connected: false,
+            sessions: 0,
+            delivering: false,
+        }));
+    };
+    Ok(IpcResult::Ok(repo.codex_status().await))
 }
 
 /// Writes a pasted image where the Claude session for the open repository can

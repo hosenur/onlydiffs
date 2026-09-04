@@ -150,6 +150,10 @@ export interface SendClaudeMessageRequest {
   message: string;
 }
 
+export interface SendCodexMessageRequest {
+  message: string;
+}
+
 export interface CommitAllRequest {
   message: string;
 }
@@ -220,6 +224,26 @@ export interface ClaudeChannelStatus {
   sessions: number;
 }
 
+/**
+ * Whether a Codex session has worked in the open repository.
+ *
+ * A softer claim than the Claude one. Codex is reached through a durable
+ * per-thread queue rather than a live listener, so this says a thread exists
+ * that a message can be queued against — not that anything is running. A
+ * message sent to a closed session is delivered when it next opens.
+ */
+export interface CodexChannelStatus {
+  connected: boolean;
+  /** How many threads have worked in this repository recently. */
+  sessions: number;
+  /**
+   * Whether Codex's shared daemon is up to deliver what is queued. A message
+   * sent while this is false is kept rather than lost, but nothing acts on it
+   * until the daemon runs again.
+   */
+  delivering: boolean;
+}
+
 /** Whether a newer release is waiting to be installed. */
 export interface UpdateStatus {
   available: boolean;
@@ -265,6 +289,8 @@ export const Command = {
   stageFile: "stage_file",
   generateCommitMessage: "generate_commit_message",
   sendClaudeMessage: "send_claude_message",
+  sendCodexMessage: "send_codex_message",
+  codexStatus: "codex_status",
   attachImage: "attach_image",
   writeClipboardText: "write_clipboard_text",
   listProjects: "list_projects",
@@ -303,6 +329,8 @@ export type BackendErrorTag =
   | "InvalidPathError"
   | "CommitMessageError"
   | "ClaudeChannelError"
+  /** A message could not be queued for a Codex session. */
+  | "CodexChannelError"
   /** A pasted image could not be read or written down. */
   | "AttachmentError"
   | "ClipboardError"

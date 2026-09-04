@@ -21,7 +21,9 @@ use onlydiffs_core::protocol::{
 };
 use onlydiffs_core::services::repository::Repository;
 use onlydiffs_core::services::watcher::RepoWatcher;
-use onlydiffs_core::services::{attachment, claude_channel, diff, file_tree, history, icon_scan};
+use onlydiffs_core::services::{
+    attachment, claude_channel, codex_channel, diff, file_tree, history, icon_scan,
+};
 use tokio::io::{stdin, stdout, AsyncWriteExt, BufReader};
 use tokio::sync::{mpsc, Mutex};
 
@@ -246,6 +248,17 @@ async fn handle(
         Request::ClaudeSend { root, message } => {
             match claude_channel::send(std::path::Path::new(&root), &message).await {
                 Ok(id) => Response::ClaudeSent(id),
+                Err(error) => failed(error),
+            }
+        }
+
+        Request::CodexStatus { root } => {
+            Response::CodexStatus(codex_channel::status(std::path::Path::new(&root)).await)
+        }
+
+        Request::CodexSend { root, message } => {
+            match codex_channel::send(std::path::Path::new(&root), &message).await {
+                Ok(id) => Response::CodexSent(id),
                 Err(error) => failed(error),
             }
         }

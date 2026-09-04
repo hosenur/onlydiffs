@@ -25,11 +25,13 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::contract::{ChangeStatus, ClaudeChannelStatus, Commit, FullFileContents, RepoDiff};
+use crate::contract::{ChangeStatus, ClaudeChannelStatus, CodexChannelStatus, Commit, FullFileContents, RepoDiff};
 use crate::error::AppError;
 use crate::protocol::{Request, Response};
 use crate::services::icon_scan::Candidate;
-use crate::services::{attachment, claude_channel, diff, file_tree, git, history, icon_scan};
+use crate::services::{
+    attachment, claude_channel, codex_channel, diff, file_tree, git, history, icon_scan,
+};
 
 /// A file's stat, reduced to the three things the app actually reads. Enough
 /// for the icon scanner's size and mtime checks, and small enough to cross a
@@ -145,6 +147,7 @@ impl Repository {
             "InvalidPathError" => AppError::InvalidPath(message),
             "CommitMessageError" => AppError::CommitMessage(message),
             "ClaudeChannelError" => AppError::ClaudeChannel(message),
+            "CodexChannelError" => AppError::CodexChannel(message),
             "AttachmentError" => AppError::Attachment(message),
             "NoProjectOpenError" => AppError::NoProjectOpen(message),
             "InvalidProjectError" => AppError::InvalidProject(message),
@@ -356,6 +359,48 @@ impl Repository {
                 };
                 match self.call(request).await? {
                     Response::ClaudeSent(id) => Ok(id),
+                    other => Err(unexpected(other)),
+                }
+            }
+        }
+    }
+
+    /// Whether a Codex session has worked in this repository.
+    pub async fn codex_status(&self) -> CodexChannelStatus {
+        match &self.host {
+            Host::Local => codex_channel::status(&self.root).await,
+            Host::Remote { .. } => {
+                let request = Request::CodexStatus {
+                    root: self.root_string(),
+                };
+                match self.call(request).await {
+                    Ok(Response::CodexStatus(status)) => status,
+                    // A host that cannot be reached has no session to report,
+                    // which is the same answer as a host with none.
+                    _ => CodexChannelStatus {
+                        connected: false,
+                        sessions: 0,
+                        delivering: false,
+                    },
+                }
+            }
+        }
+    }
+
+    /// Queues a message for the Codex session working in this repository.
+    ///
+    /// Unlike the Claude bridge this does not need the session to be up: Codex
+    /// keeps the message until that thread next runs.
+    pub async fn codex_send(&self, message: &str) -> Result<String, AppError> {
+        match &self.host {
+            Host::Local => codex_channel::send(&self.root, message).await,
+            Host::Remote { .. } => {
+                let request = Request::CodexSend {
+                    root: self.root_string(),
+                    message: message.to_owned(),
+                };
+                match self.call(request).await? {
+                    Response::CodexSent(id) => Ok(id),
                     other => Err(unexpected(other)),
                 }
             }

@@ -1,18 +1,12 @@
-import { useEffect, useState } from 'react'
 import { AppComposer } from '@/components/app-composer'
+import { useEffect, useState } from 'react'
+import { useAgentStatus } from '@/hooks/use-agent-status'
 import { Plug2Outline18, PlugOffOutline18 } from '@/icons'
+import { AGENTS, type Agent, statusLabel } from '@/lib/agents'
 import { useLineReference } from '@/lib/line-reference'
-import { claudeStatus } from '@/lib/ipc'
 import { reviewProgress } from '@/lib/review'
 import { useUpdate } from '@/lib/update'
-import type { ClaudeChannelStatus, FileChange } from '@shared/contract'
-
-/**
- * How often to re-ask. A session can start or stop at any moment and nothing
- * pushes the change, so this polls — cheaply, since answering only means
- * reading a small directory.
- */
-const POLL_MS = 4000
+import type { FileChange } from '@shared/contract'
 
 /**
  * Holds the last non-null value so a surface can keep rendering its content
@@ -29,54 +23,17 @@ function useRetained<T>(value: T | null): T | null {
   return value ?? retained
 }
 
-/**
- * `null` is "not asked yet", worth keeping apart from a known-absent session so
- * the bar does not claim disconnection before it has looked.
- */
-function channelLabel(status: ClaudeChannelStatus | null) {
-  if (status === null) return 'Checking for Claude…'
-  if (!status.connected) return 'No Claude session'
-  return status.sessions > 1 ? `Claude connected · ${status.sessions} sessions` : 'Claude connected'
-}
-
 interface AppToolbarProps {
   /** The current diff, for the review count at the right end. */
   files: FileChange[]
 }
 
 export function AppToolbar({ files }: AppToolbarProps) {
-  const [status, setStatus] = useState<ClaudeChannelStatus | null>(null)
+  const statuses = useAgentStatus()
   const { reference, clear } = useLineReference()
   // The composer animates out, so it outlives the reference that opened it.
   const shown = useRetained(reference)
   const { offer } = useUpdate()
-
-  useEffect(() => {
-    let active = true
-    let timer: ReturnType<typeof setTimeout>
-
-    const check = async () => {
-      try {
-        const next = await claudeStatus()
-        if (active) setStatus(next)
-      } catch {
-        // A failed probe means the same thing as no channel, and saying so is
-        // more use than an error nobody can act on.
-        if (active) setStatus({ connected: false, sessions: 0 })
-      }
-      if (active) timer = setTimeout(check, POLL_MS)
-    }
-
-    void check()
-    return () => {
-      active = false
-      clearTimeout(timer)
-    }
-  }, [])
-
-  const connected = status?.connected ?? false
-  const label = channelLabel(status)
-  const Plug = connected ? Plug2Outline18 : PlugOffOutline18
 
   const progress = reviewProgress(files)
   const isSwept = progress.reviewed === progress.total
@@ -89,15 +46,17 @@ export function AppToolbar({ files }: AppToolbarProps) {
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-12">
           {/* Mounted from the first reference onwards and kept mounted after
               it clears, so dismissal has something to animate. */}
-          <AppComposer reference={reference} shown={shown} connected={connected} onClose={clear} />
+          <AppComposer reference={reference} shown={shown} statuses={statuses} onClose={clear} />
         </div>
       )}
 
-      <footer className="flex shrink-0 items-center gap-1.5 border-t bg-navbar px-3 py-1.5 font-mono text-[11px]">
-        <Plug aria-hidden className="size-3 shrink-0 text-muted-fg" />
-        <span aria-live="polite" className={connected ? 'text-fg' : 'text-muted-fg'}>
-          {label}
-        </span>
+      <footer className="flex shrink-0 items-center gap-3 border-t bg-navbar px-3 py-1.5 font-mono text-[11px]">
+        {/* One indicator per agent. Both are shown even when only one is
+            installed: "No Codex session" is how someone finds out the composer
+            can send there at all. */}
+        {AGENTS.map((agent) => (
+          <AgentIndicator key={agent} agent={agent} status={statuses[agent]} />
+        ))}
 
         <span className="ms-auto flex items-center gap-3">
           {/* A mention, not a prompt: the install lives in the command menu, so
@@ -122,5 +81,25 @@ export function AppToolbar({ files }: AppToolbarProps) {
         </span>
       </footer>
     </>
+  )
+}
+
+function AgentIndicator({
+  agent,
+  status,
+}: {
+  agent: Agent
+  status: { connected: boolean; sessions: number } | null
+}) {
+  const connected = status?.connected ?? false
+  const Plug = connected ? Plug2Outline18 : PlugOffOutline18
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <Plug aria-hidden className="size-3 shrink-0 text-muted-fg" />
+      <span aria-live="polite" className={connected ? 'text-fg' : 'text-muted-fg'}>
+        {statusLabel(agent, status)}
+      </span>
+    </span>
   )
 }

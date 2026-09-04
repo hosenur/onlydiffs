@@ -56,11 +56,30 @@ no artwork, or none the model would use, keep the cube fallback.
 ### Talking to a session
 
 Clicking a line in a diff opens a composer for it. What it sends is the line
-reference and what you typed, over the channel `bun run channel:setup`
-registers, to the Claude Code session running in that repository.
+reference and what you typed, to a coding agent working in that repository.
+Claude Code and Codex are both offered; the status bar says which of them has a
+session, and the composer shows a picker when both do.
 
-Images can be pasted into it. They do not travel in the message — the channel
-carries 64 KB of text and a screenshot is megabytes of binary — so the image is
+**Claude Code** is reached over the channel `bun run channel:setup` registers: a
+loopback server per session, so a send reaches a process that is listening right
+now, and fails when none is.
+
+**Codex** is reached through its own durable queue. There is nothing listening —
+`codex queue` writes the message to `~/.codex/queue_1.sqlite` against the thread
+whose working directory is this repository, and Codex delivers it the next time
+that thread takes a turn. So a message can be left for a session that is closed,
+which the Claude side cannot do. Threads are found by reading the headers of
+Codex's own transcripts under `~/.codex/sessions`, looking back a fortnight.
+
+Two things follow from the queue being drained by Codex rather than by us. The
+shared app-server daemon has to be running, or the message waits indefinitely —
+`codex app-server daemon start`, and the composer says so when it is not. And a
+session started as plain `codex` will not *show* the message: the daemon runs
+that turn headlessly, so the work happens but the terminal stays quiet. Start
+the session with `codex --remote unix://` to watch it arrive.
+
+Images can be pasted into it. They do not travel in the message — the transport
+carries text and a screenshot is megabytes of binary — so the image is
 written to the repository's git directory and the message names the path
 instead. That is the only form that works for a project on a host, where the
 session is a process on the far side of an SSH connection: the bytes cross once,

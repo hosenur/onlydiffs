@@ -3,21 +3,113 @@ import { PaperAirplaneIcon, XMarkIcon } from '@heroicons/react/16/solid'
 import { Button } from '@onlydiffs/ui/button'
 import { Input, InputGroup } from '@onlydiffs/ui/input'
 import { TextField } from '@onlydiffs/ui/text-field'
+import type { AgentStatuses } from '@/hooks/use-agent-status'
 import { type Attachments, useAttachments } from '@/hooks/use-attachments'
+import {
+  AGENTS,
+  AGENT_NAMES,
+  type Agent,
+  composerPlaceholder,
+  deliver,
+  deliveryNote,
+  preferredAgent,
+} from '@/lib/agents'
 import { composeMessage, pastedImages } from '@/lib/attachments'
 import type { LineReference } from '@/lib/line-reference'
-import { sendClaudeMessage } from '@/lib/ipc'
 
 /**
- * The floating input that carries a line — and anything pasted about it — to
- * the Claude session for the open repository.
+ * The floating input that carries a line — and anything pasted about it — to a
+ * coding agent working in the open repository.
  *
  * Text is only half of it. An image pasted here is written down on the machine
  * the repository is on, and what the message carries is where it landed; see
  * `hooks/use-attachments` for why that happens at the paste rather than at the
  * send, and `src-tauri/core/src/services/attachment.rs` for why it lands where
  * it does.
+ *
+ * Which agent it goes to is a choice, remembered across lines — see `lib/agents`
+ * for what the two of them do and do not have in common.
  */
+
+/** Where the chosen agent is remembered, so picking one is a decision made
+ *  once rather than on every line. */
+const CHOICE_KEY = 'onlydiffs.composer.agent'
+
+function rememberedAgent(): Agent | null {
+  try {
+    const stored = localStorage.getItem(CHOICE_KEY)
+    return AGENTS.includes(stored as Agent) ? (stored as Agent) : null
+  } catch {
+    // A browser with site data blocked still gets a working composer; it just
+    // does not remember which agent was picked.
+    return null
+  }
+}
+
+function rememberAgent(agent: Agent) {
+  try {
+    localStorage.setItem(CHOICE_KEY, agent)
+  } catch {
+    // Not remembering is not worth surfacing.
+  }
+}
+
+/**
+ * The agent picker, shown only when there is a choice to make.
+ *
+ * One agent installed is not a decision, and a toggle that can only be in one
+ * position is furniture. It appears when both have a session, and also when the
+ * chosen one has gone away — that is exactly the moment the user needs to see
+ * where the message would otherwise go.
+ */
+function AgentPicker({
+  agent,
+  picked,
+  statuses,
+  onPick,
+}: {
+  /** The agent that would actually be sent to. */
+  agent: Agent
+  /** What the user chose, which is not always the same thing. */
+  picked: Agent | null
+  statuses: AgentStatuses
+  onPick: (next: Agent) => void
+}) {
+  // `picked` is in here as well as `agent` so that an agent whose session has
+  // gone away stays on screen: it is the one the user asked for, and watching
+  // the toggle vanish while the message quietly goes somewhere else is worse
+  // than seeing it sit there greyed out.
+  const offered = AGENTS.filter(
+    (candidate) =>
+      statuses[candidate]?.connected || candidate === agent || candidate === picked
+  )
+  if (offered.length < 2) return null
+
+  return (
+    <div className="flex items-center gap-0.5 rounded-md border bg-bg p-0.5">
+      {offered.map((candidate) => (
+        <button
+          key={candidate}
+          type="button"
+          onClick={() => onPick(candidate)}
+          aria-pressed={candidate === agent}
+          title={
+            statuses[candidate]?.connected
+              ? `Send to ${AGENT_NAMES[candidate]}`
+              : `No ${AGENT_NAMES[candidate]} session`
+          }
+          className={`rounded px-1.5 py-0.5 text-[10px] transition ${
+            candidate === agent
+              ? 'bg-primary-subtle text-primary-subtle-fg'
+              : 'text-muted-fg hover:text-fg'
+          }`}
+        >
+          {AGENT_NAMES[candidate]}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 /**
  * The pasted images, above the field they were pasted into.
@@ -61,18 +153,24 @@ interface AppComposerProps {
   /** What to draw: the live reference, or the last one there was, so the bar
    *  keeps its content on the way out. */
   shown: LineReference
-  /** Whether there is a session to send to. */
-  connected: boolean
+  /** Which agents have a session for this repository. */
+  statuses: AgentStatuses
   /** Dismisses the bar — on Escape, on the ×, and once a message is away. */
   onClose: () => void
 }
 
-export function AppComposer({ reference, shown, connected, onClose }: AppComposerProps) {
+export function AppComposer({ reference, shown, statuses, onClose }: AppComposerProps) {
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // `null` until the user picks one, which is what lets the default follow
+  // whichever agent is actually available instead of freezing on first render.
+  const [picked, setPicked] = useState<Agent | null>(rememberedAgent)
   const images = useAttachments()
   const input = useRef<HTMLInputElement>(null)
+
+  const agent = preferredAgent(picked, statuses)
+  const connected = statuses[agent]?.connected ?? false
 
   // A fresh line means a fresh message; carrying the old draft across would
   // silently attach it to a line the user did not mean. Dismissal deliberately
@@ -98,10 +196,10 @@ export function AppComposer({ reference, shown, connected, onClose }: AppCompose
     setIsSending(true)
     setError(null)
     try {
-      // The full path, not the shortened label on screen — Claude has to be
+      // The full path, not the shortened label on screen — the agent has to be
       // able to open the file. Same for the images: what crosses is where they
       // landed on the repository's own machine.
-      await sendClaudeMessage(composeMessage(reference.label, draft, images.paths))
+      await deliver(agent, composeMessage(reference.label, draft, images.paths))
       onClose()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -127,20 +225,33 @@ export function AppComposer({ reference, shown, connected, onClose }: AppCompose
           <span className="truncate">{shown.name}</span>
           <span>:{shown.lineNumber}</span>
         </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Dismiss"
-          className="shrink-0 text-muted-fg hover:text-fg"
-        >
-          <XMarkIcon className="size-3.5" />
-        </button>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <AgentPicker
+            agent={agent}
+            picked={picked}
+            statuses={statuses}
+            onPick={(next) => {
+              setPicked(next)
+              rememberAgent(next)
+              setError(null)
+              input.current?.focus()
+            }}
+          />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Dismiss"
+            className="text-muted-fg hover:text-fg"
+          >
+            <XMarkIcon className="size-3.5" />
+          </button>
+        </span>
       </div>
 
       <PastedImages images={images} />
 
       <TextField
-        aria-label={`Message Claude about ${shown.label}`}
+        aria-label={`Message ${AGENT_NAMES[agent]} about ${shown.label}`}
         value={message}
         onChange={setMessage}
         isDisabled={isSending || !connected}
@@ -150,7 +261,7 @@ export function AppComposer({ reference, shown, connected, onClose }: AppCompose
         <InputGroup>
           <Input
             ref={input}
-            placeholder={connected ? 'What about this line?' : 'No Claude session'}
+            placeholder={composerPlaceholder(agent, connected)}
             onPaste={(event) => {
               const pasted = pastedImages(event.clipboardData)
               if (pasted.length === 0) return
@@ -182,7 +293,7 @@ export function AppComposer({ reference, shown, connected, onClose }: AppCompose
             size="sm"
             onPress={() => void send()}
             isDisabled={!canSend}
-            aria-label="Send to Claude"
+            aria-label={`Send to ${AGENT_NAMES[agent]}`}
           >
             <PaperAirplaneIcon />
           </Button>
@@ -195,6 +306,15 @@ export function AppComposer({ reference, shown, connected, onClose }: AppCompose
       {failure && (
         <p role="alert" className="px-1 pt-1.5 text-danger-subtle-fg text-xs">
           {failure}
+        </p>
+      )}
+
+      {/* Codex takes the message into a queue rather than to a listener, so
+          "sent" can mean "waiting". Saying which up front is cheaper than a
+          user wondering why nothing answered. */}
+      {!failure && deliveryNote(agent, statuses[agent]) && (
+        <p className="px-1 pt-1.5 text-[11px] text-muted-fg">
+          {deliveryNote(agent, statuses[agent])}
         </p>
       )}
     </div>

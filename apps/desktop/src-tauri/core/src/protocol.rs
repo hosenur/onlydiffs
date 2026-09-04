@@ -14,7 +14,9 @@
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::contract::{ClaudeChannelStatus, Commit, FullFileContents, RepoDiff};
+use crate::contract::{
+    ClaudeChannelStatus, CodexChannelStatus, Commit, FullFileContents, RepoDiff,
+};
 use crate::services::icon_scan::Candidate;
 use crate::services::repository::FileMeta;
 
@@ -82,6 +84,11 @@ pub enum Request {
     ClaudeStatus { root: String },
     /// Hand a message to that session. One direction only.
     ClaudeSend { root: String, message: String },
+    /// Whether a Codex session has worked in that repository.
+    CodexStatus { root: String },
+    /// Queue a message for it. One direction only, and it does not require the
+    /// session to be running: Codex holds the message until that thread does.
+    CodexSend { root: String, message: String },
     /// Put a pasted image where that session can open it. The bytes cross
     /// once, here; the message that follows carries only the path they landed
     /// at, because a path is the only form of an image that means anything on
@@ -130,6 +137,9 @@ pub enum Response {
     ClaudeStatus(ClaudeChannelStatus),
     /// The channel's message id, useful only for correlating logs.
     ClaudeSent(String),
+    CodexStatus(CodexChannelStatus),
+    /// The id Codex gave the queued message, useful only for correlating logs.
+    CodexSent(String),
     /// Where a pasted image was written, in the host's own path style.
     Attachment(String),
     Git(String),

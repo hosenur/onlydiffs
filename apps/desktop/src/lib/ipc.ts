@@ -7,6 +7,7 @@ import type {
   AppTheme,
   ConnectedHost,
   ClaudeChannelStatus,
+  CodexChannelStatus,
   Commit,
   CommandName,
   CommitAllRequest,
@@ -22,6 +23,7 @@ import type {
   Project,
   RepoDiff,
   SendClaudeMessageRequest,
+  SendCodexMessageRequest,
   SetGroqApiKeyRequest,
   SetThemeRequest,
   SshHostEntry,
@@ -97,6 +99,19 @@ export const generateCommitMessage = (): Promise<string> =>
 /** One-way. Resolves with the channel's message id, not a reply. */
 export const sendClaudeMessage = (message: string): Promise<string> =>
   call(Command.sendClaudeMessage, { request: { message } satisfies SendClaudeMessageRequest })
+
+/**
+ * Queues a message for the Codex session working in the open repository.
+ *
+ * The Codex counterpart to `sendClaudeMessage`, with one difference worth
+ * knowing at the call site: this one succeeds when nothing is running. Codex
+ * keeps the message until that thread next takes a turn, so a send is a
+ * promise of delivery rather than a delivery.
+ */
+export const sendCodexMessage = (message: string): Promise<string> =>
+  call(Command.sendCodexMessage, { request: { message } satisfies SendCodexMessageRequest })
+
+export const codexStatus = (): Promise<CodexChannelStatus> => call(Command.codexStatus)
 
 /**
  * Writes a pasted image where the Claude session for the open repository can
