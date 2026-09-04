@@ -1,6 +1,6 @@
 [package]
 name = "onlydiffs-agent"
-version = "0.1.13"
+version = "0.1.14"
 description = "Answers OnlyDiffs' questions about a repository, on the machine that repository is on."
 authors = ["hosenur"]
 edition = "2021"
