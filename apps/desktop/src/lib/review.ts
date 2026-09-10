@@ -1,4 +1,9 @@
-import { indexChanges } from './file-tree'
+import {
+  buildFileTree,
+  directoriesContaining,
+  flattenTree,
+  indexChanges,
+} from './file-tree'
 import type { FileChange } from '@/types'
 
 /**
@@ -33,4 +38,33 @@ export function reviewProgress(files: readonly FileChange[]): ReviewProgress {
     if (isReviewed(changes)) reviewed += 1
   }
   return { reviewed, total: byPath.size }
+}
+
+/** Every changed path in the order the sidebar lists them, fully expanded. */
+function sidebarOrder(paths: readonly string[]): string[] {
+  const rows = flattenTree(buildFileTree(paths), { expanded: directoriesContaining(paths) })
+  return rows.filter((row) => !row.node.isDirectory).map((row) => row.node.path)
+}
+
+/**
+ * The file to open next: the first unreviewed path after `current` in sidebar
+ * order, wrapping round to the top. `null` when there is nothing left to
+ * review, or when the only file left is the one already open — the button
+ * that calls this has nowhere to go, and should say so rather than reload.
+ *
+ * Sidebar order rather than diff order, so "next" means the row below the one
+ * highlighted in the tree, which is where the eye already is.
+ */
+export function nextUnreviewed(
+  files: readonly FileChange[],
+  current: string | undefined
+): string | null {
+  const byPath = indexChanges(files)
+  const paths = sidebarOrder([...byPath.keys()])
+  const pending = paths.filter((path) => !isReviewed(byPath.get(path) ?? []))
+  if (pending.length === 0) return null
+
+  const from = current === undefined ? -1 : paths.indexOf(current)
+  const next = pending.find((path) => paths.indexOf(path) > from) ?? pending[0]
+  return next === current ? null : next
 }

@@ -1,5 +1,4 @@
 import { Link, useParams } from '@tanstack/react-router'
-import { ArrowsRightLeftIcon } from '@heroicons/react/16/solid'
 import { AppFileTree } from '@/components/app-file-tree'
 import {
   Sidebar,
@@ -8,8 +7,8 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { CodeBranchOutline18 } from '@/icons'
 import type { RepoDiff } from '@/types'
+import { BranchIcon, SwitchIcon } from '@onlydiffs/ui/icons'
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   diff: RepoDiff
@@ -42,16 +41,16 @@ export function AppSidebar({ diff, paths, ...props }: AppSidebarProps) {
             <Link
               to="/"
               title="Switch project"
-              className="flex min-w-0 items-center gap-x-1 font-medium hover:underline"
+              className="flex min-w-0 items-center gap-x-icon font-medium hover:underline"
             >
               <span className="truncate">{diff.repoPath.split('/').pop()}</span>
-              <ArrowsRightLeftIcon
+              <SwitchIcon
                 aria-hidden
                 className="size-3 shrink-0 text-muted-fg"
               />
             </Link>
-            <span className="flex min-w-0 items-center gap-x-1 text-muted-fg">
-              <CodeBranchOutline18 aria-hidden className="size-3 shrink-0" />
+            <span className="flex min-w-0 items-center gap-x-icon text-muted-fg">
+              <BranchIcon aria-hidden className="size-3 shrink-0" />
               <span className="truncate font-mono text-xs" title={diff.branch}>
                 {diff.branch}
               </span>
@@ -61,8 +60,17 @@ export function AppSidebar({ diff, paths, ...props }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent className="px-0">
-        {/* The tree owns its own scrolling so the virtualiser has a container. */}
-        <AppFileTree paths={paths} files={diff.files} current={current} />
+        {/* The tree owns its own scrolling so the virtualiser has a container.
+            Keyed on the repository because it holds state that only means
+            anything within one — which folders are open, and what is typed in
+            the filter. This layout is not remounted when the project changes,
+            so without the key both would carry over to the next repository. */}
+        <AppFileTree
+          key={diff.repoPath}
+          paths={paths}
+          files={diff.files}
+          current={current}
+        />
       </SidebarContent>
 
       <SidebarFooter>

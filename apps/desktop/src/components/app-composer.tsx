@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { PaperAirplaneIcon, XMarkIcon } from '@heroicons/react/16/solid'
 import { Button } from '@onlydiffs/ui/button'
 import { Input, InputGroup } from '@onlydiffs/ui/input'
 import { TextField } from '@onlydiffs/ui/text-field'
@@ -16,6 +15,7 @@ import {
 } from '@/lib/agents'
 import { composeMessage, pastedImages } from '@/lib/attachments'
 import type { LineReference } from '@/lib/line-reference'
+import { CloseIcon, SendIcon } from '@onlydiffs/ui/icons'
 
 /**
  * The floating input that carries a line — and anything pasted about it — to a
@@ -139,7 +139,7 @@ function PastedImages({ images }: { images: Attachments }) {
             aria-label={`Remove ${image.name}`}
             className="-end-1 -top-1 absolute rounded-full border bg-overlay p-0.5 text-muted-fg opacity-0 transition focus-visible:opacity-100 hover:text-fg group-hover:opacity-100"
           >
-            <XMarkIcon className="size-3" />
+            <CloseIcon className="size-3" />
           </button>
         </div>
       ))}
@@ -199,7 +199,7 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
       // The full path, not the shortened label on screen — the agent has to be
       // able to open the file. Same for the images: what crosses is where they
       // landed on the repository's own machine.
-      await deliver(agent, composeMessage(reference.label, draft, images.paths))
+      await deliver(agent, composeMessage(reference, draft, images.paths))
       onClose()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -221,9 +221,20 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
           className="flex min-w-0 font-mono text-[11px] text-primary-subtle-fg"
         >
           {/* The number sits outside the truncation: a clipped name is still
-              recognisable, a clipped line number is not. */}
-          <span className="truncate">{shown.name}</span>
-          <span>:{shown.lineNumber}</span>
+              recognisable, a clipped line number is not.
+
+              Each half is keyed on what it shows, so a click on another line
+              remounts only the part that changed and `.composer-target` lets
+              the new value enter — otherwise one number silently becomes
+              another and the eye has no way to catch the swap. */}
+          <span key={shown.path} className="composer-target truncate">
+            {shown.name}
+          </span>
+          <span key={shown.label} className="composer-target">
+            :{shown.lineNumber}
+            {/* The same mark the agent gets, so what is on screen is what is sent. */}
+            {shown.removed && <span className="ms-1 text-muted-fg">(removed)</span>}
+          </span>
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           <AgentPicker
@@ -243,7 +254,7 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
             aria-label="Dismiss"
             className="text-muted-fg hover:text-fg"
           >
-            <XMarkIcon className="size-3.5" />
+            <CloseIcon className="size-3.5" />
           </button>
         </span>
       </div>
@@ -295,7 +306,7 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
             isDisabled={!canSend}
             aria-label={`Send to ${AGENT_NAMES[agent]}`}
           >
-            <PaperAirplaneIcon />
+            <SendIcon />
           </Button>
         </InputGroup>
       </TextField>

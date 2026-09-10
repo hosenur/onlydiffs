@@ -2,8 +2,11 @@ import { expect, test } from 'bun:test'
 import {
   buildFileTree,
   directoriesContaining,
+  expandedDirectories,
   flattenTree,
   indexChanges,
+  NO_EXPANSION,
+  toggleDirectory,
 } from './file-tree'
 import type { FileChange } from '@/types'
 
@@ -129,4 +132,68 @@ test('scales: 50k paths build and flatten without walking everything', () => {
   // Collapsed, a 50k-file repo is 500 rows — that is the whole optimisation.
   expect(rows).toHaveLength(500)
   expect(built).toBeLessThan(1000)
+})
+
+/*
+ * The expansion model. What these are really about is the diff being re-read
+ * constantly — on every save, stage, and window focus — while the tree the
+ * user is working in has to hold still.
+ */
+
+test('with nothing touched, the tree is open to wherever the changes are', () => {
+  const auto = directoriesContaining(['src/components/ui/button.tsx'])
+  expect([...expandedDirectories(auto, NO_EXPANSION)].sort()).toEqual([
+    'src',
+    'src/components',
+    'src/components/ui',
+  ])
+})
+
+test('a directory closed by hand stays closed when the diff is read again', () => {
+  const overrides = toggleDirectory(NO_EXPANSION, 'src/components', true)
+  // Twice, because a re-read is what used to undo this.
+  for (const paths of [['src/components/ui/button.tsx'], ['src/components/ui/tree.tsx']]) {
+    expect(expandedDirectories(directoriesContaining(paths), overrides)).not.toContain(
+      'src/components'
+    )
+  }
+})
+
+test('a directory opened by hand survives a diff that never mentions it', () => {
+  const overrides = toggleDirectory(NO_EXPANSION, 'docs', false)
+  expect(expandedDirectories(directoriesContaining(['src/a.ts']), overrides)).toContain('docs')
+})
+
+test('changes arriving in an untouched directory still open it', () => {
+  // The half of the automatic behaviour worth keeping: only the directories
+  // the user has ruled on are pinned, the rest follow the diff.
+  const overrides = toggleDirectory(NO_EXPANSION, 'docs', false)
+  const expanded = expandedDirectories(directoriesContaining(['src/lib/new.ts']), overrides)
+  expect(expanded).toContain('src/lib')
+})
+
+test('toggling back to where the changes put it leaves no override behind', () => {
+  const closed = toggleDirectory(NO_EXPANSION, 'src', true)
+  const reopened = toggleDirectory(closed, 'src', false)
+  expect(reopened.closed.has('src')).toBe(false)
+  expect(expandedDirectories(directoriesContaining(['src/a.ts']), reopened)).toContain('src')
+})
+
+test('toggling does not mutate the overrides it was given', () => {
+  const overrides = toggleDirectory(NO_EXPANSION, 'src', false)
+  toggleDirectory(overrides, 'src', true)
+  expect(overrides.opened.has('src')).toBe(true)
+  expect(NO_EXPANSION.opened.size).toBe(0)
+})
+
+test('a closed directory contributes one row and hides its contents', () => {
+  const tree = buildFileTree(PATHS)
+  const auto = directoriesContaining(['src/components/ui/button.tsx'])
+  const overrides = toggleDirectory(NO_EXPANSION, 'src/components/ui', true)
+
+  // The row itself stays — its parent is still open — it just stops
+  // contributing what is underneath it.
+  const rows = flattenTree(tree, { expanded: expandedDirectories(auto, overrides) })
+  expect(names(rows)).toContain('ui')
+  expect(names(rows)).not.toContain('button.tsx')
 })

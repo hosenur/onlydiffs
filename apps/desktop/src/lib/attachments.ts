@@ -1,4 +1,5 @@
 import { MAX_IMAGE_BYTES } from '@shared/contract'
+import type { LineReference } from '@/lib/line-reference'
 
 /**
  * The rules for getting a pasted image out of a clipboard and into a message.
@@ -63,6 +64,9 @@ export function rejection(file: { size: number }): string | null {
   return null
 }
 
+/** The part of a line reference the message needs. */
+export type MessageSubject = Pick<LineReference, 'label' | 'lineNumber' | 'removed' | 'text'>
+
 /**
  * What actually gets sent: the line the user clicked, what they typed about it,
  * and where any images they pasted are now sitting.
@@ -70,14 +74,28 @@ export function rejection(file: { size: number }): string | null {
  * The paths go on their own lines below the question rather than inline, so the
  * sentence reads as a sentence and the session can open the files without
  * having to pick them out of it.
+ *
+ * A removed line gets a paragraph of its own. Its number counts in the version
+ * before the change, so an agent that opened the file and went to that line
+ * would be reading whatever sits there now; quoting the line is what lets it
+ * find the right one in the diff.
  */
 export function composeMessage(
-  label: string,
+  subject: MessageSubject,
   text: string,
   imagePaths: readonly string[]
 ): string {
   const said = text.trim()
-  const opening = said ? `${label} ${said}` : label
-  if (imagePaths.length === 0) return opening
-  return [opening, '', ...imagePaths.map((path) => `Pasted image: ${path}`)].join('\n')
+  const parts = [said ? `${subject.label} ${said}` : subject.label]
+  if (subject.removed) {
+    parts.push(
+      '',
+      `The line was removed in this change. ${subject.lineNumber} is its number in the version before, and it read:`,
+      `    ${subject.text || '(an empty line)'}`
+    )
+  }
+  if (imagePaths.length > 0) {
+    parts.push('', ...imagePaths.map((path) => `Pasted image: ${path}`))
+  }
+  return parts.join('\n')
 }

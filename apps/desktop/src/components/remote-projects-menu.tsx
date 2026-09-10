@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useRouter } from '@tanstack/react-router'
-import { ArrowLeftIcon, FolderIcon, PlusIcon } from '@heroicons/react/16/solid'
 import { Loader } from '@onlydiffs/ui/loader'
 import {
   CommandMenu,
@@ -16,6 +15,7 @@ import {
 import { addSshHost, openRemoteProject } from '@/lib/ipc'
 import { useSsh } from '@/lib/ssh'
 import type { Project } from '@shared/contract'
+import { ArrowLeftIcon, FolderIcon, PlusIcon } from '@onlydiffs/ui/icons'
 
 /**
  * Opening a repository on another machine, in one place.

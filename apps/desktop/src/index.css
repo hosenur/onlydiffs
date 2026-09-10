@@ -43,6 +43,9 @@
 }
 
 @theme inline {
+  /* The one gap between an icon and the text beside it — rows, buttons,
+     badges, menu items. Named so it is greppable and changed in one place. */
+  --spacing-icon: 0.375rem;
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-sans--font-feature-settings: "cv02", "cv03", "cv04", "cv11";
@@ -391,6 +394,29 @@ diffs-container {
   }
 }
 
+/*
+ * The file name and line number above the input. A click on another line
+ * remounts whichever half changed (see the `key`s in the composer), and this
+ * is the entrance the new value makes: a short rise and fade, so the swap is
+ * seen rather than inferred. Fast and small because it happens on every click
+ * during a review — a cue, not an event.
+ */
+.composer-target {
+  display: inline-block;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .composer-target {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* The bar still fades, it just stops travelling. `transform` keeps its slot
      in the list so `transition-delay` above still lands on `visibility`. */
@@ -408,6 +434,19 @@ diffs-container {
   @starting-style {
     .composer {
       opacity: 0;
+      transform: translateY(0);
+    }
+  }
+
+  /* The new value still fades in; it just stops travelling. */
+  .composer-target {
+    transition:
+      opacity 180ms ease,
+      transform 0s;
+  }
+
+  @starting-style {
+    .composer-target {
       transform: translateY(0);
     }
   }

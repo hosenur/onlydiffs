@@ -9,10 +9,10 @@
     "./*": "./src/components/*.tsx"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/nucleo-icons.mjs"
   },
   "dependencies": {
-    "@heroicons/react": "^2.2.0",
     "tailwind-merge": "^3.6.0",
     "tailwind-variants": "^3.2.2"
   },

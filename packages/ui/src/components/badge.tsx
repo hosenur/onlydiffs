@@ -2,7 +2,7 @@ import { tv } from "tailwind-variants"
 
 export const badgeStyles = tv({
   base: [
-    "inline-flex items-center gap-x-1.5 py-px font-medium text-xs/5 forced-colors:outline",
+    "inline-flex items-center gap-x-icon py-px font-medium text-xs/5 forced-colors:outline",
     "border border-(--badge-border,transparent) bg-(--badge-bg) text-(--badge-fg)",
     "group-hover:bg-(--badge-overlay) group-focus:bg-(--badge-overlay)",
     "*:[svg]:size-3 *:[svg]:shrink-0",

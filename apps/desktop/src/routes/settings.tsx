@@ -1,14 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import {
-  ArrowLeftIcon,
-  CheckIcon,
-  ComputerDesktopIcon,
-  MoonIcon,
-  SunIcon,
-  TrashIcon,
-} from '@heroicons/react/16/solid'
 import { Button } from '@onlydiffs/ui/button'
 import { Loader } from '@onlydiffs/ui/loader'
 import {
@@ -23,6 +15,7 @@ import { useProjectIcons } from '@/hooks/use-project-icons'
 import { addSshHost, forgetSshHost, getSettings, setGroqApiKey } from '@/lib/ipc'
 import { useSsh } from '@/lib/ssh'
 import type { AppSettings, GroqKeySource } from '@shared/contract'
+import { ArrowLeftIcon, CheckIcon, DarkThemeIcon, LightThemeIcon, SystemThemeIcon, TrashIcon } from '@onlydiffs/ui/icons'
 
 /**
  * Settings, and the app's second page outside the `_app` layout.
@@ -50,10 +43,10 @@ const SOURCE_NOTE = {
   none: 'Without one, commit-message generation and project icons stay off.',
 } satisfies Record<GroqKeySource, string>
 
-const THEMES: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
-  { value: 'light', label: 'Light', Icon: SunIcon },
-  { value: 'dark', label: 'Dark', Icon: MoonIcon },
-  { value: 'system', label: 'System', Icon: ComputerDesktopIcon },
+const THEMES: { value: Theme; label: string; Icon: typeof LightThemeIcon }[] = [
+  { value: 'light', label: 'Light', Icon: LightThemeIcon },
+  { value: 'dark', label: 'Dark', Icon: DarkThemeIcon },
+  { value: 'system', label: 'System', Icon: SystemThemeIcon },
 ]
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -127,7 +120,7 @@ function SshHosts({
               (live) => live.alias === host && live.state === 'connected'
             )
             return (
-              <li key={host} className="group/host flex items-center gap-2 px-3 py-2">
+              <li key={host} className="group/host flex items-center gap-icon px-3 py-2">
                 <span
                   aria-hidden
                   className={`size-1.5 shrink-0 rounded-full ${
@@ -276,7 +269,7 @@ function Settings() {
           <p className="text-muted-fg text-sm">{KEY_USES}</p>
 
           {settings.groqApiKeyHint && (
-            <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+            <div className="flex items-center gap-icon rounded-lg border border-border px-3 py-2">
               <CheckIcon className="size-4 shrink-0 text-success" />
               <span className="min-w-0 flex-1 truncate font-mono text-sm">
                 {settings.groqApiKeyHint}

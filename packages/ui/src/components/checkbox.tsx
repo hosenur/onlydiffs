@@ -1,6 +1,5 @@
 "use client"
 
-import { CheckIcon, MinusIcon } from "@heroicons/react/20/solid"
 import {
   CheckboxButton,
   type CheckboxButtonProps,
@@ -15,6 +14,7 @@ import { composeRenderProps } from "react-aria-components/composeRenderProps"
 import { twMerge } from "tailwind-merge"
 import { Label } from "./field"
 import { cx } from "../lib/primitive"
+import { CheckIcon, MinusIcon } from "./icons"
 
 export function CheckboxGroup({ className, ...props }: CheckboxGroupProps) {
   return (

@@ -1,4 +1,3 @@
-import { MagnifyingGlassIcon } from '@heroicons/react/20/solid'
 import { createContext, use, useEffect } from 'react'
 import { Autocomplete, type AutocompleteProps, useFilter } from 'react-aria-components/Autocomplete'
 import { Button } from 'react-aria-components/Button'
@@ -21,6 +20,7 @@ import { cx } from '@/lib/primitive'
 import { DropdownKeyboard } from '@onlydiffs/ui/dropdown'
 import { Loader } from '@onlydiffs/ui/loader'
 import { MenuDescription, MenuItem, MenuLabel, type MenuSectionProps, MenuSeparator } from './menu'
+import { SearchIcon } from '@onlydiffs/ui/icons'
 
 interface CommandMenuProviderProps {
   isPending?: boolean
@@ -139,7 +139,7 @@ const CommandMenuSearch = ({ className, placeholder, ...props }: CommandMenuSear
       {isPending ? (
         <Loader className="size-4.5" variant="spin" />
       ) : (
-        <MagnifyingGlassIcon
+        <SearchIcon
           data-slot="command-menu-search-icon"
           className="size-5 shrink-0 text-muted-fg"
         />

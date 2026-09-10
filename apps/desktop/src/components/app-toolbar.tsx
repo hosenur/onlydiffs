@@ -1,12 +1,17 @@
 import { AppComposer } from '@/components/app-composer'
 import { useEffect, useState } from 'react'
+import type { ComponentType, SVGProps } from 'react'
+import { useNavigate, useParams } from '@tanstack/react-router'
+import { Button } from '@onlydiffs/ui/button'
 import { useAgentStatus } from '@/hooks/use-agent-status'
-import { Plug2Outline18, PlugOffOutline18 } from '@/icons'
 import { AGENTS, type Agent, statusLabel } from '@/lib/agents'
 import { useLineReference } from '@/lib/line-reference'
-import { reviewProgress } from '@/lib/review'
+import { nextUnreviewed, reviewProgress } from '@/lib/review'
+import { fileHref } from '@/lib/status'
 import { useUpdate } from '@/lib/update'
 import type { FileChange } from '@shared/contract'
+import { ChevronRightIcon } from '@onlydiffs/ui/icons'
+import { ClaudeIcon, CodexIcon } from '@/icons'
 
 /**
  * Holds the last non-null value so a surface can keep rendering its content
@@ -37,6 +42,13 @@ export function AppToolbar({ files }: AppToolbarProps) {
 
   const progress = reviewProgress(files)
   const isSwept = progress.reviewed === progress.total
+
+  const navigate = useNavigate()
+  // SAFETY: with `strict: false` the params are the union of every route's,
+  // and only `/file/$` contributes a key — `_splat`, a string. Everywhere else
+  // it is absent, which is what the optional field says.
+  const params = useParams({ strict: false }) as { _splat?: string }
+  const next = nextUnreviewed(files, params._splat)
 
   return (
     <>
@@ -70,19 +82,50 @@ export function AppToolbar({ files }: AppToolbarProps) {
           {/* Nothing to review reads as nothing to say. The main pane already
               tells anyone with a clean tree that it is clean. */}
           {progress.total > 0 && (
-            <span
-              aria-live="polite"
-              title="A file counts as reviewed once all of its changes are staged"
-              className={isSwept ? 'text-success-subtle-fg' : 'text-muted-fg'}
-            >
-              {progress.reviewed}/{progress.total} files reviewed
-            </span>
+            <>
+              <span
+                aria-live="polite"
+                title="A file counts as reviewed once all of its changes are staged"
+                className={isSwept ? 'text-success-subtle-fg' : 'text-muted-fg'}
+              >
+                {progress.reviewed}/{progress.total} files reviewed
+              </span>
+
+              {/* Where ⌘Enter leaves you: the file is staged, the count has
+                  moved, and this is the step to the next one. Disabled rather
+                  than hidden once the sweep is done, so the footer keeps its
+                  shape and the disabled state itself says "nothing left". */}
+              <Button
+                intent="outline"
+                size="xs"
+                isDisabled={next === null}
+                aria-label={next ? `Next unreviewed file: ${next}` : 'Every file is reviewed'}
+                onPress={() => {
+                  if (next) void navigate({ to: fileHref(next) })
+                }}
+                className="h-5 min-h-0 px-1.5 font-mono text-[11px] sm:min-h-0 sm:text-[11px]"
+              >
+                Next
+                <ChevronRightIcon />
+              </Button>
+            </>
           )}
         </span>
       </footer>
     </>
   )
 }
+
+/**
+ * Each agent's own mark, in place of a generic plug that said nothing about
+ * which one. `tint` is how the mark looks with a live session: Claude in its
+ * brand orange, Codex in the text colour since its mark is monochrome. Without
+ * a session the mark is greyed out.
+ */
+const AGENT_MARKS = {
+  claude: { Mark: ClaudeIcon, tint: 'text-[#D97757]' },
+  codex: { Mark: CodexIcon, tint: 'text-fg' },
+} satisfies Record<Agent, { Mark: ComponentType<SVGProps<SVGSVGElement>>; tint: string }>
 
 function AgentIndicator({
   agent,
@@ -92,11 +135,14 @@ function AgentIndicator({
   status: { connected: boolean; sessions: number } | null
 }) {
   const connected = status?.connected ?? false
-  const Plug = connected ? Plug2Outline18 : PlugOffOutline18
+  const { Mark, tint } = AGENT_MARKS[agent]
 
   return (
-    <span className="flex items-center gap-1.5">
-      <Plug aria-hidden className="size-3 shrink-0 text-muted-fg" />
+    <span className="flex items-center gap-icon">
+      <Mark
+        aria-hidden
+        className={`size-3 shrink-0 transition-colors ${connected ? tint : 'text-muted-fg'}`}
+      />
       <span aria-live="polite" className={connected ? 'text-fg' : 'text-muted-fg'}>
         {statusLabel(agent, status)}
       </span>

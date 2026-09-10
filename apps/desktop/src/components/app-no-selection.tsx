@@ -1,4 +1,5 @@
 import { getRouteApi, Link } from '@tanstack/react-router'
+import { EmptyState } from '@/components/empty-state'
 import { fileIconUrl } from '@/lib/file-icon'
 import { fileHref } from '@/lib/status'
 
@@ -11,7 +12,7 @@ export function AppNoSelection() {
   const paths = [...new Set(diff.files.map((file) => file.path))]
 
   if (paths.length === 0) {
-    return <p className="p-5 text-center text-muted-fg">Working tree is clean.</p>
+    return <EmptyState>Working tree is clean.</EmptyState>
   }
 
   return (
@@ -29,7 +30,7 @@ export function AppNoSelection() {
             <Link
               to={fileHref(path)}
               title={path}
-              className="flex min-w-0 items-center gap-2.5 px-3 py-2.5 hover:bg-muted"
+              className="flex min-w-0 items-center gap-icon px-3 py-2.5 hover:bg-muted"
             >
               <img
                 src={fileIconUrl(path)}

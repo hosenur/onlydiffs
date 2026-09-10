@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { isReviewed, reviewProgress } from './review'
+import { isReviewed, nextUnreviewed, reviewProgress } from './review'
 import type { ChangeStatus, FileChange } from '@/types'
 
 function change(path: string, staged: boolean, status: ChangeStatus = 'modified'): FileChange {
@@ -57,5 +57,49 @@ describe('reviewProgress', () => {
     const progress = reviewProgress([change('a.ts', true), change('b.ts', true)])
 
     expect(progress).toEqual({ reviewed: 2, total: 2 })
+  })
+})
+
+describe('nextUnreviewed', () => {
+  // Sidebar order: directories first, then files, each A–Z. So `src/…` rows
+  // come before `README.md` whatever order the diff lists them in.
+  const files = [
+    change('README.md', false),
+    change('src/b.ts', false),
+    change('src/a.ts', true),
+    change('package.json', false),
+  ]
+
+  test('with no file open, it is the first unreviewed row of the sidebar', () => {
+    expect(nextUnreviewed(files, undefined)).toBe('src/b.ts')
+  })
+
+  test('from an open file, it is the next unreviewed row below it', () => {
+    expect(nextUnreviewed(files, 'src/b.ts')).toBe('package.json')
+    expect(nextUnreviewed(files, 'package.json')).toBe('README.md')
+  })
+
+  test('reviewed rows are stepped over', () => {
+    // `src/a.ts` sits between the top and `src/b.ts` but is already staged.
+    expect(nextUnreviewed(files, 'src/a.ts')).toBe('src/b.ts')
+  })
+
+  test('the bottom of the list wraps round to the top', () => {
+    expect(nextUnreviewed(files, 'README.md')).toBe('src/b.ts')
+  })
+
+  test('a path staged and edited again still needs a visit', () => {
+    const edited = [change('a.ts', true), change('a.ts', false), change('b.ts', true)]
+
+    expect(nextUnreviewed(edited, 'b.ts')).toBe('a.ts')
+  })
+
+  test('nothing left means nowhere to go', () => {
+    expect(nextUnreviewed([change('a.ts', true), change('b.ts', true)], 'a.ts')).toBeNull()
+    expect(nextUnreviewed([], undefined)).toBeNull()
+  })
+
+  test('the only unreviewed file being the open one is also nowhere to go', () => {
+    expect(nextUnreviewed([change('a.ts', false), change('b.ts', true)], 'a.ts')).toBeNull()
   })
 })

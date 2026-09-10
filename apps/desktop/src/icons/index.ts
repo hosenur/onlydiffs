@@ -1,9 +1,7 @@
 /*
- * Nucleo icons copied into the app rather than pulled from a package, so there
- * is no dependency to track. Re-copy from the local Nucleo library to update.
+ * The app's own drawings, and the two agents' brand marks. Everything from Nucleo lives in `@onlydiffs/ui/icons`,
+ * so that the kit and the app draw from the same family.
  */
-export { CodeBranchOutline18 } from './CodeBranchOutline18'
-export { GearOutline18 } from './GearOutline18'
+export { ClaudeIcon } from './ClaudeIcon'
+export { CodexIcon } from './CodexIcon'
 export { IsometricCubeIcon } from './IsometricCubeIcon'
-export { Plug2Outline18 } from './Plug2Outline18'
-export { PlugOffOutline18 } from './PlugOffOutline18'

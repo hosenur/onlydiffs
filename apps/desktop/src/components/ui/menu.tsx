@@ -1,4 +1,3 @@
-import { CheckIcon, ChevronRightIcon } from '@heroicons/react/20/solid'
 import { Button, type ButtonProps } from 'react-aria-components/Button'
 import { Collection } from 'react-aria-components/Collection'
 import { composeRenderProps } from 'react-aria-components/composeRenderProps'
@@ -28,6 +27,7 @@ import {
   DropdownSeparator,
 } from '@onlydiffs/ui/dropdown'
 import { PopoverContent, type PopoverContentProps } from '@onlydiffs/ui/popover'
+import { CheckIcon, ChevronRightIcon } from '@onlydiffs/ui/icons'
 
 const Menu = (props: MenuTriggerPrimitiveProps) => <MenuTriggerPrimitive {...props} />
 

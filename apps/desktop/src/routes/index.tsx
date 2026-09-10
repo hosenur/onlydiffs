@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { ArrowRightIcon, ServerStackIcon, XMarkIcon } from '@heroicons/react/16/solid'
 import platypus from '@/assets/platypus.png'
 import { Button } from '@onlydiffs/ui/button'
 import { Loader } from '@onlydiffs/ui/loader'
@@ -11,11 +10,11 @@ import {
   RemoteProjectsMenu,
   useRemoteProjectsHotkey,
 } from '@/components/remote-projects-menu'
-import { CodeBranchOutline18, GearOutline18 } from '@/icons'
 import { projectInitials, projectTint } from '@/lib/project-identity'
 import { forgetProject, listProjects, openProject, openRemoteProject } from '@/lib/ipc'
 import { useSsh } from '@/lib/ssh'
 import type { Project } from '@shared/contract'
+import { ArrowRightIcon, BranchIcon, CloseIcon, RemoteIcon, SettingsIcon } from '@onlydiffs/ui/icons'
 
 /**
  * The landing page, and the app's index: a cold launch has no project open, so
@@ -145,7 +144,7 @@ function Welcome() {
             aria-label="Settings"
             className="grid size-9 place-items-center rounded-lg text-muted-fg outline-hidden hover:bg-secondary hover:text-fg focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <GearOutline18 aria-hidden className="size-5" />
+            <SettingsIcon aria-hidden className="size-5" />
           </Link>
         </header>
 
@@ -166,9 +165,9 @@ function Welcome() {
             <button
               type="button"
               onClick={() => setIsRemoteOpen(true)}
-              className="flex items-center gap-1 text-muted-fg text-xs hover:text-fg"
+              className="flex items-center gap-icon text-muted-fg text-xs hover:text-fg"
             >
-              <ServerStackIcon aria-hidden className="size-3" />
+              <RemoteIcon aria-hidden className="size-3" />
               On another machine
               <kbd className="font-mono">⌃⌘O</kbd>
             </button>
@@ -243,7 +242,7 @@ function Welcome() {
                       }
                     }}
                     disabled={busy !== null}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-start hover:bg-secondary disabled:opacity-50"
+                    className="flex min-w-0 flex-1 items-center gap-icon rounded-lg px-3 py-2 text-start hover:bg-secondary disabled:opacity-50"
                   >
                     {busy === project.path ? (
                       <Loader className="size-4 shrink-0" />
@@ -283,7 +282,7 @@ function Welcome() {
                     onPress={() => void forget(project)}
                     className="opacity-0 group-hover/row:opacity-100"
                   >
-                    <XMarkIcon />
+                    <CloseIcon />
                   </Button>
                 </li>
               ))}
@@ -291,8 +290,8 @@ function Welcome() {
           )}
         </section>
 
-        <p className="flex items-center gap-1.5 text-muted-fg text-xs">
-          <CodeBranchOutline18 aria-hidden className="size-3 shrink-0" />
+        <p className="flex items-center gap-icon text-muted-fg text-xs">
+          <BranchIcon aria-hidden className="size-3 shrink-0" />
           Staged, unstaged, and untracked changes are kept apart.
         </p>
       </div>

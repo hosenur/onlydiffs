@@ -1,17 +1,6 @@
 import { useState } from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
-import {
-  ArrowDownTrayIcon,
-  ArrowPathIcon,
-  CheckIcon,
-  ComputerDesktopIcon,
-  MoonIcon,
-  PlusIcon,
-  ServerStackIcon,
-  SparklesIcon,
-  SunIcon,
-} from '@heroicons/react/16/solid'
 import { type Theme, useTheme } from '@/components/theme-provider'
 import { useProjectOpener } from '@/hooks/use-project-opener'
 import { useSettingsHotkey } from '@/hooks/use-settings-hotkey'
@@ -30,14 +19,15 @@ import {
   CommandMenuShortcut,
 } from '@/components/ui/command-menu'
 import { Loader } from '@onlydiffs/ui/loader'
-import { GearOutline18, IsometricCubeIcon } from '@/icons'
+import { IsometricCubeIcon } from '@/icons'
 import { fileIconUrl } from '@/lib/file-icon'
-import { commitAll, generateCommitMessage, stageFile, writeClipboardText } from '@/lib/ipc'
+import { commitAll, generateCommitMessage, stageFile } from '@/lib/ipc'
 import { projectInitials, projectTint } from '@/lib/project-identity'
 import { fileHref } from '@/lib/status'
 import { type UpdateValue, useUpdate } from '@/lib/update'
 import type { FileChange } from '@/types'
 import type { Project } from '@shared/contract'
+import { DarkThemeIcon, DownloadIcon, LightThemeIcon, PlusIcon, RefreshIcon, RemoteIcon, SettingsIcon, SparkleIcon, SystemThemeIcon } from '@onlydiffs/ui/icons'
 
 interface AppCommandMenuProps {
   files: FileChange[]
@@ -46,7 +36,7 @@ interface AppCommandMenuProps {
 }
 
 /** Which long-running action is in flight, so the palette can say so. */
-type Busy = 'generate' | 'commit' | 'stage' | null
+type Busy = 'commit' | 'stage' | null
 
 /**
  * One row per theme rather than a single cycling "Toggle theme": the palette
@@ -56,10 +46,10 @@ type Busy = 'generate' | 'commit' | 'stage' | null
  * The settings page offers the same three; both go through `useTheme`, which
  * is the only thing in the app that calls `setTheme`.
  */
-const THEMES: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
-  { value: 'light', label: 'Light', Icon: SunIcon },
-  { value: 'dark', label: 'Dark', Icon: MoonIcon },
-  { value: 'system', label: 'System', Icon: ComputerDesktopIcon },
+const THEMES: { value: Theme; label: string; Icon: typeof LightThemeIcon }[] = [
+  { value: 'light', label: 'Light', Icon: LightThemeIcon },
+  { value: 'dark', label: 'Dark', Icon: DarkThemeIcon },
+  { value: 'system', label: 'System', Icon: SystemThemeIcon },
 ]
 
 /** Release notes are a changelog; a palette row has space for its headline. */
@@ -81,7 +71,7 @@ function UpdateSection({ update }: { update: UpdateValue }) {
         textValue={`Install update ${version ?? ''}`}
         onAction={() => void update.install()}
       >
-        {update.isInstalling ? <Loader /> : <ArrowDownTrayIcon />}
+        {update.isInstalling ? <Loader /> : <DownloadIcon />}
         <CommandMenuLabel>
           {/* No success state to render: installing relaunches the app. */}
           {update.isInstalling ? 'Downloading…' : `Install update — v${version}`}
@@ -141,20 +131,21 @@ function OtherProjectsSection({
               src={project.icon.dataUrl}
               alt=""
               draggable={false}
-              className="me-1.5 size-4 rounded-sm bg-white object-contain"
+              className="me-icon size-4 rounded-sm bg-white object-contain"
             />
           ) : (
             <span
               aria-hidden
-              className={`me-1.5 grid size-4 shrink-0 select-none place-items-center rounded-sm font-semibold text-[7px] leading-none ${projectTint(project.path)}`}
+              className={`me-icon grid size-4 shrink-0 select-none place-items-center rounded-sm font-semibold text-[7px] leading-none ${projectTint(project.path)}`}
             >
               {projectInitials(project.name)}
             </span>
           )}
+          {/* The path stays searchable through `textValue` but is not drawn:
+              a long one pushed the name onto a second line under the icon,
+              and the rows above it have nothing on their right to line up
+              with. */}
           <CommandMenuLabel>{project.name}</CommandMenuLabel>
-          <CommandMenuDescription className="max-w-72 truncate">
-            {project.path}
-          </CommandMenuDescription>
         </CommandMenuItem>
       ))}
     </CommandMenuSection>
@@ -208,22 +199,6 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
   // repository every other command reads is about to change underneath it.
   const isBusy = busy !== null || openingPath !== null
 
-  async function generate() {
-    if (isBusy) return
-    setBusy('generate')
-    setError(null)
-    setNote(null)
-    try {
-      const generated = await generateCommitMessage()
-      await writeClipboardText(generated)
-      setNote(`Copied — ${generated.split('\n')[0]}`)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
-    } finally {
-      setBusy(null)
-    }
-  }
-
   async function stage() {
     if (isBusy || !stageable) return
     setBusy('stage')
@@ -240,15 +215,19 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
     }
   }
 
+  /*
+   * One step: read the whole diff, write the message, `git add -A`, commit.
+   * There used to be a separate "generate" that only copied the message to the
+   * clipboard, but nobody wanted the message without the commit, and a message
+   * generated ahead of time describes the diff as it was then — stale the
+   * moment anything else is edited.
+   */
   async function commit() {
     if (isBusy) return
     setBusy('commit')
     setError(null)
     setNote(null)
     try {
-      // Always a fresh read of the current diff. Reusing a message from an
-      // earlier Generate would commit a description of the diff as it was
-      // then — stale the moment anything else is edited.
       const subject = await generateCommitMessage()
       const head = await commitAll(subject)
       // Left open on purpose: this note is the only confirmation there is,
@@ -300,20 +279,14 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
         )}
 
         <CommandMenuSection label="Commit">
+          {/* Searchable by either name it has gone by: the row generates the
+              message *and* commits everything, staged or not. */}
           <CommandMenuItem
-            textValue="Generate commit message"
-            onAction={() => void generate()}
-          >
-            {busy === 'generate' ? <Loader /> : <SparklesIcon />}
-            <CommandMenuLabel>Generate commit message</CommandMenuLabel>
-          </CommandMenuItem>
-
-          <CommandMenuItem
-            textValue="Commit all"
+            textValue="Generate commit message and commit all"
             onAction={() => void commit()}
           >
-            {busy === 'commit' ? <Loader /> : <CheckIcon />}
-            <CommandMenuLabel>Commit all</CommandMenuLabel>
+            {busy === 'commit' ? <Loader /> : <SparkleIcon />}
+            <CommandMenuLabel>Generate message and commit all</CommandMenuLabel>
             <CommandMenuShortcut>
               {changed.length} {changed.length === 1 ? 'file' : 'files'}
             </CommandMenuShortcut>
@@ -331,7 +304,7 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
               void router.invalidate()
             }}
           >
-            <ArrowPathIcon />
+            <RefreshIcon />
             <CommandMenuLabel>Refresh</CommandMenuLabel>
             <CommandMenuShortcut>r</CommandMenuShortcut>
           </CommandMenuItem>
@@ -343,7 +316,7 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
               void navigate({ to: '/settings' })
             }}
           >
-            <GearOutline18 />
+            <SettingsIcon />
             <CommandMenuLabel>Settings</CommandMenuLabel>
             <CommandMenuShortcut>⌘,</CommandMenuShortcut>
           </CommandMenuItem>
@@ -366,7 +339,7 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
               setIsRemoteOpen(true)
             }}
           >
-            <ServerStackIcon />
+            <RemoteIcon />
             <CommandMenuLabel>Open remote project</CommandMenuLabel>
             <CommandMenuShortcut>⌃⌘O</CommandMenuShortcut>
           </CommandMenuItem>
@@ -402,16 +375,14 @@ export function AppCommandMenu({ files, projects, currentProjectPath }: AppComma
                   void navigate({ to: fileHref(file.path) })
                 }}
               >
-                {/* `me-1.5` to match the sidebar's `gap-1.5`. The row's grid
-                    spaces its icon column with `me-(--me-icon)`, but that rule
-                    only selects svg children, so an img would sit flush
-                    against the name. */}
+                {/* `me-icon`, by hand: the row's own icon margin only reaches svg
+                    children, and this is an img. */}
                 <img
                   src={fileIconUrl(file.path)}
                   alt=""
                   width={16}
                   height={16}
-                  className="me-1.5 size-4 shrink-0"
+                  className="me-icon size-4 shrink-0"
                 />
                 <CommandMenuLabel>{file.path}</CommandMenuLabel>
                 <CommandMenuShortcut>

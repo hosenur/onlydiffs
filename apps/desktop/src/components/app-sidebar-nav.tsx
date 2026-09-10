@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useHotkeys } from '@tanstack/react-hotkeys'
 import { useParams, useRouter, useRouterState } from '@tanstack/react-router'
-import { CheckIcon, TrashIcon } from '@heroicons/react/16/solid'
 import { Badge } from '@onlydiffs/ui/badge'
 import { Button } from '@onlydiffs/ui/button'
 import { SidebarNav, SidebarTrigger } from '@/components/ui/sidebar'
 import { useDiffLayout } from '@/lib/diff-layout'
 import { writeClipboardText } from '@/lib/ipc'
 import type { FileChange } from '@/types'
+import { CheckIcon, TrashIcon } from '@onlydiffs/ui/icons'
 
 function FilePath({ path }: { path: string | undefined }) {
   const [copied, setCopied] = useState(false)

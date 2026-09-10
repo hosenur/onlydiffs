@@ -15,6 +15,13 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* The gap between an icon and the text beside it. Defined per app rather
+     than in @onlydiffs/ui, which ships source and no stylesheet — but the kit's
+     components spend it (`gap-x-icon` in button and badge, `--spacing-icon` in
+     dropdown), so an app that imports them and omits this closes those gaps to
+     nothing. Keep in step with apps/desktop/src/index.css. */
+  --spacing-icon: 0.375rem;
+
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";

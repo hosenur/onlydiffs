@@ -185,3 +185,63 @@ export function directoriesContaining(paths: Iterable<string>): Set<string> {
   }
   return directories
 }
+
+/**
+ * Which directories are open, and why.
+ *
+ * The tree opens itself to wherever the changes are — a diff viewer that
+ * starts fully collapsed hides the only thing the user came for. But the diff
+ * is re-read on every save, every stage, and every window focus, so that
+ * automatic set is rebuilt constantly. Storing it as *the* expansion meant
+ * each rebuild threw away every folder the user had opened or closed by hand.
+ *
+ * So only the hand-made decisions are kept, as the two ways one can differ
+ * from the automatic set: a directory opened that would not have been, and a
+ * directory closed that would have been. Everything untouched keeps following
+ * the changes, and a directory the user has ruled on stays where they put it,
+ * however many times the diff is re-read underneath.
+ */
+export interface TreeExpansion {
+  /** Directories opened by hand. */
+  opened: ReadonlySet<string>
+  /** Directories closed by hand. */
+  closed: ReadonlySet<string>
+}
+
+export const NO_EXPANSION: TreeExpansion = { opened: new Set(), closed: new Set() }
+
+/** The automatic set, with the user's decisions laid over it. */
+export function expandedDirectories(
+  auto: ReadonlySet<string>,
+  overrides: TreeExpansion
+): Set<string> {
+  const expanded = new Set(auto)
+  for (const path of overrides.opened) expanded.add(path)
+  for (const path of overrides.closed) expanded.delete(path)
+  return expanded
+}
+
+/**
+ * Records a click on a directory row. `wasExpanded` comes from the row itself
+ * rather than being recomputed here: the row is what the user saw, so it is
+ * the only honest account of what they meant to change.
+ *
+ * The opposite decision is dropped as the new one is taken, so toggling a
+ * directory back to where the changes put it leaves no override behind.
+ */
+export function toggleDirectory(
+  overrides: TreeExpansion,
+  path: string,
+  wasExpanded: boolean
+): TreeExpansion {
+  const opened = new Set(overrides.opened)
+  const closed = new Set(overrides.closed)
+  if (wasExpanded) {
+    opened.delete(path)
+    closed.add(path)
+  } else {
+    closed.delete(path)
+    opened.add(path)
+  }
+  return { opened, closed }
+}

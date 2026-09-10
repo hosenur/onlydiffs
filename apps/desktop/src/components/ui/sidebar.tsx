@@ -1,4 +1,3 @@
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type ButtonProps, Button as ButtonPrimitive } from 'react-aria-components/Button'
@@ -24,6 +23,7 @@ import { cx } from '@/lib/primitive'
 import { Button } from '@onlydiffs/ui/button'
 import { Link } from './link'
 import { Tooltip, TooltipContent } from './tooltip'
+import { ChevronDownIcon } from '@onlydiffs/ui/icons'
 
 const SIDEBAR_WIDTH = '17rem'
 const SIDEBAR_WIDTH_DOCK = '3.25rem'

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
+import { EmptyState } from '@/components/empty-state'
 import { FileDiffCard } from '@/components/file-diff-card'
 import { stageFile } from '@/lib/ipc'
 
@@ -48,10 +49,10 @@ function SingleFile() {
 
   if (rows.length === 0) {
     return (
-      <p className="p-5 text-center text-muted-fg">
+      <EmptyState>
         No change recorded for <span className="font-mono">{_splat}</span> — it may have been
         committed or reverted. Try Refresh.
-      </p>
+      </EmptyState>
     )
   }
 

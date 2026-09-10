@@ -1,6 +1,5 @@
 "use client"
 
-import { ChevronRightIcon } from "@heroicons/react/20/solid"
 import { Button } from "react-aria-components/Button"
 import type {
   TreeItemContentProps,
@@ -16,6 +15,7 @@ import {
 import { twJoin, twMerge } from "tailwind-merge"
 import { cx } from "../lib/primitive"
 import { Checkbox, CheckboxField } from "./checkbox"
+import { ChevronRightIcon } from "./icons"
 
 const Tree = <T extends object>({ className, ...props }: TreeProps<T>) => {
   return (

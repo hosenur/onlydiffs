@@ -172,12 +172,20 @@ export function FileDiffCard({ file, bare = false }: FileDiffCardProps) {
   }, [file, file.binary, file.error, shouldRender])
 
   /*
-   * Any line can be pointed at. Deleted lines carry their old-file number,
-   * which still identifies the line being discussed even though it is no
-   * longer in the file.
+   * Any line can be pointed at. A removed line carries its old-file number —
+   * the renderer has no other number for it — so it is marked as removed and
+   * its text goes along, or the agent would read that number against the
+   * current file and land on whatever occupies it now.
    */
   const onLineClick = useCallback(
-    ({ lineNumber }: OnDiffLineClickProps) => select(file.path, lineNumber),
+    ({ lineNumber, lineType, lineElement }: OnDiffLineClickProps) =>
+      select(file.path, {
+        lineNumber,
+        removed: lineType === 'change-deletion',
+        // Typed as always present; the renderer's own resolver leaves it unset
+        // for a click that lands in the gutter rather than on the code.
+        text: (lineElement?.textContent ?? '').trim(),
+      }),
     [select, file.path]
   )
 

@@ -11,8 +11,8 @@ import {
 import { TileImage, TileInitials } from '@/components/project-tile'
 import { Tooltip, TooltipContent } from '@/components/ui/tooltip'
 import { useProjectOpener } from '@/hooks/use-project-opener'
-import { GearOutline18 } from '@/icons'
 import type { Project } from '@shared/contract'
+import { SettingsIcon } from '@onlydiffs/ui/icons'
 
 interface ProjectSidebarProps {
   projects: Project[]
@@ -116,7 +116,7 @@ export function ProjectSidebar({ projects, currentPath }: ProjectSidebarProps) {
             aria-label="Settings"
             className="grid size-8 place-items-center rounded-lg text-muted-fg outline-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-fg focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
-            <GearOutline18 aria-hidden className="size-5" />
+            <SettingsIcon aria-hidden className="size-5" />
           </Link>
           <TooltipContent inverse placement="right">
             Settings

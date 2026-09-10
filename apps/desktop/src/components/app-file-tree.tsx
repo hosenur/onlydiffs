@@ -1,18 +1,21 @@
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ChevronRightIcon, MagnifyingGlassIcon } from '@heroicons/react/16/solid'
-import type { TreeRow } from '@/lib/file-tree'
+import type { TreeExpansion, TreeRow } from '@/lib/file-tree'
 import {
   buildFileTree,
   directoriesContaining,
+  expandedDirectories,
   flattenTree,
   indexChanges,
+  NO_EXPANSION,
+  toggleDirectory,
 } from '@/lib/file-tree'
 import { fileIconUrl, folderIconUrl } from '@/lib/file-icon'
 import { isReviewed } from '@/lib/review'
 import { fileHref } from '@/lib/status'
 import type { FileChange } from '@/types'
+import { ChevronRightIcon, SearchIcon } from '@onlydiffs/ui/icons'
 
 /** Row height in px. Fixed, so the virtualiser needs no measurement pass. */
 const ROW_HEIGHT = 26
@@ -55,7 +58,7 @@ const Row = memo(function Row({
   row: TreeRow
   changes: FileChange[] | undefined
   isCurrent: boolean
-  onToggle: (path: string) => void
+  onToggle: (path: string, wasExpanded: boolean) => void
 }) {
   const { node, depth } = row
   const indent = 6 + depth * INDENT
@@ -64,10 +67,13 @@ const Row = memo(function Row({
     return (
       <button
         type="button"
-        onClick={() => onToggle(node.path)}
+        // The row reports what it was showing, so the handler never has to
+        // recompute it — which is what keeps `onToggle` stable and this
+        // component's `memo` worth having.
+        onClick={() => onToggle(node.path, row.isExpanded)}
         title={node.path}
         style={{ paddingInlineStart: indent, height: ROW_HEIGHT }}
-        className="flex w-full min-w-0 items-center gap-1 pe-2 text-start hover:bg-sidebar-accent"
+        className="flex w-full min-w-0 items-center gap-icon pe-2 text-start hover:bg-sidebar-accent"
       >
         <ChevronRightIcon
           aria-hidden
@@ -126,24 +132,23 @@ export function AppFileTree({ paths, files, current }: AppFileTreeProps) {
   const changesByPath = useMemo(() => indexChanges(files), [files])
 
   // Open to wherever the changes are: a diff viewer that starts fully collapsed
-  // hides the only thing the user came for.
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  useEffect(() => {
-    setExpanded(directoriesContaining(files.map((file) => file.path)))
-  }, [files])
+  // hides the only thing the user came for. Derived rather than stored, so a
+  // re-read of the diff moves the tree to the new changes without touching
+  // what the user opened or closed themselves — see `TreeExpansion`.
+  const auto = useMemo(
+    () => directoriesContaining(files.map((file) => file.path)),
+    [files]
+  )
+  const [overrides, setOverrides] = useState<TreeExpansion>(NO_EXPANSION)
+  const expanded = useMemo(() => expandedDirectories(auto, overrides), [auto, overrides])
 
   const rows = useMemo(
     () => flattenTree(tree, { expanded, filter: deferredFilter }),
     [tree, expanded, deferredFilter]
   )
 
-  const onToggle = useCallback((path: string) => {
-    setExpanded((current) => {
-      const next = new Set(current)
-      if (next.has(path)) next.delete(path)
-      else next.add(path)
-      return next
-    })
+  const onToggle = useCallback((path: string, wasExpanded: boolean) => {
+    setOverrides((current) => toggleDirectory(current, path, wasExpanded))
   }, [])
 
   const virtualiser = useVirtualizer({
@@ -158,8 +163,10 @@ export function AppFileTree({ paths, files, current }: AppFileTreeProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-1.5 px-3 pb-2">
-        <MagnifyingGlassIcon aria-hidden className="size-3.5 shrink-0 text-muted-fg" />
+      {/* The same 8px above as below: without it the field sat against the
+          header's border as if it were part of it. */}
+      <div className="flex items-center gap-icon px-3 py-2">
+        <SearchIcon aria-hidden className="size-3.5 shrink-0 text-muted-fg" />
         <input
           value={filter}
           onChange={(event) => setFilter(event.target.value)}

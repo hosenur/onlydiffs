@@ -81,28 +81,62 @@ describe('rejection', () => {
   })
 })
 
+/** A line that is still in the file, which is what every message used to be about. */
+const at = (label: string) => ({ label, lineNumber: 42, removed: false, text: '' })
+
 describe('composeMessage', () => {
   test('a question about a line reads exactly as it did before images existed', () => {
-    expect(composeMessage('src/app.tsx:42', 'why is this hidden?', [])).toBe(
+    expect(composeMessage(at('src/app.tsx:42'), 'why is this hidden?', [])).toBe(
       'src/app.tsx:42 why is this hidden?'
     )
   })
 
   test('an image is named on its own line, below the question', () => {
-    expect(composeMessage('src/app.tsx:42', 'like this', ['/repo/.git/onlydiffs/pastes/1.png']))
+    expect(composeMessage(at('src/app.tsx:42'), 'like this', ['/repo/.git/onlydiffs/pastes/1.png']))
       .toBe('src/app.tsx:42 like this\n\nPasted image: /repo/.git/onlydiffs/pastes/1.png')
   })
 
   test('an image with nothing typed still carries the line it is about', () => {
     // Worth sending: the screenshot is the question.
-    expect(composeMessage('src/app.tsx:42', '   ', ['/repo/.git/onlydiffs/pastes/1.png'])).toBe(
+    expect(composeMessage(at('src/app.tsx:42'), '   ', ['/repo/.git/onlydiffs/pastes/1.png'])).toBe(
       'src/app.tsx:42\n\nPasted image: /repo/.git/onlydiffs/pastes/1.png'
     )
   })
 
   test('several images each get a line', () => {
-    const message = composeMessage('a.tsx:1', 'before and after', ['/tmp/a.png', '/tmp/b.png'])
+    const message = composeMessage(at('a.tsx:1'), 'before and after', ['/tmp/a.png', '/tmp/b.png'])
 
     expect(message.split('\n').filter((line) => line.startsWith('Pasted image:'))).toHaveLength(2)
+  })
+
+  test('a removed line says so and quotes itself, because its number is not in the file any more', () => {
+    const removed = {
+      label: 'package.json:5 (removed)',
+      lineNumber: 5,
+      removed: true,
+      text: '"private": true,',
+    }
+
+    expect(composeMessage(removed, 'why was this dropped?', [])).toBe(
+      [
+        'package.json:5 (removed) why was this dropped?',
+        '',
+        'The line was removed in this change. 5 is its number in the version before, and it read:',
+        '    "private": true,',
+      ].join('\n')
+    )
+  })
+
+  test('a removed blank line is still described rather than quoted as nothing', () => {
+    const removed = { label: 'a.tsx:7 (removed)', lineNumber: 7, removed: true, text: '' }
+
+    expect(composeMessage(removed, '', [])).toContain('(an empty line)')
+  })
+
+  test('images follow the removed-line paragraph', () => {
+    const removed = { label: 'a.tsx:7 (removed)', lineNumber: 7, removed: true, text: 'x' }
+    const message = composeMessage(removed, 'see', ['/tmp/a.png'])
+
+    expect(message.indexOf('it read:')).toBeLessThan(message.indexOf('Pasted image:'))
   })
 })

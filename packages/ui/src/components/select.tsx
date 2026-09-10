@@ -1,4 +1,3 @@
-import { ChevronUpDownIcon } from '@heroicons/react/20/solid'
 import { Button } from 'react-aria-components/Button'
 import { ListBox, type ListBoxProps } from 'react-aria-components/ListBox'
 import type { PopoverProps } from 'react-aria-components/Popover'
@@ -18,6 +17,7 @@ import {
 } from './dropdown'
 import { fieldStyles } from './field'
 import { PopoverContent } from './popover'
+import { ChevronExpandIcon } from "./icons"
 
 interface SelectProps<T extends object, M extends 'single' | 'multiple' = 'single'>
   extends SelectPrimitiveProps<T, M> {
@@ -113,7 +113,7 @@ const SelectTrigger = ({ children, className, ...props }: SelectTriggerProps) =>
                     '*:mt-0 *:data-[slot=avatar]:[--avatar-size:--spacing(5)] sm:*:data-[slot=avatar]:[--avatar-size:--spacing(4.5)]',
                   ])}
                 />
-                <ChevronUpDownIcon
+                <ChevronExpandIcon
                   data-slot="chevron"
                   className="ms-auto -me-1 size-5 shrink-0 text-muted-fg sm:size-4"
                 />

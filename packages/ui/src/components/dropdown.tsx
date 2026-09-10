@@ -1,6 +1,5 @@
 "use client"
 
-import { CheckIcon } from "@heroicons/react/20/solid"
 import { Collection } from "react-aria-components/Collection"
 import { composeRenderProps } from "react-aria-components/composeRenderProps"
 import { Header } from "react-aria-components/Header"
@@ -11,6 +10,7 @@ import { Text, type TextProps } from "react-aria-components/Text"
 import { twJoin, twMerge } from "tailwind-merge"
 import { tv } from "tailwind-variants"
 import { Keyboard } from "./keyboard"
+import { CheckIcon } from "./icons"
 
 const dropdownSectionStyles = tv({
   slots: {
@@ -41,7 +41,7 @@ const DropdownSection = <T extends object>({
 
 const dropdownItemStyles = tv({
   base: [
-    "min-w-0 [--me-icon:--spacing(2.5)] sm:[--me-icon:--spacing(2)]",
+    "min-w-0 [--me-icon:var(--spacing-icon)]",
     "col-span-full grid grid-cols-[auto_1fr_1.5rem_0.5rem_auto] px-3 py-2 supports-[grid-template-columns:subgrid]:grid-cols-subgrid sm:px-2.5 sm:py-1.5",
     "not-has-[[slot=description]]:items-center",
     "group relative cursor-default select-none rounded-[calc(var(--radius-lg)-(--spacing(1)))] outline-0",
@@ -49,6 +49,8 @@ const dropdownItemStyles = tv({
     "text-base/6 text-fg sm:text-sm/6 forced-colors:text-[CanvasText]",
     // avatar
     "*:data-[slot=avatar]:*:me-(--me-icon) *:data-[slot=avatar]:me-(--me-icon) has-[[slot=description]]:*:data-[slot=avatar]:row-span-2 *:data-[slot=avatar]:[--avatar-size:--spacing(5)] sm:*:data-[slot=avatar]:[--avatar-size:--spacing(4)]",
+    // loader — wraps its svg in a div, so the svg rules below never reach it
+    "*:data-[slot=loader]:col-start-1 *:data-[slot=loader]:row-start-1 *:data-[slot=loader]:me-(--me-icon)",
     // icon
     "*:[svg:not([data-slot='check-indicator'])]:-ms-0.5 [&_svg:not([class*='text-'])]:text-muted-fg *:[svg:not([data-slot='check-indicator'])]:col-start-1 *:[svg:not([data-slot='check-indicator'])]:row-start-1 *:[svg:not([data-slot='check-indicator'])]:me-(--me-icon) *:[svg]:shrink-0",
     "not-has-[[slot=description]]:*:[svg]:size-5 sm:not-has-[[slot=description]]:*:[svg]:size-4",
