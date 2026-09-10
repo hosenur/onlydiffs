@@ -4,7 +4,7 @@ import type { ComponentType, SVGProps } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Button } from '@onlydiffs/ui/button'
 import { useAgentStatus } from '@/hooks/use-agent-status'
-import { AGENTS, type Agent, isAgentVisible, statusLabel } from '@/lib/agents'
+import { AGENTS, type Agent, statusLabel } from '@/lib/agents'
 import { useLineReference } from '@/lib/line-reference'
 import { nextUnreviewed, reviewProgress } from '@/lib/review'
 import { fileHref } from '@/lib/status'
@@ -63,9 +63,11 @@ export function AppToolbar({ files }: AppToolbarProps) {
       )}
 
       <footer className="flex shrink-0 items-center gap-3 border-t bg-navbar px-3 py-1.5 font-mono text-[11px]">
-        {/* Claude and Codex remain as discoverable hints without sessions;
-            OpenCode appears only while its local TUI is running. */}
-        {AGENTS.filter((agent) => isAgentVisible(agent, statuses[agent])).map((agent) => (
+        {/* Every agent the app can talk to, session or not. An indicator that
+            is only there once something is running cannot answer the question
+            it exists for — whether this agent is running at all — and its
+            absence reads as the app not supporting the agent. */}
+        {AGENTS.map((agent) => (
           <AgentIndicator key={agent} agent={agent} status={statuses[agent]} />
         ))}
 

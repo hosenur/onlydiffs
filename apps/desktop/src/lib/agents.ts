@@ -60,11 +60,6 @@ export function deliver(agent: Agent, message: string): Promise<string> {
   return sendOpenCodeMessage(message)
 }
 
-/** OpenCode is discoverable rather than advertised when it is not running. */
-export function isAgentVisible(agent: Agent, status: AgentStatus | null): boolean {
-  return agent !== 'opencode' || (status?.sessions ?? 0) > 0
-}
-
 /**
  * The status-bar sentence for one agent.
  *
@@ -112,18 +107,13 @@ export function deliveryNote(agent: Agent, status: AgentStatus | null): string |
  * The remembered choice wins whenever it can still be sent to, because a user
  * who picked one meant it. Otherwise the first agent with a session, so the
  * common case of having only one installed never asks. When neither is
- * available it falls back to the remembered built-in choice so the bar still
- * names something while explaining that there is nothing there. OpenCode is
- * excluded from that fallback because it is hidden when no TUI is running.
+ * available it falls back to the remembered choice so the bar still names
+ * something while explaining that there is nothing there.
  */
 export function preferredAgent(
   remembered: Agent | null,
   statuses: Partial<Record<Agent, AgentStatus | null>>
 ): Agent {
   if (remembered && statuses[remembered]?.connected) return remembered
-  return (
-    AGENTS.find((agent) => statuses[agent]?.connected) ??
-    (remembered !== 'opencode' ? remembered : null) ??
-    'claude'
-  )
+  return AGENTS.find((agent) => statuses[agent]?.connected) ?? remembered ?? 'claude'
 }
