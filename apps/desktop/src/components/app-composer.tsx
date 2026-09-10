@@ -11,7 +11,6 @@ import {
   composerPlaceholder,
   deliver,
   deliveryNote,
-  isAgentVisible,
   preferredAgent,
 } from '@/lib/agents'
 import { composeMessage, pastedImages } from '@/lib/attachments'
@@ -81,9 +80,7 @@ function AgentPicker({
   // the toggle vanish while the message quietly goes somewhere else is worse
   // than seeing it sit there greyed out.
   const offered = AGENTS.filter(
-    (candidate) =>
-      isAgentVisible(candidate, statuses[candidate]) &&
-      (statuses[candidate]?.connected || candidate === agent || candidate === picked)
+    (candidate) => statuses[candidate]?.connected || candidate === agent || candidate === picked
   )
   if (offered.length < 2) return null
 

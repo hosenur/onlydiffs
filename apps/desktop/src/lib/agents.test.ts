@@ -3,7 +3,6 @@ import {
   type AgentStatus,
   composerPlaceholder,
   deliveryNote,
-  isAgentVisible,
   preferredAgent,
   statusLabel,
 } from './agents'
@@ -74,8 +73,10 @@ describe('preferredAgent', () => {
     // there, and the last choice is the least surprising thing to name.
     expect(preferredAgent('codex', { claude: absent, codex: absent })).toBe('codex')
     expect(preferredAgent(null, { claude: null, codex: null })).toBe('claude')
+    // OpenCode is remembered like any other choice now that the bar shows it
+    // whether or not a session is running.
     expect(preferredAgent('opencode', { claude: absent, codex: absent, opencode: absent })).toBe(
-      'claude'
+      'opencode'
     )
   })
 })
@@ -120,19 +121,5 @@ describe('deliveryNote', () => {
     expect(deliveryNote('codex', absent)).toBeNull()
     expect(deliveryNote('claude', absent)).toBeNull()
     expect(deliveryNote('opencode', absent)).toBeNull()
-  })
-})
-
-describe('isAgentVisible', () => {
-  test('hides OpenCode until a local TUI is found', () => {
-    expect(isAgentVisible('opencode', null)).toBeFalse()
-    expect(isAgentVisible('opencode', absent)).toBeFalse()
-    expect(isAgentVisible('opencode', live())).toBeTrue()
-    expect(isAgentVisible('opencode', undelivered)).toBeTrue()
-  })
-
-  test('keeps the built-in provider hints visible without sessions', () => {
-    expect(isAgentVisible('claude', absent)).toBeTrue()
-    expect(isAgentVisible('codex', absent)).toBeTrue()
   })
 })
