@@ -38,6 +38,17 @@ const UPLOAD_TIMEOUT: Duration = Duration::from_secs(600);
 /// one host at the same moment will produce.
 static UPLOAD_SEQUENCE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
+/// What marks a file as an upload still in flight rather than an agent. It sits
+/// in the middle of the staging name, so the glob that spares it — and the one
+/// that later reaps it — is `*.partial.*`. Written once and used by both, so
+/// the name an upload takes and the name the prune spares cannot drift apart.
+const PARTIAL_MARKER: &str = ".partial.";
+
+/// How stale an upload must be before it is treated as orphaned by a dropped
+/// connection. Far longer than any upload that is still going anywhere: the
+/// whole transfer gives up at `UPLOAD_TIMEOUT`, ten minutes.
+const PARTIAL_REAP_MINUTES: u32 = 60;
+
 /// Where agents live on a host, relative to the remote home directory. The same
 /// `.onlydiffs` the app uses locally, so a host that is also somebody's
 /// workstation has one directory rather than two.
@@ -190,7 +201,7 @@ pub async fn ensure(connection: &SshConnection) -> Result<String, AppError> {
     // whichever interleaving won — which showed up as intermittently corrupt
     // agents the first time two connections raced.
     let staging = format!(
-        "{destination}.partial.{}.{}",
+        "{destination}{PARTIAL_MARKER}{}.{}",
         std::process::id(),
         UPLOAD_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     );
@@ -241,15 +252,29 @@ async fn settle(
         UPLOAD_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     );
     let keep = destination.rsplit('/').next().unwrap_or(destination).to_owned();
+    // The prune must not reach an upload that is still in flight. A staging
+    // name is `<destination>.partial.<pid>.<n>`, which the version pattern's
+    // trailing `*` matches and which is never `keep` — so before this
+    // exclusion, any connection that got here deleted every *other*
+    // connection's half-written agent, and the `chmod` waiting on it failed
+    // with "No such file or directory". `settle` runs on the already-installed
+    // path too, so a connection that uploaded nothing could still do it.
+    //
+    // Partials are reaped on their own clock instead: an upload orphaned by a
+    // dropped connection is worth reclaiming — the agent is megabytes — but
+    // only once it is far too old to be an upload someone is still waiting on.
+    let partials = format!("*{PARTIAL_MARKER}*");
     connection
         .run_script(&format!(
             "ln -sfn {destination} {staging} && mv -f {staging} {link} && \
-             find {directory} -maxdepth 1 -type f -name {pattern} ! -name {keep} -delete",
+             find {directory} -maxdepth 1 -type f -name {pattern} ! -name {partials} ! -name {keep} -delete; \
+             find {directory} -maxdepth 1 -type f -name {partials} -mmin +{PARTIAL_REAP_MINUTES} -delete || true",
             destination = shell_join(&[destination]),
             staging = shell_join(&[&staging]),
             link = shell_join(&[&link]),
             directory = shell_join(&[&directory]),
             pattern = shell_join(&[&format!("onlydiffs-agent-*-{triple}-*")]),
+            partials = shell_join(&[&partials]),
             keep = shell_join(&[&keep]),
         ))
         .await?;
