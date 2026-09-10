@@ -69,9 +69,13 @@ struct Health {
 /// all; v1 answers `{"healthy":true}` and nothing more.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Dialect {
-    /// v1: `{"prompt": {"text": ...}}`.
+    /// v1. Its `/api/session/{id}/prompt` admits a message to an inbox that a
+    /// TUI never drains -- the call answers 200 and nothing whatever happens --
+    /// so a message is delivered by typing it into the TUI instead, through
+    /// `/tui/append-prompt` and `/tui/submit-prompt`.
     Nested,
-    /// v2: `{"text": ...}`.
+    /// v2. `/api/session/{id}/prompt` with `text` at the top level, which its
+    /// TUI does pick up off the inbox.
     Flat,
 }
 
@@ -87,6 +91,8 @@ impl Dialect {
     fn body(self, message: &str) -> serde_json::Value {
         match self {
             Self::Flat => json!({ "text": message, "delivery": "queue" }),
+            // v1 does not take this route at all; kept in the same shape it
+            // documents so the two stay legible side by side.
             Self::Nested => json!({ "prompt": { "text": message }, "delivery": "queue" }),
         }
     }
@@ -318,6 +324,53 @@ pub async fn status(root: &Path) -> OpenCodeChannelStatus {
     }
 }
 
+/// Types a message into an OpenCode 1 TUI and submits it, which is the only way
+/// to reach one.
+///
+/// Its `/api/session/{id}/prompt` answers 200 and admits the message to an
+/// inbox, and then nothing happens: the session gains a `type: "user"` entry
+/// that never becomes a turn, no assistant reply follows, and the TUI shows no
+/// sign of it. v2 drains that inbox; v1 does not.
+///
+/// These two do what a person does instead -- put the text in the prompt box,
+/// press enter. `directory` picks the TUI out, so there is no session to choose
+/// and no way to choose the wrong one.
+async fn type_into_tui(
+    client: &Client,
+    registration: &Registration,
+    root: &Path,
+    message: &str,
+) -> Result<String, AppError> {
+    let fail = AppError::OpenCodeChannel;
+    let directory = root.to_str().ok_or_else(|| {
+        fail("The repository path is not something OpenCode can be given.".into())
+    })?;
+
+    for (path, body) in [
+        ("/tui/append-prompt", json!({ "text": message })),
+        ("/tui/submit-prompt", json!({})),
+    ] {
+        let Some(url) = endpoint(registration, path) else {
+            return Err(fail("OpenCode is listening on an address that cannot be used.".into()));
+        };
+        let response = authenticated(
+            registration,
+            client.post(url).query(&[("directory", directory)]).json(&body),
+        )
+        .timeout(SEND_TIMEOUT)
+        .send()
+        .await
+        .map_err(|error| fail(format!("Could not send to OpenCode: {error}")))?;
+        if !response.status().is_success() {
+            return Err(response_error(response, "hand the message to the session").await);
+        }
+    }
+
+    // These answer `true`, not an id. There is nothing to correlate a log with,
+    // and saying so beats inventing something that looks like one.
+    Ok(String::new())
+}
+
 /// Durably admits a queued prompt to the newest matching OpenCode 2 session.
 pub async fn send(root: &Path, raw_message: &str) -> Result<String, AppError> {
     let client = client();
@@ -337,6 +390,9 @@ pub async fn send(root: &Path, raw_message: &str) -> Result<String, AppError> {
         .ok_or_else(|| fail("No OpenCode service is available on this machine.".into()))?;
     if directories.is_empty() {
         return Err(fail(NO_SESSION_MESSAGE.into()));
+    }
+    if service.dialect == Dialect::Nested {
+        return type_into_tui(client, &service.registration, root, message).await;
     }
     let session = matching_session(client, &service.registration, &directories)
         .await?
