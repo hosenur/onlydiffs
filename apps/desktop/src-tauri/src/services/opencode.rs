@@ -46,16 +46,66 @@ struct Health {
     pid: Option<u32>,
 }
 
+/// Which body a service's prompt endpoint accepts.
+///
+/// Both versions expose `/api/session/{id}/prompt`, and both refuse anything
+/// their schema does not name, but they do not agree on what goes in it: v1
+/// requires the prompt's fields nested under `prompt`, v2 requires `text` at
+/// the top level. One body cannot satisfy both.
+///
+/// Version numbers are no use for telling them apart. The v2 beta reports
+/// `0.0.0-beta-19242` and v1 reports `1.18.30`, so anything that orders them
+/// concludes v1 is the newer of the two and reaches for the wrong shape. What
+/// actually separates them is that v2's health carries a version and a pid at
+/// all; v1 answers `{"healthy":true}` and nothing more.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Dialect {
+    /// v1: `{"prompt": {"text": ...}}`.
+    Nested,
+    /// v2: `{"text": ...}`.
+    Flat,
+}
+
+impl Dialect {
+    fn of(health: &Health) -> Self {
+        if health.version.is_some() {
+            Self::Flat
+        } else {
+            Self::Nested
+        }
+    }
+
+    fn body(self, message: &str) -> serde_json::Value {
+        match self {
+            Self::Flat => json!({ "text": message, "delivery": "queue" }),
+            Self::Nested => json!({ "prompt": { "text": message }, "delivery": "queue" }),
+        }
+    }
+}
+
+/// A service that answered a health probe: where to reach it, and what it
+/// speaks. The dialect is settled here, at the one point that has the evidence,
+/// rather than re-derived wherever a message is built.
+struct Service {
+    registration: Registration,
+    dialect: Dialect,
+}
+
 #[derive(Debug, Deserialize)]
 struct SessionList {
     data: Vec<Session>,
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct Session {
     id: String,
-    #[serde(default)]
+    /// `parentID`, with the acronym in capitals — which is not what a
+    /// `camelCase` rename produces. Spelling it `parentId` meant this never
+    /// matched, so every child session read as a top-level one and the filter
+    /// below stopped excluding them: a sub-agent's session could be picked as
+    /// the newest and take the message meant for the session someone is
+    /// sitting in front of.
+    #[serde(default, rename = "parentID")]
     parent_id: Option<String>,
     time: SessionTime,
 }
@@ -113,7 +163,7 @@ fn endpoint(registration: &Registration, path: &str) -> Option<Url> {
     Some(url)
 }
 
-async fn discover(client: &Client) -> Option<Registration> {
+async fn discover(client: &Client) -> Option<Service> {
     let raw = tokio::fs::read_to_string(registration_path()).await.ok()?;
     let registration: Registration = serde_json::from_str(&raw).ok()?;
     let health_url = endpoint(&registration, "/api/health")?;
@@ -132,7 +182,10 @@ async fn discover(client: &Client) -> Option<Registration> {
     {
         return None;
     }
-    Some(registration)
+    Some(Service {
+        dialect: Dialect::of(&health),
+        registration,
+    })
 }
 
 async fn matching_session(
@@ -206,16 +259,16 @@ async fn response_error(response: Response, operation: &str) -> AppError {
 
 /// Whether a live local OpenCode 2 TUI has a service session for this repository.
 pub async fn status(root: &Path, client: &Client) -> OpenCodeChannelStatus {
-    let Some(registration) = discover(client).await else {
+    let Some(service) = discover(client).await else {
         return OpenCodeChannelStatus {
             connected: false,
             sessions: 0,
         };
     };
-    let directories = tui_sessions(root, registration.pid).await;
+    let directories = tui_sessions(root, service.registration.pid).await;
     let sessions = directories.len();
     let connected = sessions > 0
-        && matching_session(client, &registration, &directories)
+        && matching_session(client, &service.registration, &directories)
             .await
             .is_ok_and(|session| session.is_some());
     OpenCodeChannelStatus {
@@ -237,28 +290,25 @@ pub async fn send(root: &Path, raw_message: &str, client: &Client) -> Result<Str
         )));
     }
 
-    let registration = discover(client)
+    let service = discover(client)
         .await
         .ok_or_else(|| fail("OpenCode 2's background service is not available.".into()))?;
-    let directories = tui_sessions(root, registration.pid).await;
+    let directories = tui_sessions(root, service.registration.pid).await;
     if directories.is_empty() {
         return Err(fail(NO_SESSION_MESSAGE.into()));
     }
-    let session = matching_session(client, &registration, &directories)
+    let session = matching_session(client, &service.registration, &directories)
         .await?
         .ok_or_else(|| fail(NOT_CONNECTED_MESSAGE.into()))?;
     let Some(url) = endpoint(
-        &registration,
+        &service.registration,
         &format!("/api/session/{}/prompt", session.id),
     ) else {
         return Err(fail("OpenCode registered an invalid service URL.".into()));
     };
     let response = authenticated(
-        &registration,
-        client.post(url).json(&json!({
-            "prompt": { "text": message },
-            "delivery": "queue",
-        })),
+        &service.registration,
+        client.post(url).json(&service.dialect.body(message)),
     )
     .timeout(SEND_TIMEOUT)
     .send()
@@ -460,5 +510,75 @@ mod tests {
         .await;
 
         assert!(refused.expect_err("refused").message().contains("too large"));
+    }
+
+    /// The service spells the field `parentID`. `camelCase` produces
+    /// `parentId`, which matched nothing — so `parent_id` was always `None`,
+    /// every child read as top-level, and the newest of them won. A sub-agent's
+    /// session is newer than the one it was spawned from about as often as not.
+    #[test]
+    fn the_session_a_message_goes_to_is_the_one_with_no_parent() {
+        let listed: SessionList = serde_json::from_str(
+            r#"{"data":[
+                {"id":"ses_parent","time":{"updated":2}},
+                {"id":"ses_child","parentID":"ses_parent","time":{"updated":3}}
+            ]}"#,
+        )
+        .expect("a session list");
+
+        assert_eq!(listed.data[0].parent_id, None);
+        assert_eq!(
+            listed.data[1].parent_id.as_deref(),
+            Some("ses_parent"),
+            "a child session has to be recognisable as one"
+        );
+
+        // The choice `matching_session` makes: newest of those with no parent.
+        let newest = listed
+            .data
+            .iter()
+            .filter(|session| session.parent_id.is_none() && session.time.archived.is_none())
+            .max_by_key(|session| session.time.updated)
+            .expect("a top-level session");
+        assert_eq!(
+            newest.id, "ses_parent",
+            "the newer child must not take the message"
+        );
+    }
+
+    /// The two services answer the same route with bodies neither will accept
+    /// from the other, and their version numbers cannot be used to tell which
+    /// is which: v2's beta reports `0.0.0-beta-19242` and v1 reports `1.18.30`,
+    /// so ordering them makes v1 look like the newer one. The health response
+    /// is what actually separates them.
+    #[test]
+    fn the_dialect_follows_the_health_rather_than_the_version_number() {
+        let v1: Health = serde_json::from_str(r#"{"healthy":true}"#).expect("v1 health");
+        let v2: Health =
+            serde_json::from_str(r#"{"healthy":true,"version":"0.0.0-beta-19242","pid":485003}"#)
+                .expect("v2 health");
+
+        // Why the version string is not the signal: compared as anyone would
+        // compare them, v1's is the greater of the two.
+        assert!(
+            "1.18.30" > "0.0.0-beta-19242",
+            "the version numbers order v1 above v2"
+        );
+        assert_eq!(Dialect::of(&v1), Dialect::Nested);
+        assert_eq!(Dialect::of(&v2), Dialect::Flat);
+    }
+
+    /// Both schemas require their own key and refuse additional properties, so
+    /// these are the only two bodies either service will take.
+    #[test]
+    fn each_dialect_builds_the_body_its_service_requires() {
+        assert_eq!(
+            Dialect::Flat.body("hello"),
+            json!({ "text": "hello", "delivery": "queue" })
+        );
+        assert_eq!(
+            Dialect::Nested.body("hello"),
+            json!({ "prompt": { "text": "hello" }, "delivery": "queue" })
+        );
     }
 }
