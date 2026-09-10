@@ -450,6 +450,63 @@ async fn the_agent_is_uploaded_version_matched_and_answers_a_handshake() {
     remote.close().await;
 }
 
+/// The prune that reclaims superseded builds runs on every install, including
+/// the already-installed path — so it fires while other connections are still
+/// uploading. It used to match their staging names and delete the file out from
+/// under them, and the `chmod` waiting on it failed with "No such file or
+/// directory". An upload in flight has to outlive somebody else's prune.
+#[tokio::test]
+async fn a_prune_spares_an_upload_another_connection_is_still_making() {
+    let daemon = sshd_or_skip!();
+    let remote = remote_or_skip!(&daemon);
+
+    // The host is this machine, so the agent directory is reachable directly.
+    let directory = PathBuf::from(std::env::var("HOME").expect("HOME"))
+        .join(onlydiffs_lib::services::ssh::agent::AGENT_DIR);
+    let installed = std::fs::read_dir(&directory)
+        .expect("the agent directory the install just wrote")
+        .filter_map(|entry| Some(entry.ok()?.file_name().into_string().ok()?))
+        .find(|name| name.starts_with("onlydiffs-agent-") && !name.contains(".partial."))
+        .expect("the agent this build just installed");
+
+    // Both match the pattern the prune sweeps with. Only the superseded build
+    // is its to take.
+    let superseded = directory.join(format!("{installed}-superseded"));
+    let in_flight = directory.join(format!("{installed}.partial.999999.0"));
+    let orphaned = directory.join(format!("{installed}.partial.999999.1"));
+    std::fs::write(&superseded, b"an older build").expect("write");
+    std::fs::write(&in_flight, b"half an agent").expect("write");
+    std::fs::write(&orphaned, b"half an agent nobody is waiting for").expect("write");
+    // Long enough ago that no upload could still be making it.
+    Command::new("touch")
+        .args(["-t", "197001020000"])
+        .arg(&orphaned)
+        .status()
+        .expect("touch");
+
+    onlydiffs_lib::services::ssh::agent::ensure(&remote.connection)
+        .await
+        .expect("a second install over the same host");
+
+    assert!(
+        in_flight.exists(),
+        "an upload still in flight survived another connection's prune"
+    );
+    assert!(
+        !superseded.exists(),
+        "a superseded build is still reclaimed"
+    );
+    assert!(
+        !orphaned.exists(),
+        "an upload orphaned by a dropped connection is reaped once it is old"
+    );
+
+    let _ = std::fs::remove_file(&in_flight);
+    let _ = std::fs::remove_file(&superseded);
+    let _ = std::fs::remove_file(&orphaned);
+    remote.close().await;
+}
+
 #[tokio::test]
 async fn a_remote_diff_comes_back_in_the_same_shape_as_a_local_one() {
     let daemon = sshd_or_skip!();
