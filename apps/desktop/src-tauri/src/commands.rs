@@ -18,7 +18,7 @@ use crate::contract::{
 };
 use crate::error::{AppError, IpcResult};
 use crate::services::ssh::{host_key, target};
-use crate::services::{commit_message, opencode, repo_watch, updater};
+use crate::services::{commit_message, repo_watch, updater};
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -188,33 +188,29 @@ pub async fn codex_status(state: State<'_, AppState>) -> Result<IpcResult<CodexC
     Ok(IpcResult::Ok(repo.codex_status().await))
 }
 
-/// OpenCode 2 service discovery is intentionally local-only. Unlike repository
-/// services, it is never forwarded through the SSH agent.
 #[tauri::command]
 pub async fn send_opencode_message(
     state: State<'_, AppState>,
     request: SendOpenCodeMessageRequest,
 ) -> Result<IpcResult<String>, ()> {
-    let root = match state.workspace.current_path() {
-        Ok(root) => root,
+    let repo = match state.repository().await {
+        Ok(repo) => repo,
         Err(error) => return Ok(IpcResult::Err(error)),
     };
-    Ok(opencode::send(&root, &request.message, &state.http)
-        .await
-        .into())
+    Ok(repo.opencode_send(&request.message).await.into())
 }
 
 #[tauri::command]
 pub async fn opencode_status(
     state: State<'_, AppState>,
 ) -> Result<IpcResult<OpenCodeChannelStatus>, ()> {
-    let Ok(root) = state.workspace.current_path() else {
+    let Ok(repo) = state.repository().await else {
         return Ok(IpcResult::Ok(OpenCodeChannelStatus {
             connected: false,
             sessions: 0,
         }));
     };
-    Ok(IpcResult::Ok(opencode::status(&root, &state.http).await))
+    Ok(IpcResult::Ok(repo.opencode_status().await))
 }
 
 /// Writes a pasted image where the Claude session for the open repository can

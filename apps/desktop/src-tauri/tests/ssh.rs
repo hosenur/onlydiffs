@@ -665,6 +665,32 @@ async fn the_codex_bridge_answers_for_the_host_rather_than_this_machine() {
     remote.close().await;
 }
 
+/// The OpenCode bridge reads a registration file, a loopback URL and a process
+/// table, all of which describe one machine. Answered here about a repository
+/// on a host, it could only ever say "no session" — including for a session
+/// running plainly in front of the user. It has to cross.
+#[tokio::test]
+async fn the_opencode_bridge_answers_for_the_host_rather_than_this_machine() {
+    let daemon = sshd_or_skip!();
+    let remote = remote_or_skip!(&daemon);
+    let project = RemoteRepo::new();
+    project.write("seed.txt", "one\n");
+    project.git(&["add", "-A"]);
+    project.git(&["commit", "-q", "-m", "seed"]);
+    let repo = remote.repository(&project);
+
+    let status = repo.opencode_status().await;
+    assert!(!status.connected, "no OpenCode TUI is running in this checkout");
+    assert_eq!(status.sessions, 0);
+
+    // The refusal carries the tag the host refused with, which is what says it
+    // was asked over there rather than answered here.
+    let refused = repo.opencode_send("about this line").await;
+    assert_eq!(refused.expect_err("refused").tag(), "OpenCodeChannelError");
+
+    remote.close().await;
+}
+
 #[tokio::test]
 async fn reading_a_remote_file_refuses_to_exceed_the_limit_it_was_given() {
     let daemon = sshd_or_skip!();

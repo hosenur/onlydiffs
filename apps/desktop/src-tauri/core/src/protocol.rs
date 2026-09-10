@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::contract::{
-    ClaudeChannelStatus, CodexChannelStatus, Commit, FullFileContents, RepoDiff,
+    ClaudeChannelStatus, CodexChannelStatus, Commit, FullFileContents, OpenCodeChannelStatus,
+    RepoDiff,
 };
 use crate::services::icon_scan::Candidate;
 use crate::services::repository::FileMeta;
@@ -89,6 +90,11 @@ pub enum Request {
     /// Queue a message for it. One direction only, and it does not require the
     /// session to be running: Codex holds the message until that thread does.
     CodexSend { root: String, message: String },
+    /// Whether an OpenCode TUI is running in that repository with a session its
+    /// background service will take a message for.
+    OpenCodeStatus { root: String },
+    /// Queue a message for that session. One direction only.
+    OpenCodeSend { root: String, message: String },
     /// Put a pasted image where that session can open it. The bytes cross
     /// once, here; the message that follows carries only the path they landed
     /// at, because a path is the only form of an image that means anything on
@@ -140,6 +146,9 @@ pub enum Response {
     CodexStatus(CodexChannelStatus),
     /// The id Codex gave the queued message, useful only for correlating logs.
     CodexSent(String),
+    OpenCodeStatus(OpenCodeChannelStatus),
+    /// The id OpenCode gave the queued prompt, useful only for correlating logs.
+    OpenCodeSent(String),
     /// Where a pasted image was written, in the host's own path style.
     Attachment(String),
     Git(String),

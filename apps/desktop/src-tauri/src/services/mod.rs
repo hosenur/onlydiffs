@@ -13,13 +13,12 @@
 use std::path::PathBuf;
 
 pub use onlydiffs_core::services::{
-    attachment, claude_channel, codex_channel, diff, file_tree, history, icon_scan, repository,
-    watcher,
+    attachment, claude_channel, codex_channel, diff, file_tree, history, icon_scan, opencode,
+    repository, watcher,
 };
 
 pub mod commit_message;
 pub mod local_agent;
-pub mod opencode;
 pub mod project_icon;
 pub mod repo_watch;
 pub mod settings;

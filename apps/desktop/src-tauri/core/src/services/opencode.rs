@@ -1,14 +1,23 @@
-//! The local-only bridge to an OpenCode 2 TUI.
+//! The bridge to an OpenCode TUI, on whichever machine holds the repository.
 //!
 //! OpenCode 2 owns one authenticated background service. External clients are
 //! expected to discover that service from its registration file; they must not
 //! start or replace it. A persisted session is not enough on its own, so this
 //! bridge also requires a TUI from the registered OpenCode executable to be
 //! running in the open repository.
+//!
+//! Every question here is answered about the machine this code runs on: a
+//! registration file in that machine's state directory, a loopback URL, that
+//! machine's process table. For a repository on a host, that machine is the
+//! host, and the agent there runs exactly this — which is why it lives in this
+//! crate. Asked on the app's machine about a path that is not on it, the only
+//! answer it can give is "no session", which is what it used to give for a
+//! session running plainly in front of the user.
 
 use std::collections::HashSet;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use reqwest::{Client, RequestBuilder, Response, Url};
@@ -125,6 +134,14 @@ struct PromptResponse {
 #[derive(Debug, Deserialize)]
 struct AdmittedPrompt {
     id: String,
+}
+
+/// One client for the whole process. A `reqwest::Client` is a connection pool,
+/// and the status probe runs every few seconds -- building one per call would
+/// throw the pool away each time and leave a socket behind it.
+fn client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(Client::new)
 }
 
 fn registration_path() -> PathBuf {
@@ -257,8 +274,10 @@ async fn response_error(response: Response, operation: &str) -> AppError {
     )
 }
 
-/// Whether a live local OpenCode 2 TUI has a service session for this repository.
-pub async fn status(root: &Path, client: &Client) -> OpenCodeChannelStatus {
+/// Whether a live OpenCode 2 TUI on this machine has a service session for this
+/// repository.
+pub async fn status(root: &Path) -> OpenCodeChannelStatus {
+    let client = client();
     let Some(service) = discover(client).await else {
         return OpenCodeChannelStatus {
             connected: false,
@@ -278,7 +297,8 @@ pub async fn status(root: &Path, client: &Client) -> OpenCodeChannelStatus {
 }
 
 /// Durably admits a queued prompt to the newest matching OpenCode 2 session.
-pub async fn send(root: &Path, raw_message: &str, client: &Client) -> Result<String, AppError> {
+pub async fn send(root: &Path, raw_message: &str) -> Result<String, AppError> {
+    let client = client();
     let fail = AppError::OpenCodeChannel;
     let message = raw_message.trim();
     if message.is_empty() {
@@ -396,7 +416,7 @@ async fn linux_tui_sessions(root: &Path, service_pid: u32) -> Vec<PathBuf> {
         let Ok(cwd) = tokio::fs::read_link(format!("/proc/{pid}/cwd")).await else {
             continue;
         };
-        if onlydiffs_core::services::paths::is_within(&cwd, root) {
+        if crate::services::paths::is_within(&cwd, root) {
             found.push(cwd);
         }
     }
@@ -449,7 +469,7 @@ async fn lsof_tui_sessions(root: &Path, service_pid: u32) -> Vec<PathBuf> {
         .lines()
         .filter_map(|line| line.strip_prefix('n'))
         .map(PathBuf::from)
-        .filter(|cwd| onlydiffs_core::services::paths::is_within(cwd, root))
+        .filter(|cwd| crate::services::paths::is_within(cwd, root))
         .collect()
 }
 
@@ -492,7 +512,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_empty_message_is_refused_before_service_discovery() {
-        let refused = send(Path::new("/repository"), "  ", &Client::new()).await;
+        let refused = send(Path::new("/repository"), "  ").await;
 
         assert_eq!(
             refused.expect_err("refused").tag(),
@@ -502,12 +522,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_oversized_message_is_refused_before_service_discovery() {
-        let refused = send(
-            Path::new("/repository"),
-            &"x".repeat(MAX_MESSAGE_BYTES + 1),
-            &Client::new(),
-        )
-        .await;
+        let refused = send(Path::new("/repository"), &"x".repeat(MAX_MESSAGE_BYTES + 1)).await;
 
         assert!(refused.expect_err("refused").message().contains("too large"));
     }
