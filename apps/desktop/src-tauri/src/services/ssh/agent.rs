@@ -116,8 +116,21 @@ pub(crate) fn local_agent(triple: &str) -> Result<PathBuf, AppError> {
         let root = PathBuf::from(manifest);
         candidates.push(root.join("target").join(triple).join("release").join("onlydiffs-agent"));
         candidates.push(root.join("target").join(triple).join("debug").join("onlydiffs-agent"));
-        candidates.push(root.join("target/release/onlydiffs-agent"));
-        candidates.push(root.join("target/debug/onlydiffs-agent"));
+        // Cargo's own output, which is built for this machine and named after
+        // nothing. It is the right binary for a host that happens to match this
+        // one, and a binary of the wrong architecture entirely for any host
+        // that does not — so it is offered only when the triples agree.
+        //
+        // Left unguarded it was worse than useless: a `tauri dev` on Apple
+        // silicon connecting to an x86 Linux box uploaded a Mach-O binary,
+        // which the host could not exec, and the failure came back as "the host
+        // may be x86_64-unknown-linux-gnu in name only" — blaming the host for
+        // a choice made here. The tests never caught it because they connect to
+        // 127.0.0.1, where the architectures always agree.
+        if triple == host_triple() {
+            candidates.push(root.join("target/release/onlydiffs-agent"));
+            candidates.push(root.join("target/debug/onlydiffs-agent"));
+        }
     }
 
     // The newest of them. A dev checkout accumulates builds — a release
@@ -134,10 +147,34 @@ pub(crate) fn local_agent(triple: &str) -> Result<PathBuf, AppError> {
                 .unwrap_or(std::time::UNIX_EPOCH)
         })
         .ok_or_else(|| {
+            // Naming the command that produces it, and the right one: a bare
+            // `cargo build` only ever produces this machine's architecture, so
+            // for any other host it is the cross-build script or nothing.
+            let build = if triple == host_triple() {
+                "cargo build -p onlydiffs-agent --release".to_owned()
+            } else {
+                format!("./scripts/build-agents.sh (this host needs {triple})")
+            };
             AppError::Ssh(format!(
-                "this build carries no agent for {triple}. A release built by CI does; a local `tauri dev` needs `cargo build -p onlydiffs-agent --release` first."
+                "this build carries no agent for {triple}. A release built by CI does; a local `tauri dev` needs `{build}` first."
             ))
         })
+}
+
+/// This machine's own target triple, named the way the agents are.
+///
+/// `std::env::consts` rather than a build-time constant: what matters is the
+/// architecture the binary beside us was built for, and that is this one.
+fn host_triple() -> &'static str {
+    match (std::env::consts::ARCH, std::env::consts::OS) {
+        ("x86_64", "linux") => "x86_64-unknown-linux-gnu",
+        ("aarch64", "linux") => "aarch64-unknown-linux-gnu",
+        ("aarch64", "macos") => "aarch64-apple-darwin",
+        ("x86_64", "macos") => "x86_64-apple-darwin",
+        // Nothing we ship an agent for. Naming it as such keeps the comparison
+        // above false, which is the safe answer.
+        _ => "unsupported",
+    }
 }
 
 /// Whether the host already has exactly this version.
@@ -146,10 +183,21 @@ pub(crate) fn local_agent(triple: &str) -> Result<PathBuf, AppError> {
 /// architecture, and a file that is not executable all fail it, which a
 /// stat-and-compare would not.
 async fn already_installed(connection: &SshConnection, path: &str) -> bool {
-    match connection.run(&[path, "--version"]).await {
-        Ok(printed) => printed.trim() == AGENT_VERSION,
-        Err(_) => false,
-    }
+    reported_version(connection, path).await.as_deref() == Some(AGENT_VERSION)
+}
+
+/// What the agent at `path` says it is, or `None` if it would not run at all.
+///
+/// The distinction is the whole point: a binary that cannot exec and a binary
+/// that execs and answers with the wrong number are different problems with
+/// different fixes, and reporting both as "would not run" sent at least one
+/// afternoon looking at the host.
+async fn reported_version(connection: &SshConnection, path: &str) -> Option<String> {
+    connection
+        .run(&[path, "--version"])
+        .await
+        .ok()
+        .map(|printed| printed.trim().to_owned())
 }
 
 /// Puts the agent on the host if it is not already there, and answers with its
@@ -206,11 +254,21 @@ pub async fn ensure(connection: &SshConnection) -> Result<String, AppError> {
     // `mv` is atomic within a filesystem, so a concurrent upload of the same
     // build either has not landed yet or has landed completely; either way what
     // is at `destination` is a whole binary.
-    if !already_installed(connection, &destination).await {
-        return Err(AppError::Ssh(format!(
-            "the agent uploaded to {} would not run. The host may be {triple} in name only.",
-            connection.target().alias
-        )));
+    match reported_version(connection, &destination).await {
+        Some(version) if version == AGENT_VERSION => {}
+        // It runs, so the host is what it said it was and the upload arrived
+        // whole. What is wrong is the binary this checkout had lying around.
+        Some(version) => {
+            return Err(AppError::Ssh(format!(
+                "the agent for {triple} in this checkout is stale: it reports {version}, and this build speaks {AGENT_VERSION}. Rebuild it with `./scripts/build-agents.sh`."
+            )))
+        }
+        None => {
+            return Err(AppError::Ssh(format!(
+                "the agent uploaded to {} would not run. The host may be {triple} in name only.",
+                connection.target().alias
+            )))
+        }
     }
     settle(connection, &probe.home, triple, &destination).await?;
     Ok(destination)
