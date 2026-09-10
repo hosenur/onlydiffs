@@ -126,6 +126,8 @@ pub fn run() {
             commands::send_claude_message,
             commands::send_codex_message,
             commands::codex_status,
+            commands::send_opencode_message,
+            commands::opencode_status,
             commands::attach_image,
             commands::claude_status,
             commands::commit_all,

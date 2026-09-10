@@ -5,9 +5,8 @@ import { AGENTS, type Agent, type AgentStatus, readStatus } from '@/lib/agents'
  * Whether each agent has a session for the open repository.
  *
  * A session can start or stop at any moment and nothing pushes the change, so
- * this polls. Both probes are cheap — each one reads a small directory — and
- * they go out together rather than in sequence, so one slow answer does not
- * hold up the other's indicator.
+ * this polls. The probes are cheap and go out together rather than in sequence,
+ * so one slow answer does not hold up the other indicators.
  */
 
 /** How often to re-ask. */
@@ -16,7 +15,7 @@ const POLL_MS = 4000
 export type AgentStatuses = Record<Agent, AgentStatus | null>
 
 /** `null` per agent is "not asked yet", not "nothing there". */
-const UNASKED: AgentStatuses = { claude: null, codex: null }
+const UNASKED: AgentStatuses = { claude: null, codex: null, opencode: null }
 
 export function useAgentStatus(): AgentStatuses {
   const [statuses, setStatuses] = useState<AgentStatuses>(UNASKED)

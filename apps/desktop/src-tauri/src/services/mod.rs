@@ -19,6 +19,7 @@ pub use onlydiffs_core::services::{
 
 pub mod commit_message;
 pub mod local_agent;
+pub mod opencode;
 pub mod project_icon;
 pub mod repo_watch;
 pub mod settings;

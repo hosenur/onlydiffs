@@ -17,6 +17,8 @@ pub enum AppError {
     ClaudeChannel(String),
     /// A message could not be queued for a Codex session.
     CodexChannel(String),
+    /// A message could not be queued for a local OpenCode 2 session.
+    OpenCodeChannel(String),
     /// A pasted image could not be read or written down.
     Attachment(String),
     Clipboard(String),
@@ -50,6 +52,7 @@ impl AppError {
             Self::CommitMessage(_) => "CommitMessageError",
             Self::ClaudeChannel(_) => "ClaudeChannelError",
             Self::CodexChannel(_) => "CodexChannelError",
+            Self::OpenCodeChannel(_) => "OpenCodeChannelError",
             Self::Attachment(_) => "AttachmentError",
             Self::Clipboard(_) => "ClipboardError",
             Self::NoProjectOpen(_) => "NoProjectOpenError",
@@ -70,6 +73,7 @@ impl AppError {
             | Self::CommitMessage(m)
             | Self::ClaudeChannel(m)
             | Self::CodexChannel(m)
+            | Self::OpenCodeChannel(m)
             | Self::Attachment(m)
             | Self::Clipboard(m)
             | Self::NoProjectOpen(m)
@@ -156,6 +160,7 @@ mod tests {
             AppError::CommitMessage(_) => "CommitMessageError",
             AppError::ClaudeChannel(_) => "ClaudeChannelError",
             AppError::CodexChannel(_) => "CodexChannelError",
+            AppError::OpenCodeChannel(_) => "OpenCodeChannelError",
             AppError::Attachment(_) => "AttachmentError",
             AppError::Clipboard(_) => "ClipboardError",
             AppError::NoProjectOpen(_) => "NoProjectOpenError",
@@ -178,6 +183,7 @@ mod tests {
             AppError::CommitMessage(message()),
             AppError::ClaudeChannel(message()),
             AppError::CodexChannel(message()),
+            AppError::OpenCodeChannel(message()),
             AppError::Attachment(message()),
             AppError::Clipboard(message()),
             AppError::NoProjectOpen(message()),

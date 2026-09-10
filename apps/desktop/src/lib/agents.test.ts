@@ -3,6 +3,7 @@ import {
   type AgentStatus,
   composerPlaceholder,
   deliveryNote,
+  isAgentVisible,
   preferredAgent,
   statusLabel,
 } from './agents'
@@ -19,21 +20,25 @@ describe('statusLabel', () => {
     // session — it has not looked.
     expect(statusLabel('claude', null)).toBe('Checking for Claude…')
     expect(statusLabel('codex', null)).toBe('Checking for Codex…')
+    expect(statusLabel('opencode', null)).toBe('Checking for OpenCode…')
   })
 
   test('names the agent that is missing', () => {
     expect(statusLabel('claude', absent)).toBe('No Claude session')
     expect(statusLabel('codex', absent)).toBe('No Codex session')
+    expect(statusLabel('opencode', absent)).toBe('No OpenCode session')
   })
 
   test('reports a reachable session as connected', () => {
     expect(statusLabel('codex', live())).toBe('Codex connected')
     expect(statusLabel('claude', live())).toBe('Claude connected')
+    expect(statusLabel('opencode', live())).toBe('OpenCode connected')
   })
 
   test('counts sessions only when there is more than one', () => {
     expect(statusLabel('claude', live(3))).toBe('Claude connected · 3 sessions')
     expect(statusLabel('codex', live(2))).toBe('Codex connected · 2 sessions')
+    expect(statusLabel('opencode', live(2))).toBe('OpenCode connected · 2 sessions')
   })
 
   test('a running but unreachable session is not called absent', () => {
@@ -41,6 +46,7 @@ describe('statusLabel', () => {
     // claim they can immediately disprove.
     expect(statusLabel('codex', undelivered)).toBe('Codex session not connected')
     expect(statusLabel('claude', undelivered)).toBe('Claude session not connected')
+    expect(statusLabel('opencode', undelivered)).toBe('OpenCode session not connected')
   })
 })
 
@@ -58,6 +64,9 @@ describe('preferredAgent', () => {
   test('picks the one that is there when nothing is remembered', () => {
     expect(preferredAgent(null, { claude: absent, codex: live() })).toBe('codex')
     expect(preferredAgent(null, { claude: live(), codex: absent })).toBe('claude')
+    expect(preferredAgent(null, { claude: absent, codex: absent, opencode: live() })).toBe(
+      'opencode'
+    )
   })
 
   test('keeps the remembered choice when neither is available', () => {
@@ -65,6 +74,9 @@ describe('preferredAgent', () => {
     // there, and the last choice is the least surprising thing to name.
     expect(preferredAgent('codex', { claude: absent, codex: absent })).toBe('codex')
     expect(preferredAgent(null, { claude: null, codex: null })).toBe('claude')
+    expect(preferredAgent('opencode', { claude: absent, codex: absent, opencode: absent })).toBe(
+      'claude'
+    )
   })
 })
 
@@ -76,6 +88,7 @@ describe('composerPlaceholder', () => {
   test('names the missing agent when there is not', () => {
     expect(composerPlaceholder('codex', false)).toBe('No Codex session')
     expect(composerPlaceholder('claude', false)).toBe('No Claude session')
+    expect(composerPlaceholder('opencode', false)).toBe('No OpenCode session')
   })
 })
 
@@ -106,5 +119,20 @@ describe('deliveryNote', () => {
     // The placeholder already says that; a second sentence would be noise.
     expect(deliveryNote('codex', absent)).toBeNull()
     expect(deliveryNote('claude', absent)).toBeNull()
+    expect(deliveryNote('opencode', absent)).toBeNull()
+  })
+})
+
+describe('isAgentVisible', () => {
+  test('hides OpenCode until a local TUI is found', () => {
+    expect(isAgentVisible('opencode', null)).toBeFalse()
+    expect(isAgentVisible('opencode', absent)).toBeFalse()
+    expect(isAgentVisible('opencode', live())).toBeTrue()
+    expect(isAgentVisible('opencode', undelivered)).toBeTrue()
+  })
+
+  test('keeps the built-in provider hints visible without sessions', () => {
+    expect(isAgentVisible('claude', absent)).toBeTrue()
+    expect(isAgentVisible('codex', absent)).toBeTrue()
   })
 })
