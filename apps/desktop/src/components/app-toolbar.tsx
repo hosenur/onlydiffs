@@ -4,14 +4,14 @@ import type { ComponentType, SVGProps } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Button } from '@onlydiffs/ui/button'
 import { useAgentStatus } from '@/hooks/use-agent-status'
-import { AGENTS, type Agent, statusLabel } from '@/lib/agents'
+import { AGENTS, type Agent, isAgentVisible, statusLabel } from '@/lib/agents'
 import { useLineReference } from '@/lib/line-reference'
 import { nextUnreviewed, reviewProgress } from '@/lib/review'
 import { fileHref } from '@/lib/status'
 import { useUpdate } from '@/lib/update'
 import type { FileChange } from '@shared/contract'
 import { ChevronRightIcon } from '@onlydiffs/ui/icons'
-import { ClaudeIcon, CodexIcon } from '@/icons'
+import { ClaudeIcon, CodexIcon, OpenCodeIcon } from '@/icons'
 
 /**
  * Holds the last non-null value so a surface can keep rendering its content
@@ -63,10 +63,9 @@ export function AppToolbar({ files }: AppToolbarProps) {
       )}
 
       <footer className="flex shrink-0 items-center gap-3 border-t bg-navbar px-3 py-1.5 font-mono text-[11px]">
-        {/* One indicator per agent. Both are shown even when only one is
-            installed: "No Codex session" is how someone finds out the composer
-            can send there at all. */}
-        {AGENTS.map((agent) => (
+        {/* Claude and Codex remain as discoverable hints without sessions;
+            OpenCode appears only while its local TUI is running. */}
+        {AGENTS.filter((agent) => isAgentVisible(agent, statuses[agent])).map((agent) => (
           <AgentIndicator key={agent} agent={agent} status={statuses[agent]} />
         ))}
 
@@ -118,13 +117,13 @@ export function AppToolbar({ files }: AppToolbarProps) {
 
 /**
  * Each agent's own mark, in place of a generic plug that said nothing about
- * which one. `tint` is how the mark looks with a live session: Claude in its
- * brand orange, Codex in the text colour since its mark is monochrome. Without
- * a session the mark is greyed out.
+ * which one. `tint` is how the mark looks with a live session; without one the
+ * mark is greyed out.
  */
 const AGENT_MARKS = {
   claude: { Mark: ClaudeIcon, tint: 'text-[#D97757]' },
   codex: { Mark: CodexIcon, tint: 'text-fg' },
+  opencode: { Mark: OpenCodeIcon, tint: 'text-fg' },
 } satisfies Record<Agent, { Mark: ComponentType<SVGProps<SVGSVGElement>>; tint: string }>
 
 function AgentIndicator({

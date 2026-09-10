@@ -128,6 +128,15 @@ pub struct CodexChannelStatus {
     pub sessions: usize,
 }
 
+/// Whether a local OpenCode 2 TUI has a service session for the repository.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenCodeChannelStatus {
+    pub connected: bool,
+    /// How many OpenCode 2 TUI processes are running in this repository.
+    pub sessions: usize,
+}
+
 /// Whether a newer release is waiting to be installed.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

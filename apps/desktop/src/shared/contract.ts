@@ -157,6 +157,10 @@ export interface SendCodexMessageRequest {
   message: string;
 }
 
+export interface SendOpenCodeMessageRequest {
+  message: string;
+}
+
 export interface CommitAllRequest {
   message: string;
 }
@@ -251,6 +255,13 @@ export interface CodexChannelStatus {
   sessions: number;
 }
 
+/** Whether a local OpenCode 2 TUI can receive a queued prompt. */
+export interface OpenCodeChannelStatus {
+  connected: boolean;
+  /** How many OpenCode 2 TUI processes are running in this repository. */
+  sessions: number;
+}
+
 /** Whether a newer release is waiting to be installed. */
 export interface UpdateStatus {
   available: boolean;
@@ -298,6 +309,8 @@ export const Command = {
   sendClaudeMessage: "send_claude_message",
   sendCodexMessage: "send_codex_message",
   codexStatus: "codex_status",
+  sendOpenCodeMessage: "send_opencode_message",
+  opencodeStatus: "opencode_status",
   attachImage: "attach_image",
   writeClipboardText: "write_clipboard_text",
   listProjects: "list_projects",
@@ -338,6 +351,8 @@ export type BackendErrorTag =
   | "ClaudeChannelError"
   /** A message could not be queued for a Codex session. */
   | "CodexChannelError"
+  /** A message could not be queued for a local OpenCode 2 session. */
+  | "OpenCodeChannelError"
   /** A pasted image could not be read or written down. */
   | "AttachmentError"
   | "ClipboardError"

@@ -18,12 +18,14 @@ import type {
   HostRequest,
   IpcErrorTag,
   IpcResult,
+  OpenCodeChannelStatus,
   OpenProjectRequest,
   OpenRemoteProjectRequest,
   Project,
   RepoDiff,
   SendClaudeMessageRequest,
   SendCodexMessageRequest,
+  SendOpenCodeMessageRequest,
   SetGroqApiKeyRequest,
   SetThemeRequest,
   SshHostEntry,
@@ -112,6 +114,15 @@ export const sendCodexMessage = (message: string): Promise<string> =>
   call(Command.sendCodexMessage, { request: { message } satisfies SendCodexMessageRequest })
 
 export const codexStatus = (): Promise<CodexChannelStatus> => call(Command.codexStatus)
+
+/** Durably queues a prompt for the local OpenCode 2 session. */
+export const sendOpenCodeMessage = (message: string): Promise<string> =>
+  call(Command.sendOpenCodeMessage, {
+    request: { message } satisfies SendOpenCodeMessageRequest,
+  })
+
+export const opencodeStatus = (): Promise<OpenCodeChannelStatus> =>
+  call(Command.opencodeStatus)
 
 /**
  * Writes a pasted image where the Claude session for the open repository can

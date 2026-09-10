@@ -4,4 +4,5 @@
  */
 export { ClaudeIcon } from './ClaudeIcon'
 export { CodexIcon } from './CodexIcon'
+export { OpenCodeIcon } from './OpenCodeIcon'
 export { IsometricCubeIcon } from './IsometricCubeIcon'

@@ -11,6 +11,7 @@ import {
   composerPlaceholder,
   deliver,
   deliveryNote,
+  isAgentVisible,
   preferredAgent,
 } from '@/lib/agents'
 import { composeMessage, pastedImages } from '@/lib/attachments'
@@ -28,7 +29,7 @@ import { CloseIcon, SendIcon } from '@onlydiffs/ui/icons'
  * it does.
  *
  * Which agent it goes to is a choice, remembered across lines — see `lib/agents`
- * for what the two of them do and do not have in common.
+ * for what they do and do not have in common.
  */
 
 /** Where the chosen agent is remembered, so picking one is a decision made
@@ -81,7 +82,8 @@ function AgentPicker({
   // than seeing it sit there greyed out.
   const offered = AGENTS.filter(
     (candidate) =>
-      statuses[candidate]?.connected || candidate === agent || candidate === picked
+      isAgentVisible(candidate, statuses[candidate]) &&
+      (statuses[candidate]?.connected || candidate === agent || candidate === picked)
   )
   if (offered.length < 2) return null
 
