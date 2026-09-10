@@ -52,10 +52,15 @@ struct SessionList {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct Session {
     id: String,
-    #[serde(default)]
+    /// `parentID`, with the acronym in capitals — which is not what a
+    /// `camelCase` rename produces. Spelling it `parentId` meant this never
+    /// matched, so every child session read as a top-level one and the filter
+    /// below stopped excluding them: a sub-agent's session could be picked as
+    /// the newest and take the message meant for the session someone is
+    /// sitting in front of.
+    #[serde(default, rename = "parentID")]
     parent_id: Option<String>,
     time: SessionTime,
 }
@@ -255,8 +260,13 @@ pub async fn send(root: &Path, raw_message: &str, client: &Client) -> Result<Str
     };
     let response = authenticated(
         &registration,
+        // The prompt's fields sit at the top level of the body, and the
+        // service rejects anything else outright: its schema requires `text`
+        // and allows no additional properties. Nesting them under `prompt` --
+        // which is what this sent before -- failed every send with
+        // `400 Missing key at ["text"]`.
         client.post(url).json(&json!({
-            "prompt": { "text": message },
+            "text": message,
             "delivery": "queue",
         })),
     )
@@ -460,5 +470,39 @@ mod tests {
         .await;
 
         assert!(refused.expect_err("refused").message().contains("too large"));
+    }
+
+    /// The service spells the field `parentID`. `camelCase` produces
+    /// `parentId`, which matched nothing — so `parent_id` was always `None`,
+    /// every child read as top-level, and the newest of them won. A sub-agent's
+    /// session is newer than the one it was spawned from about as often as not.
+    #[test]
+    fn the_session_a_message_goes_to_is_the_one_with_no_parent() {
+        let listed: SessionList = serde_json::from_str(
+            r#"{"data":[
+                {"id":"ses_parent","time":{"updated":2}},
+                {"id":"ses_child","parentID":"ses_parent","time":{"updated":3}}
+            ]}"#,
+        )
+        .expect("a session list");
+
+        assert_eq!(listed.data[0].parent_id, None);
+        assert_eq!(
+            listed.data[1].parent_id.as_deref(),
+            Some("ses_parent"),
+            "a child session has to be recognisable as one"
+        );
+
+        // The choice `matching_session` makes: newest of those with no parent.
+        let newest = listed
+            .data
+            .iter()
+            .filter(|session| session.parent_id.is_none() && session.time.archived.is_none())
+            .max_by_key(|session| session.time.updated)
+            .expect("a top-level session");
+        assert_eq!(
+            newest.id, "ses_parent",
+            "the newer child must not take the message"
+        );
     }
 }
