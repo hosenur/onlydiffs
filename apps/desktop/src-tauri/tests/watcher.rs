@@ -108,6 +108,11 @@ mod fires {
     /// bounded, so a broken watch fails rather than hangs.
     const PATIENCE: Duration = Duration::from_secs(5);
 
+    /// How long the channel has to stay quiet before the setup counts as
+    /// settled. Longer than the 300ms debounce, so a signal already on its way
+    /// arrives here rather than in the middle of a test.
+    const SETTLE: Duration = Duration::from_millis(750);
+
     fn watched(gitignore: &str) -> (TempDir, mpsc::Receiver<()>, RepoWatcher) {
         let root = TempDir::new().expect("temp root");
         std::fs::write(root.path().join(".gitignore"), gitignore).expect("write .gitignore");
@@ -120,6 +125,14 @@ mod fires {
         // The watch is established on this thread, but FSEvents needs a moment
         // before it reports anything; a write racing that start-up is missed.
         std::thread::sleep(Duration::from_millis(300));
+        // Writing `.gitignore` just above is itself a change to the repository,
+        // and the watcher is right to report it. Whether it lands before this
+        // point or after is a matter of how loaded the machine is: locally it
+        // arrives during the sleep, on CI it arrives after — which had the test
+        // that asserts silence reading the setup's own noise and calling it a
+        // failure. Waiting for quiet gives every test here the same baseline,
+        // so what it measures is its own write and nothing of ours.
+        while rx.recv_timeout(SETTLE).is_ok() {}
         (root, rx, watcher)
     }
 
