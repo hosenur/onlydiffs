@@ -1,6 +1,6 @@
 [package]
 name = "onlydiffs-core"
-version = "0.1.19"
+version = "0.1.20"
 description = "Everything OnlyDiffs needs from the machine a repository lives on."
 authors = ["hosenur"]
 edition = "2021"
