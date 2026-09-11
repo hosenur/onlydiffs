@@ -21,6 +21,10 @@ tokio = { version = "1", features = ["process", "fs", "sync", "time", "io-util",
 futures = "0.3"
 notify-debouncer-full = "0.6.0"
 ignore = "0.4.30"
+# The OpenCode service is plain http on loopback and `endpoint` refuses
+# anything else, so TLS would be weight in four cross-compiled agents that
+# nothing would ever use.
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
 dirs = "5"
 
 [dev-dependencies]

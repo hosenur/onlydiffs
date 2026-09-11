@@ -25,12 +25,16 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::contract::{ChangeStatus, ClaudeChannelStatus, CodexChannelStatus, Commit, FullFileContents, RepoDiff};
+use crate::contract::{
+    ChangeStatus, ClaudeChannelStatus, CodexChannelStatus, Commit, FullFileContents,
+    OpenCodeChannelStatus, RepoDiff,
+};
 use crate::error::AppError;
 use crate::protocol::{Request, Response};
 use crate::services::icon_scan::Candidate;
 use crate::services::{
     attachment, claude_channel, codex_channel, diff, file_tree, git, history, icon_scan,
+    opencode,
 };
 
 /// A file's stat, reduced to the three things the app actually reads. Enough
@@ -148,6 +152,7 @@ impl Repository {
             "CommitMessageError" => AppError::CommitMessage(message),
             "ClaudeChannelError" => AppError::ClaudeChannel(message),
             "CodexChannelError" => AppError::CodexChannel(message),
+            "OpenCodeChannelError" => AppError::OpenCodeChannel(message),
             "AttachmentError" => AppError::Attachment(message),
             "NoProjectOpenError" => AppError::NoProjectOpen(message),
             "InvalidProjectError" => AppError::InvalidProject(message),
@@ -382,6 +387,48 @@ impl Repository {
                         connected: false,
                         sessions: 0,
                     },
+                }
+            }
+        }
+    }
+
+    /// Whether an OpenCode session for this repository can be sent to.
+    ///
+    /// Asked of the machine the repository is on. The registration file, the
+    /// loopback URL and the process table behind this answer exist only there,
+    /// so asking here about a path that is not here can only ever answer no.
+    pub async fn opencode_status(&self) -> OpenCodeChannelStatus {
+        match &self.host {
+            Host::Local => opencode::status(&self.root).await,
+            Host::Remote { .. } => {
+                let request = Request::OpenCodeStatus {
+                    root: self.root_string(),
+                };
+                match self.call(request).await {
+                    Ok(Response::OpenCodeStatus(status)) => status,
+                    // A host that cannot be reached has no session to report,
+                    // which is the same answer as a host with none.
+                    _ => OpenCodeChannelStatus {
+                        connected: false,
+                        sessions: 0,
+                    },
+                }
+            }
+        }
+    }
+
+    /// Hands a message to the OpenCode session working in this repository.
+    pub async fn opencode_send(&self, message: &str) -> Result<String, AppError> {
+        match &self.host {
+            Host::Local => opencode::send(&self.root, message).await,
+            Host::Remote { .. } => {
+                let request = Request::OpenCodeSend {
+                    root: self.root_string(),
+                    message: message.to_owned(),
+                };
+                match self.call(request).await? {
+                    Response::OpenCodeSent(id) => Ok(id),
+                    other => Err(unexpected(other)),
                 }
             }
         }

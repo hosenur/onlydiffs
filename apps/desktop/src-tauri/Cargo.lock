@@ -2970,6 +2970,7 @@ dependencies = [
  "ignore",
  "image 0.24.9",
  "notify-debouncer-full",
+ "reqwest 0.12.28",
  "resvg",
  "serde",
  "serde_json",

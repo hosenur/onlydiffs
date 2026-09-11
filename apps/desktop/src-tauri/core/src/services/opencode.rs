@@ -1,14 +1,23 @@
-//! The local-only bridge to an OpenCode 2 TUI.
+//! The bridge to an OpenCode TUI, on whichever machine holds the repository.
 //!
 //! OpenCode 2 owns one authenticated background service. External clients are
 //! expected to discover that service from its registration file; they must not
 //! start or replace it. A persisted session is not enough on its own, so this
 //! bridge also requires a TUI from the registered OpenCode executable to be
 //! running in the open repository.
+//!
+//! Every question here is answered about the machine this code runs on: a
+//! registration file in that machine's state directory, a loopback URL, that
+//! machine's process table. For a repository on a host, that machine is the
+//! host, and the agent there runs exactly this — which is why it lives in this
+//! crate. Asked on the app's machine about a path that is not on it, the only
+//! answer it can give is "no session", which is what it used to give for a
+//! session running plainly in front of the user.
 
 use std::collections::HashSet;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use reqwest::{Client, RequestBuilder, Response, Url};
@@ -60,9 +69,13 @@ struct Health {
 /// all; v1 answers `{"healthy":true}` and nothing more.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Dialect {
-    /// v1: `{"prompt": {"text": ...}}`.
+    /// v1. Its `/api/session/{id}/prompt` admits a message to an inbox that a
+    /// TUI never drains -- the call answers 200 and nothing whatever happens --
+    /// so a message is delivered by typing it into the TUI instead, through
+    /// `/tui/append-prompt` and `/tui/submit-prompt`.
     Nested,
-    /// v2: `{"text": ...}`.
+    /// v2. `/api/session/{id}/prompt` with `text` at the top level, which its
+    /// TUI does pick up off the inbox.
     Flat,
 }
 
@@ -78,6 +91,8 @@ impl Dialect {
     fn body(self, message: &str) -> serde_json::Value {
         match self {
             Self::Flat => json!({ "text": message, "delivery": "queue" }),
+            // v1 does not take this route at all; kept in the same shape it
+            // documents so the two stay legible side by side.
             Self::Nested => json!({ "prompt": { "text": message }, "delivery": "queue" }),
         }
     }
@@ -125,6 +140,14 @@ struct PromptResponse {
 #[derive(Debug, Deserialize)]
 struct AdmittedPrompt {
     id: String,
+}
+
+/// One client for the whole process. A `reqwest::Client` is a connection pool,
+/// and the status probe runs every few seconds -- building one per call would
+/// throw the pool away each time and leave a socket behind it.
+fn client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(Client::new)
 }
 
 fn registration_path() -> PathBuf {
@@ -257,15 +280,39 @@ async fn response_error(response: Response, operation: &str) -> AppError {
     )
 }
 
-/// Whether a live local OpenCode 2 TUI has a service session for this repository.
-pub async fn status(root: &Path, client: &Client) -> OpenCodeChannelStatus {
-    let Some(service) = discover(client).await else {
+/// The service to ask about this repository, and the TUI directories that make
+/// it worth asking.
+///
+/// A registered v2 service is preferred and is the only one that can answer for
+/// a repository it has no TUI in. When it has none here, an OpenCode 1 TUI
+/// listening for this repository is asked instead, so a machine running the
+/// older one is not silently reported as empty.
+async fn locate(root: &Path, client: &Client) -> Option<(Service, Vec<PathBuf>)> {
+    let registered = discover(client).await;
+    if let Some(service) = &registered {
+        let directories = tui_sessions(root, service.registration.pid).await;
+        if !directories.is_empty() {
+            return Some((registered?, directories));
+        }
+    }
+    if let Some((service, directory)) = listening_tui(root, client).await {
+        return Some((service, vec![directory]));
+    }
+    // Nothing of v1's either, so the registered service — if there is one —
+    // answers for the repository and its "no session here" stands.
+    registered.map(|service| (service, Vec::new()))
+}
+
+/// Whether a live OpenCode 2 TUI on this machine has a service session for this
+/// repository.
+pub async fn status(root: &Path) -> OpenCodeChannelStatus {
+    let client = client();
+    let Some((service, directories)) = locate(root, client).await else {
         return OpenCodeChannelStatus {
             connected: false,
             sessions: 0,
         };
     };
-    let directories = tui_sessions(root, service.registration.pid).await;
     let sessions = directories.len();
     let connected = sessions > 0
         && matching_session(client, &service.registration, &directories)
@@ -277,8 +324,56 @@ pub async fn status(root: &Path, client: &Client) -> OpenCodeChannelStatus {
     }
 }
 
+/// Types a message into an OpenCode 1 TUI and submits it, which is the only way
+/// to reach one.
+///
+/// Its `/api/session/{id}/prompt` answers 200 and admits the message to an
+/// inbox, and then nothing happens: the session gains a `type: "user"` entry
+/// that never becomes a turn, no assistant reply follows, and the TUI shows no
+/// sign of it. v2 drains that inbox; v1 does not.
+///
+/// These two do what a person does instead -- put the text in the prompt box,
+/// press enter. `directory` picks the TUI out, so there is no session to choose
+/// and no way to choose the wrong one.
+async fn type_into_tui(
+    client: &Client,
+    registration: &Registration,
+    root: &Path,
+    message: &str,
+) -> Result<String, AppError> {
+    let fail = AppError::OpenCodeChannel;
+    let directory = root.to_str().ok_or_else(|| {
+        fail("The repository path is not something OpenCode can be given.".into())
+    })?;
+
+    for (path, body) in [
+        ("/tui/append-prompt", json!({ "text": message })),
+        ("/tui/submit-prompt", json!({})),
+    ] {
+        let Some(url) = endpoint(registration, path) else {
+            return Err(fail("OpenCode is listening on an address that cannot be used.".into()));
+        };
+        let response = authenticated(
+            registration,
+            client.post(url).query(&[("directory", directory)]).json(&body),
+        )
+        .timeout(SEND_TIMEOUT)
+        .send()
+        .await
+        .map_err(|error| fail(format!("Could not send to OpenCode: {error}")))?;
+        if !response.status().is_success() {
+            return Err(response_error(response, "hand the message to the session").await);
+        }
+    }
+
+    // These answer `true`, not an id. There is nothing to correlate a log with,
+    // and saying so beats inventing something that looks like one.
+    Ok(String::new())
+}
+
 /// Durably admits a queued prompt to the newest matching OpenCode 2 session.
-pub async fn send(root: &Path, raw_message: &str, client: &Client) -> Result<String, AppError> {
+pub async fn send(root: &Path, raw_message: &str) -> Result<String, AppError> {
+    let client = client();
     let fail = AppError::OpenCodeChannel;
     let message = raw_message.trim();
     if message.is_empty() {
@@ -290,12 +385,14 @@ pub async fn send(root: &Path, raw_message: &str, client: &Client) -> Result<Str
         )));
     }
 
-    let service = discover(client)
+    let (service, directories) = locate(root, client)
         .await
-        .ok_or_else(|| fail("OpenCode 2's background service is not available.".into()))?;
-    let directories = tui_sessions(root, service.registration.pid).await;
+        .ok_or_else(|| fail("No OpenCode service is available on this machine.".into()))?;
     if directories.is_empty() {
         return Err(fail(NO_SESSION_MESSAGE.into()));
+    }
+    if service.dialect == Dialect::Nested {
+        return type_into_tui(client, &service.registration, root, message).await;
     }
     let session = matching_session(client, &service.registration, &directories)
         .await?
@@ -347,6 +444,168 @@ fn is_tui(arguments: &[String]) -> bool {
         .any(|argument| NON_TUI_COMMANDS.contains(&argument.as_str()))
 }
 
+/// The port an OpenCode 1 TUI was told to listen on, if it was told to at all.
+///
+/// Without `--port` (or `--hostname`) a v1 TUI never opens a socket: it holds
+/// the HTTP app in memory and dispatches to it in-process, over a socketpair to
+/// its own worker. `tui.ts` decides this with
+/// `hasArg("--port") || hasArg("--hostname") || mdns`, and only then calls
+/// `Server.listen`. So a plainly started v1 session is not unreachable by
+/// oversight — there is genuinely nothing listening to reach.
+///
+/// When the flag is there the port is in the command line, which is why this
+/// needs no registration file: the process that has the session is the process
+/// that names the port.
+fn listening_port(arguments: &[String]) -> Option<u16> {
+    let mut rest = arguments.iter().skip(1);
+    while let Some(argument) = rest.next() {
+        if let Some(value) = argument.strip_prefix("--port=") {
+            return value.parse().ok();
+        }
+        if argument == "--port" {
+            return rest.next()?.parse().ok();
+        }
+    }
+    None
+}
+
+/// An OpenCode 1 TUI listening for this repository, as a service to talk to.
+///
+/// v1 registers nothing and has no password of its own, so the health probe is
+/// the only confirmation that what is on the port is OpenCode at all. Its
+/// answer also settles the dialect, the same way it does for a registered
+/// service.
+async fn listening_tui(root: &Path, client: &Client) -> Option<(Service, PathBuf)> {
+    for (pid, arguments, cwd) in opencode_processes().await {
+        if !is_tui(&arguments) || !crate::services::paths::is_within(&cwd, root) {
+            continue;
+        }
+        let Some(port) = listening_port(&arguments) else {
+            continue;
+        };
+        let registration = Registration {
+            version: None,
+            url: format!("http://127.0.0.1:{port}"),
+            pid,
+            password: None,
+        };
+        let health_url = endpoint(&registration, "/api/health")?;
+        let Ok(response) = client.get(health_url).timeout(PROBE_TIMEOUT).send().await else {
+            continue;
+        };
+        if !response.status().is_success() {
+            continue;
+        }
+        let Ok(health) = response.json::<Health>().await else {
+            continue;
+        };
+        if !health.healthy {
+            continue;
+        }
+        return Some((
+            Service {
+                dialect: Dialect::of(&health),
+                registration,
+            },
+            cwd,
+        ));
+    }
+    None
+}
+
+/// Every OpenCode process on this machine, with what it was run as and where.
+async fn opencode_processes() -> Vec<(u32, Vec<String>, PathBuf)> {
+    #[cfg(target_os = "linux")]
+    {
+        linux_opencode_processes().await
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        lsof_opencode_processes().await
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn linux_opencode_processes() -> Vec<(u32, Vec<String>, PathBuf)> {
+    let mut found = Vec::new();
+    let Ok(mut entries) = tokio::fs::read_dir("/proc").await else {
+        return found;
+    };
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let name = entry.file_name();
+        let Some(pid) = name
+            .to_str()
+            .filter(|name| name.bytes().all(|byte| byte.is_ascii_digit()))
+            .and_then(|pid| pid.parse::<u32>().ok())
+        else {
+            continue;
+        };
+        let Ok(raw) = tokio::fs::read(format!("/proc/{pid}/cmdline")).await else {
+            continue;
+        };
+        let arguments: Vec<String> = raw
+            .split(|byte| *byte == 0)
+            .filter(|argument| !argument.is_empty())
+            .map(|argument| String::from_utf8_lossy(argument).into_owned())
+            .collect();
+        if arguments.is_empty() {
+            continue;
+        }
+        let Ok(cwd) = tokio::fs::read_link(format!("/proc/{pid}/cwd")).await else {
+            continue;
+        };
+        found.push((pid, arguments, cwd));
+    }
+    found
+}
+
+#[cfg(not(target_os = "linux"))]
+async fn lsof_opencode_processes() -> Vec<(u32, Vec<String>, PathBuf)> {
+    use tokio::process::Command;
+
+    let Ok(listing) = Command::new("ps").args(["-eo", "pid=,args="]).output().await else {
+        return Vec::new();
+    };
+    let mut candidates = Vec::new();
+    for line in String::from_utf8_lossy(&listing.stdout).lines() {
+        let mut fields = line.split_whitespace();
+        let Some(pid) = fields.next().and_then(|pid| pid.parse::<u32>().ok()) else {
+            continue;
+        };
+        let arguments: Vec<String> = fields.map(str::to_owned).collect();
+        if !is_tui(&arguments) {
+            continue;
+        }
+        candidates.push((pid, arguments));
+    }
+    if candidates.is_empty() {
+        return Vec::new();
+    }
+    let pids: Vec<String> = candidates.iter().map(|(pid, _)| pid.to_string()).collect();
+    let Ok(output) = Command::new("lsof")
+        .args(["-a", "-d", "cwd", "-Fpn", "-p", &pids.join(",")])
+        .output()
+        .await
+    else {
+        return Vec::new();
+    };
+    // `-Fpn` alternates `p<pid>` and `n<path>` lines, so the current pid is
+    // whichever `p` was seen last.
+    let mut found = Vec::new();
+    let mut current: Option<u32> = None;
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        if let Some(pid) = line.strip_prefix('p') {
+            current = pid.parse().ok();
+        } else if let Some(path) = line.strip_prefix('n') {
+            let Some(pid) = current else { continue };
+            if let Some((_, arguments)) = candidates.iter().find(|(each, _)| *each == pid) {
+                found.push((pid, arguments.clone(), PathBuf::from(path)));
+            }
+        }
+    }
+    found
+}
+
 async fn tui_sessions(root: &Path, service_pid: u32) -> Vec<PathBuf> {
     #[cfg(target_os = "linux")]
     {
@@ -396,7 +655,7 @@ async fn linux_tui_sessions(root: &Path, service_pid: u32) -> Vec<PathBuf> {
         let Ok(cwd) = tokio::fs::read_link(format!("/proc/{pid}/cwd")).await else {
             continue;
         };
-        if onlydiffs_core::services::paths::is_within(&cwd, root) {
+        if crate::services::paths::is_within(&cwd, root) {
             found.push(cwd);
         }
     }
@@ -449,7 +708,7 @@ async fn lsof_tui_sessions(root: &Path, service_pid: u32) -> Vec<PathBuf> {
         .lines()
         .filter_map(|line| line.strip_prefix('n'))
         .map(PathBuf::from)
-        .filter(|cwd| onlydiffs_core::services::paths::is_within(cwd, root))
+        .filter(|cwd| crate::services::paths::is_within(cwd, root))
         .collect()
 }
 
@@ -492,7 +751,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_empty_message_is_refused_before_service_discovery() {
-        let refused = send(Path::new("/repository"), "  ", &Client::new()).await;
+        let refused = send(Path::new("/repository"), "  ").await;
 
         assert_eq!(
             refused.expect_err("refused").tag(),
@@ -502,12 +761,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_oversized_message_is_refused_before_service_discovery() {
-        let refused = send(
-            Path::new("/repository"),
-            &"x".repeat(MAX_MESSAGE_BYTES + 1),
-            &Client::new(),
-        )
-        .await;
+        let refused = send(Path::new("/repository"), &"x".repeat(MAX_MESSAGE_BYTES + 1)).await;
 
         assert!(refused.expect_err("refused").message().contains("too large"));
     }
@@ -580,5 +834,30 @@ mod tests {
             Dialect::Nested.body("hello"),
             json!({ "prompt": { "text": "hello" }, "delivery": "queue" })
         );
+    }
+
+    /// A v1 TUI is reachable only if it was given a port, and the port is in
+    /// the command line rather than in any file. Both spellings, because the
+    /// flag takes either.
+    #[test]
+    fn a_v1_tui_is_reachable_only_when_it_was_given_a_port() {
+        let argv = |args: &[&str]| args.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>();
+
+        assert_eq!(
+            listening_port(&argv(&["opencode", "--port", "47555", "/repo"])),
+            Some(47555)
+        );
+        assert_eq!(
+            listening_port(&argv(&["opencode", "--port=47555"])),
+            Some(47555)
+        );
+        // Plainly started: the TUI talks to its own worker in-process and never
+        // opens a socket, so there is nothing to connect to.
+        assert_eq!(listening_port(&argv(&["opencode", "/repo"])), None);
+        // The executable's own name is skipped, so a path that happens to
+        // contain the flag is not mistaken for it.
+        assert_eq!(listening_port(&argv(&["/opt/--port/opencode"])), None);
+        assert_eq!(listening_port(&argv(&["opencode", "--port"])), None);
+        assert_eq!(listening_port(&argv(&["opencode", "--port", "no"])), None);
     }
 }
