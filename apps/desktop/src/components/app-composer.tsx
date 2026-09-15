@@ -9,13 +9,14 @@ import {
   AGENT_NAMES,
   type Agent,
   composerPlaceholder,
+  connectHint,
   deliver,
-  deliveryNote,
   preferredAgent,
 } from '@/lib/agents'
 import { composeMessage, pastedImages } from '@/lib/attachments'
+import { writeClipboardText } from '@/lib/ipc'
 import type { LineReference } from '@/lib/line-reference'
-import { CloseIcon, SendIcon } from '@onlydiffs/ui/icons'
+import { CheckIcon, CloseIcon, SendIcon } from '@onlydiffs/ui/icons'
 
 /**
  * The floating input that carries a line — and anything pasted about it — to a
@@ -146,6 +147,44 @@ function PastedImages({ images }: { images: Attachments }) {
   )
 }
 
+/**
+ * A command to run in the repository, with a button that copies it.
+ *
+ * The command is the whole fix, and it is long enough that retyping it from a
+ * status line is where the typo happens.
+ */
+function CopyableCommand({ command }: { command: string }) {
+  const [copied, setCopied] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  return (
+    <div className="mt-1 flex items-center gap-1.5 rounded-md border bg-bg py-0.5 ps-2 pe-0.5">
+      <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-fg">{command}</code>
+      <Button
+        intent="plain"
+        size="xs"
+        className="h-5 min-h-0 shrink-0 px-1.5 text-[11px] sm:min-h-0 sm:text-[11px]"
+        onPress={() => {
+          void writeClipboardText(command).then(
+            () => {
+              setCopied(true)
+              clearTimeout(timer.current)
+              timer.current = setTimeout(() => setCopied(false), 1600)
+            },
+            () => setCopied(false)
+          )
+        }}
+        aria-label={`Copy ${command}`}
+      >
+        {copied ? <CheckIcon /> : null}
+        {copied ? 'Copied' : 'Copy'}
+      </Button>
+    </div>
+  )
+}
+
 interface AppComposerProps {
   /** The line being asked about, or `null` while the bar animates out. */
   reference: LineReference | null
@@ -156,9 +195,12 @@ interface AppComposerProps {
   statuses: AgentStatuses
   /** Dismisses the bar — on Escape, on the ×, and once a message is away. */
   onClose: () => void
+  /** A message was handed over. The bar closes straight after, so whatever
+   *  says so has to live somewhere that stays on screen. */
+  onSent: (agent: Agent, reference: LineReference) => void
 }
 
-export function AppComposer({ reference, shown, statuses, onClose }: AppComposerProps) {
+export function AppComposer({ reference, shown, statuses, onClose, onSent }: AppComposerProps) {
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -171,16 +213,31 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
   const agent = preferredAgent(picked, statuses)
   const connected = statuses[agent]?.connected ?? false
 
-  // A fresh line means a fresh message; carrying the old draft across would
-  // silently attach it to a line the user did not mean. Dismissal deliberately
-  // leaves the draft alone: the bar is still on screen fading out, and watching
-  // the text blank out first reads as a glitch.
+  /*
+   * Opening the bar starts a fresh message; a click while it is already open
+   * only moves the target.
+   *
+   * Every click hands over a new reference, including a second click on the
+   * same line — which is what someone does to re-read it, or to get focus back
+   * into the field. Clearing on each one threw away whatever had been typed.
+   * A click on a different line keeps the draft too: it is far more often a
+   * correction than a new thought, and the label above animates to the new
+   * line, so the move is seen rather than silent.
+   *
+   * Dismissal deliberately leaves the draft alone: the bar is still on screen
+   * fading out, and watching the text blank out first reads as a glitch. The
+   * next open is what clears it.
+   */
+  const previous = useRef<LineReference | null>(null)
   useEffect(() => {
+    const wasOpen = previous.current !== null
+    previous.current = reference
     if (!reference) return
-    setMessage('')
     setError(null)
-    images.clear()
     input.current?.focus()
+    if (wasOpen) return
+    setMessage('')
+    images.clear()
   }, [reference, images.clear])
 
   const draft = message.trim()
@@ -189,6 +246,7 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
   const canSend =
     connected && !isSending && images.isReady && (draft.length > 0 || images.paths.length > 0)
   const failure = error ?? images.error
+  const hint = connectHint(agent, statuses[agent])
 
   async function send() {
     if (!reference || !canSend) return
@@ -199,6 +257,7 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
       // able to open the file. Same for the images: what crosses is where they
       // landed on the repository's own machine.
       await deliver(agent, composeMessage(reference, draft, images.paths))
+      onSent(agent, reference)
       onClose()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -212,6 +271,14 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
     // closes it, so dismissal has something to animate.
     <div
       data-open={reference !== null}
+      // Escape is caught here rather than on the field: with no session the
+      // field is disabled and cannot hold focus, and the copy button can.
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          onClose()
+        }
+      }}
       className="composer pointer-events-auto w-full max-w-xl rounded-xl border bg-overlay p-2 shadow-lg"
     >
       <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
@@ -285,10 +352,6 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
                 event.preventDefault()
                 void send()
               }
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                onClose()
-              }
               // Nothing left to delete in the field means the thing behind the
               // caret is the last image.
               const last = images.items[images.items.length - 1]
@@ -319,13 +382,14 @@ export function AppComposer({ reference, shown, statuses, onClose }: AppComposer
         </p>
       )}
 
-      {/* Codex takes the message into a queue rather than to a listener, so
-          "sent" can mean "waiting". Saying which up front is cheaper than a
-          user wondering why nothing answered. */}
-      {!failure && deliveryNote(agent, statuses[agent]) && (
-        <p className="px-1 pt-1.5 text-[11px] text-muted-fg">
-          {deliveryNote(agent, statuses[agent])}
-        </p>
+      {/* Nothing to send to is the one state where the field cannot help, so
+          this says how to get something there — and the status poll enables
+          the field on its own once the session is up. */}
+      {!failure && hint && (
+        <div className="px-1 pt-1.5 text-[11px] text-muted-fg">
+          <p>{hint.text}</p>
+          {hint.command && <CopyableCommand command={hint.command} />}
+        </div>
       )}
     </div>
   )

@@ -1,11 +1,11 @@
 import { AppComposer } from '@/components/app-composer'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ComponentType, SVGProps } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Button } from '@onlydiffs/ui/button'
 import { useAgentStatus } from '@/hooks/use-agent-status'
-import { AGENTS, type Agent, statusLabel } from '@/lib/agents'
-import { useLineReference } from '@/lib/line-reference'
+import { AGENTS, AGENT_NAMES, type Agent, statusLabel } from '@/lib/agents'
+import { type LineReference, useLineReference } from '@/lib/line-reference'
 import { nextUnreviewed, reviewProgress } from '@/lib/review'
 import { fileHref } from '@/lib/status'
 import { useUpdate } from '@/lib/update'
@@ -28,17 +28,44 @@ function useRetained<T>(value: T | null): T | null {
   return value ?? retained
 }
 
+/** How long the footer says a message went out. */
+const SENT_NOTE_MS = 4000
+
+/**
+ * The footer's word that a message was handed over, for a few seconds.
+ *
+ * The composer closes the moment a send succeeds, so without this a delivered
+ * message and a bar that was simply dismissed look exactly alike.
+ */
+function useSentNote() {
+  const [note, setNote] = useState<string | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  function announce(agent: Agent, reference: LineReference) {
+    setNote(`Sent to ${AGENT_NAMES[agent]} · ${reference.name}:${reference.lineNumber}`)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setNote(null), SENT_NOTE_MS)
+  }
+
+  return { note, announce }
+}
+
 interface AppToolbarProps {
   /** The current diff, for the review count at the right end. */
   files: FileChange[]
+  /** The open repository, so a line clicked in another one is let go. */
+  repoPath: string
 }
 
-export function AppToolbar({ files }: AppToolbarProps) {
+export function AppToolbar({ files, repoPath }: AppToolbarProps) {
   const statuses = useAgentStatus()
   const { reference, clear } = useLineReference()
   // The composer animates out, so it outlives the reference that opened it.
   const shown = useRetained(reference)
   const { offer } = useUpdate()
+  const sent = useSentNote()
 
   const progress = reviewProgress(files)
   const isSwept = progress.reviewed === progress.total
@@ -50,6 +77,17 @@ export function AppToolbar({ files }: AppToolbarProps) {
   const params = useParams({ strict: false }) as { _splat?: string }
   const next = nextUnreviewed(files, params._splat)
 
+  /*
+   * A line belongs to the file it was clicked in, in the repository that file
+   * is in. Nothing else ever let it go but the composer's own dismissal, so it
+   * followed the user into the next file — and, because switching projects
+   * keeps this layout mounted, into the next repository, where Enter would
+   * hand that repository's agent a path from one it has never seen.
+   */
+  useEffect(() => {
+    clear()
+  }, [params._splat, repoPath, clear])
+
   return (
     <>
       {shown && (
@@ -58,7 +96,13 @@ export function AppToolbar({ files }: AppToolbarProps) {
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-12">
           {/* Mounted from the first reference onwards and kept mounted after
               it clears, so dismissal has something to animate. */}
-          <AppComposer reference={reference} shown={shown} statuses={statuses} onClose={clear} />
+          <AppComposer
+            reference={reference}
+            shown={shown}
+            statuses={statuses}
+            onClose={clear}
+            onSent={sent.announce}
+          />
         </div>
       )}
 
@@ -72,6 +116,12 @@ export function AppToolbar({ files }: AppToolbarProps) {
         ))}
 
         <span className="ms-auto flex items-center gap-3">
+          {/* Always mounted so the live region exists before it has anything
+              to say; `empty:hidden` keeps it from claiming a gap meanwhile. */}
+          <span role="status" className="text-success-subtle-fg empty:hidden">
+            {sent.note}
+          </span>
+
           {/* A mention, not a prompt: the install lives in the command menu, so
               nothing here interrupts what the window is already showing. */}
           {offer && (

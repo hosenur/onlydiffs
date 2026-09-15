@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   type AgentStatus,
   composerPlaceholder,
-  deliveryNote,
+  connectHint,
   preferredAgent,
   statusLabel,
 } from './agents'
@@ -93,33 +93,46 @@ describe('composerPlaceholder', () => {
   })
 })
 
-describe('deliveryNote', () => {
+describe('connectHint', () => {
   test('gives the command that reattaches a stranded Codex session', () => {
     // A command they can paste beats a description of a command, and `-C` is
     // part of it: a `--remote` session started without it is filed under the
     // daemon's directory, not the repository's.
-    expect(deliveryNote('codex', undelivered)).toBe(
-      'Not reachable. Close it, then: codex resume --last --remote unix:// -C "$PWD"'
+    expect(connectHint('codex', undelivered)?.command).toBe(
+      'codex resume --last --remote unix:// -C "$PWD"'
     )
   })
 
   test('gives the channel flag for a Claude session started without it', () => {
     // Without the flag Claude Code drops every channel message silently, so
     // the only useful thing to say is the launch command.
-    expect(deliveryNote('claude', undelivered)).toBe(
-      'Not reachable. Close it, then: claude --dangerously-load-development-channels server:onlydiffs'
+    expect(connectHint('claude', undelivered)?.command).toBe(
+      'claude --dangerously-load-development-channels server:onlydiffs'
     )
   })
 
-  test('says nothing once the session can be reached', () => {
-    expect(deliveryNote('codex', live())).toBeNull()
-    expect(deliveryNote('claude', live())).toBeNull()
+  test('says how to start a session when none is running', () => {
+    // A disabled field that only says "No Claude session" is a dead end for
+    // someone who has never started one; the command is the way out.
+    expect(connectHint('claude', absent)?.command).toBe(
+      'claude --dangerously-load-development-channels server:onlydiffs'
+    )
+    expect(connectHint('codex', absent)?.command).toBe('codex --remote unix:// -C "$PWD"')
+    expect(connectHint('opencode', absent)?.command).toBe('opencode')
+    expect(connectHint('claude', absent)?.text).toContain('No Claude Code session')
   })
 
-  test('says nothing when no session is running at all', () => {
-    // The placeholder already says that; a second sentence would be noise.
-    expect(deliveryNote('codex', absent)).toBeNull()
-    expect(deliveryNote('claude', absent)).toBeNull()
-    expect(deliveryNote('opencode', absent)).toBeNull()
+  test('has no command to offer for a stranded OpenCode session', () => {
+    expect(connectHint('opencode', undelivered)?.command).toBeNull()
+  })
+
+  test('says nothing once the session can be reached', () => {
+    expect(connectHint('codex', live())).toBeNull()
+    expect(connectHint('claude', live())).toBeNull()
+    expect(connectHint('opencode', live())).toBeNull()
+  })
+
+  test('says nothing before the first probe has answered', () => {
+    expect(connectHint('claude', null)).toBeNull()
   })
 })

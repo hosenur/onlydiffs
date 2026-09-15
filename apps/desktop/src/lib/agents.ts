@@ -43,8 +43,15 @@ export interface AgentStatus {
 /** What a user runs to make a Claude Code session reachable. */
 export const CLAUDE_START_COMMAND = 'claude --dangerously-load-development-channels server:onlydiffs'
 
+/** What a user runs to open a Codex session this app can reach. Matches
+ *  `START_COMMAND` in `codex_channel.rs`. */
+export const CODEX_START_COMMAND = 'codex --remote unix:// -C "$PWD"'
+
 /** What a user runs to reattach a running Codex session so it can be reached. */
 export const CODEX_RESUME_COMMAND = 'codex resume --last --remote unix:// -C "$PWD"'
+
+/** What a user runs to open an OpenCode session. */
+export const OPENCODE_START_COMMAND = 'opencode'
 
 /** Whether a session for the open repository can be sent to. */
 export function readStatus(agent: Agent): Promise<AgentStatus> {
@@ -86,19 +93,56 @@ export function composerPlaceholder(agent: Agent, connected: boolean): string {
   return `No ${AGENT_NAMES[agent]} session`
 }
 
+/** How to get from "nothing to send to" to a session that will take a line. */
+export interface ConnectHint {
+  text: string
+  /** The command to run in the repository, when there is one to paste. */
+  command: string | null
+}
+
 /**
- * How to make an unreachable session reachable, for the agent it would go to.
+ * How to make a session reachable, for the agent the composer would send to.
  *
- * Shown only when a session is running and cannot be sent to, which is the one
- * moment the user needs a fix rather than a status. For Codex the session has
- * to be attached to the shared daemon with the repository named, for Claude it
- * needs the channel flag, and OpenCode's own service needs a restart.
+ * Shown whenever there is nothing to send to. With no session at all this is
+ * the only place the app says how to start one, and a user who has just clicked
+ * a line is exactly the person who needs to know. With a session that is
+ * running but cannot be reached, it is the fix: Codex has to be attached to the
+ * shared daemon with the repository named, Claude needs the channel flag, and
+ * OpenCode's own service needs a restart.
+ *
+ * `null` before the first probe answers, so the bar does not tell someone to
+ * start a session it has not looked for yet.
  */
-export function deliveryNote(agent: Agent, status: AgentStatus | null): string | null {
-  if (status?.connected || (status?.sessions ?? 0) === 0) return null
-  if (agent === 'codex') return `Not reachable. Close it, then: ${CODEX_RESUME_COMMAND}`
-  if (agent === 'claude') return `Not reachable. Close it, then: ${CLAUDE_START_COMMAND}`
-  return 'Not reachable. Restart the OpenCode 2 session.'
+export function connectHint(agent: Agent, status: AgentStatus | null): ConnectHint | null {
+  if (status === null || status.connected) return null
+
+  if (status.sessions === 0) {
+    const command =
+      agent === 'claude'
+        ? CLAUDE_START_COMMAND
+        : agent === 'codex'
+          ? CODEX_START_COMMAND
+          : OPENCODE_START_COMMAND
+    const name = agent === 'claude' ? 'Claude Code' : AGENT_NAMES[agent]
+    return { text: `No ${name} session in this repository. Start one there with:`, command }
+  }
+
+  if (agent === 'codex') {
+    return {
+      text: 'Codex is running outside its shared daemon. Close it, then run:',
+      command: CODEX_RESUME_COMMAND,
+    }
+  }
+  if (agent === 'claude') {
+    return {
+      text: 'Claude Code is running without the channel flag. Close it, then run:',
+      command: CLAUDE_START_COMMAND,
+    }
+  }
+  return {
+    text: 'OpenCode is running, but its background service has no matching session. Restart it.',
+    command: null,
+  }
 }
 
 /**

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
+import { Badge } from '@onlydiffs/ui/badge'
 import { EmptyState } from '@/components/empty-state'
 import { FileDiffCard } from '@/components/file-diff-card'
 import { stageFile } from '@/lib/ipc'
@@ -10,6 +11,21 @@ const layoutRoute = getRouteApi('/_app')
 export const Route = createFileRoute('/_app/file/$')({
   component: SingleFile,
 })
+
+/** Names one half of a path that has both: what is in the index, and what has
+ *  been edited in the working tree since. */
+function HalfHeading({ staged }: { staged: boolean }) {
+  return (
+    <div className="flex items-center gap-2 border-y bg-navbar px-5 py-1.5 text-xs">
+      <Badge intent={staged ? 'primary' : 'outline'} className="shrink-0">
+        {staged ? 'staged' : 'unstaged'}
+      </Badge>
+      <span className="text-muted-fg">
+        {staged ? 'In the index, ready to commit' : 'Edited since it was staged'}
+      </span>
+    </div>
+  )
+}
 
 function SingleFile() {
   const { _splat } = Route.useParams()
@@ -62,7 +78,14 @@ function SingleFile() {
         <p className="whitespace-pre-wrap p-5 font-mono text-danger-subtle-fg">{stageError}</p>
       )}
       {rows.map((file) => (
-        <FileDiffCard key={file.id} file={file} bare />
+        <section key={file.id} aria-label={file.staged ? 'Staged changes' : 'Unstaged changes'}>
+          {/* The bare card drops the header that says which half it is. One
+              row needs no saying; two back to back are indistinguishable
+              without it, and they are the file the review count still calls
+              unfinished. */}
+          {rows.length > 1 && <HalfHeading staged={file.staged} />}
+          <FileDiffCard file={file} bare />
+        </section>
       ))}
     </div>
   )

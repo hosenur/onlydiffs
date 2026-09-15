@@ -131,7 +131,7 @@ function AppLayout() {
                 <Outlet />
               </div>
 
-              <AppToolbar files={diff.files} />
+              <AppToolbar files={diff.files} repoPath={diff.repoPath} />
             </SidebarInset>
           </SidebarProvider>
         </UpdateProvider>
