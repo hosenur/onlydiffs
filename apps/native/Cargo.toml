@@ -1,0 +1,48 @@
+[package]
+name = "onlydiffs-native"
+version = "0.1.0"
+description = "See what your agent changed. Native GPUI build."
+authors = ["hosenur"]
+edition = "2024"
+license = "MIT"
+
+# Its own workspace: GPUI's dependency tree would otherwise be merged into the
+# Tauri app's lockfile, and the two pin different versions of shared crates.
+[workspace]
+
+[[bin]]
+name = "onlydiffs"
+path = "src/main.rs"
+
+[dependencies]
+# Syntax highlighting (src/syntax). tree-sitter 0.27 and tree-sitter-language
+# 0.1.8+ need Rust 1.90; this builds on 1.88.
+tree-sitter = "0.26"
+tree-sitter-language = ">=0.1.5, <0.1.8"
+tree-sitter-rust = "0.24"
+tree-sitter-javascript = "0.25"
+tree-sitter-typescript = "0.23"
+tree-sitter-python = "0.25"
+tree-sitter-json = "0.24"
+tree-sitter-go = "0.25"
+onlydiffs-core = { path = "../desktop/src-tauri/core" }
+# `runtime_shaders` compiles the Metal shaders when the app starts instead of
+# at build time, so a build does not need Xcode's separately downloaded Metal
+# toolchain. Release builds should install the toolchain and drop this.
+gpui = { version = "0.2.2", features = ["runtime_shaders"] }
+imara-diff = { version = "0.2", default-features = false }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "process", "net", "io-util", "time", "fs"] }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+unicode-segmentation = "1"
+base64 = "0.22"
+# The updater (src/update.rs): GitHub over TLS, the version compare, and the
+# same minisign check `tauri-plugin-updater` does.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "json"] }
+semver = "1"
+minisign-verify = "0.2"
+
+[dev-dependencies]
+# Signs a test archive the way `tauri signer sign` does.
+minisign = "0.7"

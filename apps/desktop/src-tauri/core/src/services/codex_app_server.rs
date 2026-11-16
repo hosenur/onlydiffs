@@ -282,7 +282,7 @@ impl AppServer {
     /// Notifications stream in alongside — thread status, queue changes — and
     /// are discarded here. Nothing this client asks for needs them; the diff
     /// on screen is how the user watches a turn land.
-    async fn request(&mut self, method: &str, params: Value) -> Result<Value, AppError> {
+    pub async fn request(&mut self, method: &str, params: Value) -> Result<Value, AppError> {
         self.next_id += 1;
         let id = self.next_id;
         let message = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
